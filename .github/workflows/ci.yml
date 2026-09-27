@@ -17,6 +17,29 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  formal:
+    name: Recording lifecycle model
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Java
+        uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Check recording lifecycle model
+        shell: bash
+        run: |
+          curl -fsSL https://github.com/tlaplus/tlaplus/releases/download/v1.8.0/tla2tools.jar -o "$RUNNER_TEMP/tla2tools.jar"
+          echo 'ab4694601923fd5ac06452abbf847c366a5054a3d739552085edde6ed986c29ec  '"$RUNNER_TEMP/tla2tools.jar" | sha256sum --check
+          java -XX:+UseParallelGC -jar "$RUNNER_TEMP/tla2tools.jar" -config formal/RecordingLifecycle.cfg formal/RecordingLifecycle.tla
+
   frontend:
     name: Frontend
     runs-on: ubuntu-latest
