@@ -20,7 +20,7 @@ Run with Java 11+ and the official [TLA+ tools release](https://github.com/tlapl
 
 ```sh
 curl -fsSL https://github.com/tlaplus/tlaplus/releases/download/v1.8.0/tla2tools.jar -o tla2tools.jar
-echo 'ab4694601923fd5ac06452abbf847c366a5054a3d739552085edde6ed986c29ec  tla2tools.jar' | sha256sum --check
+echo 'ab4694601923fd5ac06452abbf847c366a5054a3d739552085edd6ed986c29ec  tla2tools.jar' | sha256sum --check
 java -XX:+UseParallelGC -jar tla2tools.jar -config formal/RecordingLifecycle.cfg formal/RecordingLifecycle.tla
 ```
 
