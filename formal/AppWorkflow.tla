@@ -71,7 +71,7 @@ Init == app = [
   selectionSearched |-> FALSE, historyReprocessed |-> FALSE,
   chat |-> "Idle", settingsVersion |-> 0, savedVersion |-> 0,
   updateCheck |-> "Unchecked",
-  subtitle |-> "Idle", subtitleSession |-> 0,
+  subtitle |-> "Idle", subtitleSession |-> 0, subtitleFinalSeen |-> FALSE,
   staleSubtitleIgnored |-> FALSE
 ]
 
@@ -419,7 +419,7 @@ InterimSubtitle(session) ==
 FinalSubtitle ==
   /\ Workload = "Subtitles" /\ app.rec = "Finished"
   /\ app.subtitle \in {"Visible", "Interim"}
-  /\ app' = [app EXCEPT !.subtitle = "Final"]
+  /\ app' = [app EXCEPT !.subtitle = "Final", !.subtitleFinalSeen = TRUE]
 
 ReprocessHistory ==
   /\ Workload \in {"Speech", "CloudSpeech"}
@@ -533,7 +533,7 @@ ReprocessNeedsLease == app.reprocess # "Running" \/ app.audioLease
 SubtitleMatchesSession ==
   app.subtitle = "Idle" \/ app.subtitleSession = 1
 SubtitleFinalStaysFinal ==
-  app.subtitle # "Final" \/ app.rec = "Finished"
+  ~app.subtitleFinalSeen \/ app.subtitle = "Final"
 RejectedSwitchKeepsConfig ==
   app.engineRequest # "Blocked" \/ app.configEpoch = app.requestEpoch
 SuccessfulSwitchHasRequest ==

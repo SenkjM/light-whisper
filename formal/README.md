@@ -1,7 +1,7 @@
 # App state models
 
-`AppWorkflow.tla` is one bounded state machine for the app's user-visible
-workflow. Its `app` record connects settings and credentials, engine readiness,
+`AppWorkflow.tla` is one bounded state machine for selected user-visible
+workflows. Its `app` record connects settings and credentials, engine readiness,
 recording, ASR, Jev/LLM routing, context, results, optional storage, input,
 selection, assistant, history, subtitles, and updates. The nine configurations
 explore different feature combinations while checking the same `TypeOK` and
@@ -35,6 +35,9 @@ restoration; download/configuration pinning; engine-switch rejection; audio-file
 retention under a reprocessing lease; and settings version ordering. TLC's action
 coverage is checked across all nine workloads so a disconnected action cannot
 silently pass every invariant.
+
+See [COVERAGE.md](COVERAGE.md) for the command-to-model audit and the concrete
+paths that these checks do not cover.
 
 The smaller models explore specific interleavings more deeply:
 
