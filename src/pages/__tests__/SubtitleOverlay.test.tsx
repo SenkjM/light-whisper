@@ -180,6 +180,49 @@ function readSubtitleText(container: HTMLElement): string {
 }
 
 describe("SubtitleOverlay stale-flash cleanup", () => {
+  it("keeps the final result when a late interim event arrives for the same session", async () => {
+    const { container } = render(<SubtitleOverlay />);
+    await flushAsyncListeners();
+
+    await act(async () => {
+      tauriEvents.emit("recording-state", {
+        sessionId: 10,
+        isRecording: true,
+        isProcessing: false,
+      });
+      tauriEvents.emit("transcription-result", {
+        sessionId: 10,
+        text: "final words",
+        interim: false,
+      });
+    });
+    expect(readSubtitleText(container)).toContain("final words");
+
+    await act(async () => {
+      tauriEvents.emit("transcription-result", {
+        sessionId: 10,
+        text: "older preview",
+        interim: true,
+      });
+    });
+    expect(readSubtitleText(container)).toContain("final words");
+    expect(readSubtitleText(container)).not.toContain("older preview");
+
+    await act(async () => {
+      tauriEvents.emit("recording-state", {
+        sessionId: 11,
+        isRecording: true,
+        isProcessing: false,
+      });
+      tauriEvents.emit("transcription-result", {
+        sessionId: 11,
+        text: "new preview",
+        interim: true,
+      });
+    });
+    expect(readSubtitleText(container)).toContain("new preview");
+  });
+
   it("restarts the capsule entrance for every recording session", async () => {
     const { container } = render(<SubtitleOverlay />);
     await flushAsyncListeners();

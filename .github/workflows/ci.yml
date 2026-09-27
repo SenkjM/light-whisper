@@ -18,7 +18,7 @@ concurrency:
 
 jobs:
   formal:
-    name: Core state models
+    name: App and core state models
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -33,16 +33,27 @@ jobs:
           distribution: temurin
           java-version: '21'
 
-      - name: Check core state models
+      - name: Check app and core state models
         shell: bash
         run: |
           curl -fsSL https://github.com/tlaplus/tlaplus/releases/download/v1.8.0/tla2tools.jar -o "$RUNNER_TEMP/tla2tools.jar"
           echo 'ab4694601923fd5ac06452abbf847c366a5054a3d739552085edd6ed986c29ec  '"$RUNNER_TEMP/tla2tools.jar" | sha256sum --check
           for model in RecordingLifecycle TaskOwnership ProfilePersistence EngineDownload; do
             java -XX:+UseParallelGC -jar "$RUNNER_TEMP/tla2tools.jar" \
+              -noGenerateSpecTE \
               -metadir "$RUNNER_TEMP/tlc-$model" \
               -config "formal/$model.cfg" "formal/$model.tla"
           done
+          for workload in Mixed Speech CloudSpeech Selection Management EngineSpeech AssistantWeb Subtitles History; do
+            config="formal/AppWorkflow${workload}.cfg"
+            if [ "$workload" = Mixed ]; then config="formal/AppWorkflow.cfg"; fi
+            java -XX:+UseParallelGC -jar "$RUNNER_TEMP/tla2tools.jar" \
+              -noGenerateSpecTE -coverage 1 \
+              -metadir "$RUNNER_TEMP/tlc-app-$workload" \
+              -config "$config" formal/AppWorkflow.tla \
+              | tee "$RUNNER_TEMP/tlc-app-$workload.log"
+          done
+          python scripts/check_tla_action_coverage.py "$RUNNER_TEMP"/tlc-app-*.log
 
   frontend:
     name: Frontend
