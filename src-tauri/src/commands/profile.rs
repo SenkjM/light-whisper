@@ -778,11 +778,11 @@ pub async fn import_user_profile(
 ) -> Result<(), String> {
     let imported: UserProfile =
         serde_json::from_str(&json_data).map_err(|e| format!("解析画像数据失败: {}", e))?;
-    let (_, profile) = state.update_profile(|profile| {
+    state.update_profile_mut(|profile| {
         *profile = imported;
         profile_service::normalize_profile(profile);
     });
-    profile_service::save_profile_async(&profile)
+    profile_service::save_profile_async(state.inner())
         .await
         .map_err(|e| format!("保存用户画像失败: {}", e))?;
     llm_provider::sync_runtime_api_key(&app_handle, state.inner());

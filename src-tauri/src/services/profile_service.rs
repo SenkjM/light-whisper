@@ -139,11 +139,15 @@ async fn write_profile_async(profile: &UserProfile) -> Result<(), String> {
 }
 
 pub fn schedule_profile_save(profile: UserProfile) {
-    let generation = profile_save_generation().fetch_add(1, Ordering::SeqCst) + 1;
-    *pending_profile_save_slot().lock() = Some(PendingProfileSave {
-        generation,
-        profile,
-    });
+    let generation = {
+        let mut pending = pending_profile_save_slot().lock();
+        let generation = profile_save_generation().fetch_add(1, Ordering::SeqCst) + 1;
+        *pending = Some(PendingProfileSave {
+            generation,
+            profile,
+        });
+        generation
+    };
 
     tauri::async_runtime::spawn(async move {
         tokio::time::sleep(std::time::Duration::from_millis(PROFILE_SAVE_DEBOUNCE_MS)).await;
@@ -170,17 +174,28 @@ pub fn update_profile_and_schedule<R>(
     state: &AppState,
     f: impl FnOnce(&mut UserProfile) -> R,
 ) -> R {
-    let (result, profile) = state.update_profile(f);
-    schedule_profile_save(profile);
-    result
+    state.update_profile_mut(|profile| {
+        let result = f(profile);
+        // Publish this snapshot before a later profile mutation can overtake it.
+        schedule_profile_save(profile.clone());
+        result
+    })
 }
 
-pub async fn save_profile_async(profile: &UserProfile) -> Result<(), String> {
-    let generation = profile_save_generation().fetch_add(1, Ordering::SeqCst) + 1;
-    take_pending_profile_save_if(|pending| pending.generation <= generation);
-
+pub async fn save_profile_async(state: &AppState) -> Result<(), String> {
     let _write_guard = profile_save_lock().lock().await;
-    write_profile_async(profile).await
+    {
+        let mut pending = pending_profile_save_slot().lock();
+        let generation = profile_save_generation().fetch_add(1, Ordering::SeqCst) + 1;
+        if pending
+            .as_ref()
+            .is_some_and(|save| save.generation <= generation)
+        {
+            pending.take();
+        }
+    }
+    // A delayed immediate save must use current state, not its caller's old clone.
+    write_profile_async(&state.snapshot_profile()).await
 }
 
 // ============================================================

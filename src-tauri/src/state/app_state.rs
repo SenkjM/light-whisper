@@ -536,13 +536,6 @@ impl AppState {
         f(&self.profile.user_profile.lock())
     }
 
-    /// 修改 profile 并返回克隆（用于需要持久化的场景）
-    pub fn update_profile<R>(&self, f: impl FnOnce(&mut UserProfile) -> R) -> (R, UserProfile) {
-        let mut guard = self.profile.user_profile.lock();
-        let result = f(&mut guard);
-        (result, guard.clone())
-    }
-
     /// 修改 profile，不返回克隆（无需持久化时使用）
     pub fn update_profile_mut<R>(&self, f: impl FnOnce(&mut UserProfile) -> R) -> R {
         f(&mut self.profile.user_profile.lock())

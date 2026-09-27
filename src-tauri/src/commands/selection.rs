@@ -280,12 +280,15 @@ pub fn cancel_selection_action(state: tauri::State<'_, AppState>) -> bool {
 }
 
 fn begin_selection_task(state: &AppState) -> (u64, tokio::sync::oneshot::Receiver<()>) {
+    let mut current = state.ui.selection_cancel.lock();
     let generation = state.ui.selection_generation.fetch_add(1, Ordering::AcqRel) + 1;
     let (sender, receiver) = tokio::sync::oneshot::channel();
-    if let Some(previous) = state.ui.selection_cancel.lock().replace(SelectionTask {
+    let previous = current.replace(SelectionTask {
         generation,
         cancel: sender,
-    }) {
+    });
+    drop(current);
+    if let Some(previous) = previous {
         let _ = previous.cancel.send(());
     }
     (generation, receiver)
