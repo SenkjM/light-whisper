@@ -90,4 +90,4 @@ Jev keys are stored separately for each provider in the system credential store.
 
 Built with Tauri, React and Rust, using Qwen3-ASR / transcribe.cpp, Confucius4-R2T2 / audio.cpp and FireRedVAD.
 
-Licensed under [GPL-3.0-only](LICENSE). Third-party code and models retain their own terms; see [NOTICE](NOTICE) and [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+Light-Whisper is open-source software under [GPL-3.0-only](LICENSE). Third-party code and models retain their own terms; see [NOTICE](NOTICE) and [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).

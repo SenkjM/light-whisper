@@ -90,4 +90,4 @@ Jev 密钥按服务商分别存入系统凭据库。
 
 基于 Tauri、React 和 Rust 构建，使用 Qwen3-ASR / transcribe.cpp、Confucius4-R2T2 / audio.cpp 和 FireRedVAD。
 
-采用 [GPL-3.0-only](LICENSE) 许可证。第三方代码与模型继续适用各自条款，详见 [NOTICE](NOTICE) 和 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。
+Light-Whisper 是采用 [GPL-3.0-only](LICENSE) 许可证的开源软件。第三方代码与模型继续适用各自条款，详见 [NOTICE](NOTICE) 和 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。
