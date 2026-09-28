@@ -1,0 +1,644 @@
+{
+  "schema": 1,
+  "verified_utc": "2026-09-28T08:35:04Z",
+  "baseline_commit": "d29cd45db8876bd7bcfa915ae642af3b0fcc4bbe",
+  "pull_request": "https://github.com/sypsyp97/light-whisper/pull/9",
+  "scope": "Whole-application owned state and protocol contracts with reviewed source/test correspondence; not compiler refinement or native dependency proof.",
+  "inventory": {
+    "commands": 120,
+    "event_families": 16,
+    "lifecycle_entries": 15,
+    "protocol_families": 11,
+    "contract_families": 25
+  },
+  "tools": {
+    "tlc_version": "1.8.0",
+    "tlc_sha256": "ab4694601923fd5ac06452abbf847c366a5054a3d739552085edd6ed986c29ec",
+    "lean_version": "4.34.1",
+    "lean_archive_sha256": "47bf4bbd78f70c2e9670598ab7124d92b6efb7330ff33e5fbb4030f6fd72e4e4"
+  },
+  "formal": {
+    "status": "passed",
+    "model_count": 26,
+    "positive_configurations": 37,
+    "negative_controls": 30,
+    "integrated_actions_reached": 57,
+    "integrated_workloads": 9,
+    "results": [
+      {
+        "model": "AppProfileRules",
+        "config": "AppProfileRules.cfg",
+        "distinct": 432,
+        "source_sha256": "de822ff42c44789a4a8650c666149f12e2d4e5125b6424648db94dbe0ac79511",
+        "config_sha256": "fdf8d44b90c26403022eec1b044e32767564b5cadf7b1881b067d1b1704d4454",
+        "expected_violation": null
+      },
+      {
+        "model": "AppWorkflow",
+        "config": "AppWorkflow.cfg",
+        "distinct": 429286,
+        "source_sha256": "7eadf758725a8b8fd1072f9bb5bb9d07ffdfb274f86e0dbeea8dac2ccd5af35a",
+        "config_sha256": "ee6edd44b216452b22af3df030ae278a3b41af7f1257245df5748d21c08d1312",
+        "expected_violation": null
+      },
+      {
+        "model": "AppWorkflow",
+        "config": "AppWorkflowSpeech.cfg",
+        "distinct": 25883,
+        "source_sha256": "7eadf758725a8b8fd1072f9bb5bb9d07ffdfb274f86e0dbeea8dac2ccd5af35a",
+        "config_sha256": "a3371bc12fbf1b00ac4a34ff448b11444c26bd98e68d8e4f3500c40fcf1f8cf4",
+        "expected_violation": null
+      },
+      {
+        "model": "AppWorkflow",
+        "config": "AppWorkflowCloudSpeech.cfg",
+        "distinct": 25751,
+        "source_sha256": "7eadf758725a8b8fd1072f9bb5bb9d07ffdfb274f86e0dbeea8dac2ccd5af35a",
+        "config_sha256": "2f5bf08f4ede904b387b403fce879a5b1c2344ca0acd93a53cbd2e8452a79e53",
+        "expected_violation": null
+      },
+      {
+        "model": "AppWorkflow",
+        "config": "AppWorkflowSelection.cfg",
+        "distinct": 2430,
+        "source_sha256": "7eadf758725a8b8fd1072f9bb5bb9d07ffdfb274f86e0dbeea8dac2ccd5af35a",
+        "config_sha256": "b4dffd8c07ba1ee7a1efb5f6c8b86eb96752193867192a6ed8abcb38611388b7",
+        "expected_violation": null
+      },
+      {
+        "model": "AppWorkflow",
+        "config": "AppWorkflowManagement.cfg",
+        "distinct": 1760,
+        "source_sha256": "7eadf758725a8b8fd1072f9bb5bb9d07ffdfb274f86e0dbeea8dac2ccd5af35a",
+        "config_sha256": "b64c1f48c87b7a9ca9b49e7a0e9bd6835db64d66c82f60a6d84965d39a537815",
+        "expected_violation": null
+      },
+      {
+        "model": "AppWorkflow",
+        "config": "AppWorkflowEngineSpeech.cfg",
+        "distinct": 33100,
+        "source_sha256": "7eadf758725a8b8fd1072f9bb5bb9d07ffdfb274f86e0dbeea8dac2ccd5af35a",
+        "config_sha256": "d8714e791de6a7e6af89a89e7af11def4ecc8d70a76b6f44d4467d1288318013",
+        "expected_violation": null
+      },
+      {
+        "model": "AppWorkflow",
+        "config": "AppWorkflowAssistantWeb.cfg",
+        "distinct": 1019,
+        "source_sha256": "7eadf758725a8b8fd1072f9bb5bb9d07ffdfb274f86e0dbeea8dac2ccd5af35a",
+        "config_sha256": "f9409a850e755869213b71905d0213e002a79d9b05d5c0ff3cf0157fa264eff0",
+        "expected_violation": null
+      },
+      {
+        "model": "AppWorkflow",
+        "config": "AppWorkflowSubtitles.cfg",
+        "distinct": 174,
+        "source_sha256": "7eadf758725a8b8fd1072f9bb5bb9d07ffdfb274f86e0dbeea8dac2ccd5af35a",
+        "config_sha256": "47eb960fabb9de12b65e2a9e0bab77a8977ac4bf565fe9b26c0db927d33a1534",
+        "expected_violation": null
+      },
+      {
+        "model": "AppWorkflow",
+        "config": "AppWorkflowHistory.cfg",
+        "distinct": 72,
+        "source_sha256": "7eadf758725a8b8fd1072f9bb5bb9d07ffdfb274f86e0dbeea8dac2ccd5af35a",
+        "config_sha256": "388f3be4ba676f3f9b1979e09611bd35f3ae06fbabe343ab5c15c91e8f7d6489",
+        "expected_violation": null
+      },
+      {
+        "model": "AsyncSettings",
+        "config": "AsyncSettings.cfg",
+        "distinct": 296,
+        "source_sha256": "90430f7f80fa3ff12286dfefa14865759a9b492cd3167b7d524d4ff007369c6e",
+        "config_sha256": "bd825d5ef79a1d0b3885bf3c97240d81eb60d27e0692e06d46956db335623949",
+        "expected_violation": null
+      },
+      {
+        "model": "CapturePipeline",
+        "config": "CapturePipeline.cfg",
+        "distinct": 14490,
+        "source_sha256": "fc1019cb14ed5e27c9e2d01e1c6e0e1c515a5331a7436cab88a34b7e3d43bf23",
+        "config_sha256": "e6e5226a1d2f5716bfd4b1fd8ddcee845920499b3a158b9751cbbf3dc23bc25b",
+        "expected_violation": null
+      },
+      {
+        "model": "ContextRouting",
+        "config": "ContextRouting.cfg",
+        "distinct": 4269240,
+        "source_sha256": "4d4be013c6a2b06c7ffb82aef827695582156fc3dcf45ca347a1f9659754078f",
+        "config_sha256": "56738851b465abf93d2d6bba89f1d13b7d7131c81948dc2bbc7af113623f53b6",
+        "expected_violation": null
+      },
+      {
+        "model": "EngineDownload",
+        "config": "EngineDownload.cfg",
+        "distinct": 57,
+        "source_sha256": "6abdc6985fe3c795b103cf3f86819ba2c8342b3cc09992256aafd44c3d150cc3",
+        "config_sha256": "c56902da87e65a81c7a15a4e32314696238c3f2a415701771df600a79428875e",
+        "expected_violation": null
+      },
+      {
+        "model": "HistoryRecords",
+        "config": "HistoryRecords.cfg",
+        "distinct": 414760,
+        "source_sha256": "afdef1a1453c9664f4cb33d1433d1cbdf43244af5b51123cf2e9754196136064",
+        "config_sha256": "a6a5194766080e94615136ae7c8ddc947e66ef026430110e7365d286e47a8b61",
+        "expected_violation": null
+      },
+      {
+        "model": "HotkeyLifecycle",
+        "config": "HotkeyLifecycle.cfg",
+        "distinct": 318882,
+        "source_sha256": "d6a4478fc1d711c8e8e76987df80d60bc668444e1979c9ba6c1004a54bb41dd8",
+        "config_sha256": "cc7fee4b02264292d746718e05fe779d56995856bb5b8eb9987f0aaf2d89abdd",
+        "expected_violation": null
+      },
+      {
+        "model": "HotkeyLifecycle",
+        "config": "HotkeyLifecycleTranslation.cfg",
+        "distinct": 318882,
+        "source_sha256": "d6a4478fc1d711c8e8e76987df80d60bc668444e1979c9ba6c1004a54bb41dd8",
+        "config_sha256": "0129500594c97839ac233459fb3cb446a7bc7ce7fadf0f5614b902f6f56d4a06",
+        "expected_violation": null
+      },
+      {
+        "model": "HotkeyLifecycle",
+        "config": "HotkeyLifecycleAssistant.cfg",
+        "distinct": 318882,
+        "source_sha256": "d6a4478fc1d711c8e8e76987df80d60bc668444e1979c9ba6c1004a54bb41dd8",
+        "config_sha256": "80163580867711a7b4b9fade1c20d9ab326b1e0bdae4cd034ea7ed9fd981d181",
+        "expected_violation": null
+      },
+      {
+        "model": "HotkeyLifecycle",
+        "config": "HotkeyLifecycleRegistration.cfg",
+        "distinct": 306,
+        "source_sha256": "d6a4478fc1d711c8e8e76987df80d60bc668444e1979c9ba6c1004a54bb41dd8",
+        "config_sha256": "45a5f8f8eae6140af345f7d8890469a37b4724386d0872f1f64844a0824af407",
+        "expected_violation": null
+      },
+      {
+        "model": "LlmTransport",
+        "config": "LlmTransport.cfg",
+        "distinct": 1344,
+        "source_sha256": "30d5aa22394a5529ffbadd244c86665ed148595d4cc729a46123548ed0bd6953",
+        "config_sha256": "6a646ede02c402dac7a9bab639776d1ab8ed1eb12040a372a327d0d79b32f5cf",
+        "expected_violation": null
+      },
+      {
+        "model": "MicrophoneMonitor",
+        "config": "MicrophoneMonitor.cfg",
+        "distinct": 314,
+        "source_sha256": "14ff3c11ac1e0483ae9720b3757a12937adb977ab5d7d9ef6c76c6947c2afdfc",
+        "config_sha256": "14266c375ab088f7b9c60971d5a64b6dfd151baa8e1b60fd8aad622f7795a656",
+        "expected_violation": null
+      },
+      {
+        "model": "ModelDirectoryMigration",
+        "config": "ModelDirectoryMigration.cfg",
+        "distinct": 11,
+        "source_sha256": "27aba3347d6126be94f01c92699f4bacff5929d80aaa27c44a7a2c053a8c5dd4",
+        "config_sha256": "326708a9df238105c65956f544c7a063a23bd441ad84bb27cec15f0b3ef4e487",
+        "expected_violation": null
+      },
+      {
+        "model": "OAuthLifecycle",
+        "config": "OAuthLifecycle.cfg",
+        "distinct": 25630,
+        "source_sha256": "f646fbcc1297e3d1d3a9c820112a1e64f72f640f107ef392b268cc64a55452fa",
+        "config_sha256": "37fa6bdbdbd42f78f264ad43f8dd9fec348b28513894fca374767815b98287d0",
+        "expected_violation": null
+      },
+      {
+        "model": "Personalization",
+        "config": "Personalization.cfg",
+        "distinct": 49169,
+        "source_sha256": "1022ca358800957a0ceca10174a727279f77873838022a27c85264701dfbd182",
+        "config_sha256": "b24615297895486c5d3ae0dec874ea1aefa55322ae875b9c9888e0cd5386eb3a",
+        "expected_violation": null
+      },
+      {
+        "model": "ProfilePersistence",
+        "config": "ProfilePersistence.cfg",
+        "distinct": 8,
+        "source_sha256": "5d36f1d594d92da65ef267f984ff5a1266119235f403f51605882e2e7280c38a",
+        "config_sha256": "2bfd1dd0c9f5f1e2bb83488263ed58afdfd864e6c7f4f5fd508b7ff0340c1633",
+        "expected_violation": null
+      },
+      {
+        "model": "RecordingLifecycle",
+        "config": "RecordingLifecycle.cfg",
+        "distinct": 3539,
+        "source_sha256": "c6f323a5f422c507131c1953a75ea6928310af495d068aa4e492865feaa373c5",
+        "config_sha256": "a14a89237179004678da5ac7d6e37ec4358eae0ba1f50486211fb3bb083cec56",
+        "expected_violation": null
+      },
+      {
+        "model": "RequestProtocols",
+        "config": "RequestProtocols.cfg",
+        "distinct": 117,
+        "source_sha256": "4924987c7efe89bac2a29987c5e6cb0b5f59512987e26ab0df472cde4b8d1c51",
+        "config_sha256": "6fac61b7f7f9cb0472a2d070d36e6f9ab55636e334a482ee3717e440af43c7d5",
+        "expected_violation": null
+      },
+      {
+        "model": "RuntimeConfiguration",
+        "config": "RuntimeConfiguration.cfg",
+        "distinct": 685000,
+        "source_sha256": "71063cfc403dec8c98b867cbd42bbf2cccabc07342766236f1ce3a9307776127",
+        "config_sha256": "86affb384afb3253808c2aea66888c3b7332fce0de3f6321ba6f49842fdf3e7e",
+        "expected_violation": null
+      },
+      {
+        "model": "SettingsContracts",
+        "config": "SettingsContracts.cfg",
+        "distinct": 19856,
+        "source_sha256": "bfade09b7fe477a4db021f47a036b206978c70717da26065463af7b8b2eae152",
+        "config_sha256": "bc6e1205f8fe20cec559e4e41df969a6b6cc87f521df19e5d6ad219d503b993a",
+        "expected_violation": null
+      },
+      {
+        "model": "TaskOwnership",
+        "config": "TaskOwnership.cfg",
+        "distinct": 5,
+        "source_sha256": "96ab52b3c1c02e0e4e25e567a22de97b8960f697a65cf553cbfc7d4d27fc57cc",
+        "config_sha256": "e73af5f16663edc03b41d5622b305b1733e4a77a98466c612fd10329e315ec52",
+        "expected_violation": null
+      },
+      {
+        "model": "UiPreferences",
+        "config": "UiPreferences.cfg",
+        "distinct": 360,
+        "source_sha256": "4ddb8925e2700c8d8331a5978f2952eacf9452b7a9e8b2104ae1ce737f460d6d",
+        "config_sha256": "7d2e99d20519d42a082b9d490176b65e353e4a6c277e1ba9c400e9aa4aa9c719",
+        "expected_violation": null
+      },
+      {
+        "model": "WindowLifecycle",
+        "config": "WindowLifecycle.cfg",
+        "distinct": 12764,
+        "source_sha256": "33d6d243f205e15a5fa6bab9bbfc40ed5029b2fbbd2f7c82e55ddfb8ddd521d1",
+        "config_sha256": "157d3cf732a3cfd38a43bcfd5d75f278f3d7d48f5c0286ccc25809371000ae67",
+        "expected_violation": null
+      },
+      {
+        "model": "ProviderRequests",
+        "config": "ProviderRequests.cfg",
+        "distinct": 18,
+        "source_sha256": "7a6840ef05c59263876c66c382ed782d7ec6ce33ab03355d42adb2cde842d98e",
+        "config_sha256": "79a0a897b8ac1432b990ebb5bbd09a7b03a2559887802999506e05a7d4c964d3",
+        "expected_violation": null
+      },
+      {
+        "model": "HotkeyPendingStart",
+        "config": "HotkeyPendingStart.cfg",
+        "distinct": 25,
+        "source_sha256": "a9defda1aeefffb07c39c6bec6ea28613007af1be8d8b51fee48a9a676f022a5",
+        "config_sha256": "99238ca4294a936a6dde66d11750e454aa9e5f31ad0efa60c99fca2662a11cbf",
+        "expected_violation": null
+      },
+      {
+        "model": "OAuthStorage",
+        "config": "OAuthStorage.cfg",
+        "distinct": 56,
+        "source_sha256": "2d68c84f4a1e03d9da4f94a4e30760fa38f4839117b2edee0723ac5dd6fc0e3f",
+        "config_sha256": "0fa6799e9e707165ae6200c8093f032f7e5ac82294011268c7cf9d0fc78de987",
+        "expected_violation": null
+      },
+      {
+        "model": "HotkeyRegistrationEpoch",
+        "config": "HotkeyRegistrationEpoch.cfg",
+        "distinct": 118,
+        "source_sha256": "759b1b506d8468d00298a7cebda3546dd630f8b04b2e02963db8cdaf4e5e6ec1",
+        "config_sha256": "d55d6a9db536b084a4783dd3c57c6191897fdd6d50769a2bc578907537bb197b",
+        "expected_violation": null
+      },
+      {
+        "model": "HotkeyRegistrationFailure",
+        "config": "HotkeyRegistrationFailure.cfg",
+        "distinct": 12,
+        "source_sha256": "ea88ea722e5ce8ce10c0ce717414a1776f2d1e3dee5e10e97670ac5c00b9df6a",
+        "config_sha256": "92eb56b03ebbe9200d6319af89b310c8bd014dda0a61c1703709b27eb0c894b8",
+        "expected_violation": null
+      },
+      {
+        "model": "HotkeyRegistrationFailure",
+        "config": "HotkeyRegistrationFailureOrphanLegacy.cfg",
+        "distinct": 5,
+        "source_sha256": "ea88ea722e5ce8ce10c0ce717414a1776f2d1e3dee5e10e97670ac5c00b9df6a",
+        "config_sha256": "72f899a519b43538b9cff4d6e65f3ceec9046124a905ccc028a53ad7ae3b23d6",
+        "expected_violation": "NoOrphanNativeRegistration"
+      },
+      {
+        "model": "HotkeyRegistrationFailure",
+        "config": "HotkeyRegistrationFailureRollbackLegacy.cfg",
+        "distinct": 5,
+        "source_sha256": "ea88ea722e5ce8ce10c0ce717414a1776f2d1e3dee5e10e97670ac5c00b9df6a",
+        "config_sha256": "e1af47d6cfb2d0d44f57686442da7134c93ee5815cc4c9f788f51e624f301b89",
+        "expected_violation": "NoRetiredGatePublished"
+      },
+      {
+        "model": "HotkeyRegistrationFailure",
+        "config": "HotkeyRegistrationFailureErrorLegacy.cfg",
+        "distinct": 4,
+        "source_sha256": "ea88ea722e5ce8ce10c0ce717414a1776f2d1e3dee5e10e97670ac5c00b9df6a",
+        "config_sha256": "a502c17750a46d8a936d90137cb008dfdb595c187182a90e17b81c2ce940f20f",
+        "expected_violation": "LifecycleFailureIsReported"
+      },
+      {
+        "model": "HotkeyRegistrationEpoch",
+        "config": "HotkeyRegistrationEpochModeLegacy.cfg",
+        "distinct": 72,
+        "source_sha256": "759b1b506d8468d00298a7cebda3546dd630f8b04b2e02963db8cdaf4e5e6ec1",
+        "config_sha256": "723b86e3c4a18dbd728f9e238e803f2e51cac30ce4a3db4846aad3419a488fd0",
+        "expected_violation": "NoStaleDispatchPress"
+      },
+      {
+        "model": "HotkeyRegistrationEpoch",
+        "config": "HotkeyRegistrationEpochIdLegacy.cfg",
+        "distinct": 66,
+        "source_sha256": "759b1b506d8468d00298a7cebda3546dd630f8b04b2e02963db8cdaf4e5e6ec1",
+        "config_sha256": "965e0f22a8c2a8bb5dcc8f2669bdcfba70fd78843a59da4b4e532190911fdddb",
+        "expected_violation": "NoStaleNativePress"
+      },
+      {
+        "model": "TaskOwnership",
+        "config": "TaskOwnershipLegacy.cfg",
+        "distinct": 11,
+        "source_sha256": "96ab52b3c1c02e0e4e25e567a22de97b8960f697a65cf553cbfc7d4d27fc57cc",
+        "config_sha256": "8243114259dba1e3e28ebb876bc915af8473ea6f045907b0e810bc6e76244c25",
+        "expected_violation": "NewestInstalledOwnsSlot"
+      },
+      {
+        "model": "ProfilePersistence",
+        "config": "ProfilePersistenceLegacy.cfg",
+        "distinct": 22,
+        "source_sha256": "5d36f1d594d92da65ef267f984ff5a1266119235f403f51605882e2e7280c38a",
+        "config_sha256": "5f2aea3ef1dd6274a05e29320d69d174274ae77c934e0470d91b0ceef0c06a90",
+        "expected_violation": "LatestPendingWhenQueued"
+      },
+      {
+        "model": "OAuthLifecycle",
+        "config": "OAuthLifecycleLegacy.cfg",
+        "distinct": 221,
+        "source_sha256": "f646fbcc1297e3d1d3a9c820112a1e64f72f640f107ef392b268cc64a55452fa",
+        "config_sha256": "340a0c25d3ba0a17d1837e27543ce63454350fc59882a4e54566cc56d3366d3f",
+        "expected_violation": "LogoutWins"
+      },
+      {
+        "model": "RequestProtocols",
+        "config": "RequestProtocolsLegacy.cfg",
+        "distinct": 13,
+        "source_sha256": "4924987c7efe89bac2a29987c5e6cb0b5f59512987e26ab0df472cde4b8d1c51",
+        "config_sha256": "904d3192e0d45233e445f7d0ed39b976047892c0d67d7f6d8c432273a1d7c124",
+        "expected_violation": "NoReplyWithoutIdentity"
+      },
+      {
+        "model": "SettingsContracts",
+        "config": "SettingsContractsLegacy.cfg",
+        "distinct": 60,
+        "source_sha256": "bfade09b7fe477a4db021f47a036b206978c70717da26065463af7b8b2eae152",
+        "config_sha256": "2e8bc083e0724c3e43226709773adf4dfdf4e0d1cf6398ef65391a36ae60237d",
+        "expected_violation": "CredentialFailureIsReported"
+      },
+      {
+        "model": "MicrophoneMonitor",
+        "config": "MicrophoneMonitorLegacy.cfg",
+        "distinct": 53,
+        "source_sha256": "14ff3c11ac1e0483ae9720b3757a12937adb977ab5d7d9ef6c76c6947c2afdfc",
+        "config_sha256": "cd898b7a954338a4647e96534938428506c051d9428a4176b4a57fec745bdf08",
+        "expected_violation": "OnlyCurrentIdleStartPublishes"
+      },
+      {
+        "model": "Personalization",
+        "config": "Personalization.cfg",
+        "distinct": 9678,
+        "source_sha256": "a19f5ccd830d768915d3b316ac72c0b8c480878bf74146e46426858699474ecc",
+        "config_sha256": "b24615297895486c5d3ae0dec874ea1aefa55322ae875b9c9888e0cd5386eb3a",
+        "expected_violation": "UserRulesSurviveAutomaticChanges"
+      },
+      {
+        "model": "LlmTransport",
+        "config": "LlmTransport.cfg",
+        "distinct": 42,
+        "source_sha256": "e5cbe7355ea7b89fe92b2b21fe52055038781d41424591f423c3d6dd36f23daa",
+        "config_sha256": "6a646ede02c402dac7a9bab639776d1ab8ed1eb12040a372a327d0d79b32f5cf",
+        "expected_violation": "HeartbeatCannotExtendBudget"
+      },
+      {
+        "model": "LlmTransport",
+        "config": "LlmTransport.cfg",
+        "distinct": 34,
+        "source_sha256": "77e7d2b66d4bfa997bd7b5968a2129f44edf28cd48cd90e7f3e42a2f73f3d5e3",
+        "config_sha256": "6a646ede02c402dac7a9bab639776d1ab8ed1eb12040a372a327d0d79b32f5cf",
+        "expected_violation": "NoEmptySuccess"
+      },
+      {
+        "model": "UiPreferences",
+        "config": "UiPreferences.cfg",
+        "distinct": 16,
+        "source_sha256": "2cbc58c25031920554a655316f1438779b0308dd1728188813999e7cc1b96d87",
+        "config_sha256": "7d2e99d20519d42a082b9d490176b65e353e4a6c277e1ba9c400e9aa4aa9c719",
+        "expected_violation": "ThemeResolvesCorrectly"
+      },
+      {
+        "model": "AppWorkflow",
+        "config": "AppWorkflowSubtitleNegative.cfg",
+        "distinct": 110,
+        "source_sha256": "9713359de38b96ae8d862c850f7783e668beed2f4df26e9d36975438e9d02821",
+        "config_sha256": "f7a4c5ed72590f01cc296b84992ac1d202384d06412fd485bd4a5014cdb0877d",
+        "expected_violation": "SubtitleFinalStaysFinal"
+      },
+      {
+        "model": "ProviderRequests",
+        "config": "ProviderRequestsLegacy.cfg",
+        "distinct": 15,
+        "source_sha256": "7a6840ef05c59263876c66c382ed782d7ec6ce33ab03355d42adb2cde842d98e",
+        "config_sha256": "8407b913deaa26532f98f87ed9de2e106b3e74f2b5e192a630f6489f1fc394ff",
+        "expected_violation": "CredentialOnlyGoesToItsProvider"
+      },
+      {
+        "model": "HotkeyPendingStart",
+        "config": "HotkeyPendingStartLegacy.cfg",
+        "distinct": 15,
+        "source_sha256": "a9defda1aeefffb07c39c6bec6ea28613007af1be8d8b51fee48a9a676f022a5",
+        "config_sha256": "6f053fa67e61a8b263ab165ee6ed9f3d3e3a185056c8cb36fd98000b20ed2b0f",
+        "expected_violation": "ReleasedOrSupersededStartCannotBind"
+      },
+      {
+        "model": "OAuthStorage",
+        "config": "OAuthStorageLegacy.cfg",
+        "distinct": 12,
+        "source_sha256": "2d68c84f4a1e03d9da4f94a4e30760fa38f4839117b2edee0723ac5dd6fc0e3f",
+        "config_sha256": "6ed96d5603938b7b920ea60ad192b9dae262ce3676fe822990b2725c7d8c22b3",
+        "expected_violation": "InvalidMetadataCannotRestoreRefreshToken"
+      },
+      {
+        "model": "ModelDirectoryMigration",
+        "config": "ModelDirectoryMigration.cfg",
+        "distinct": 12,
+        "source_sha256": "3ac105c9d58225db644ad7b08c24c55318e432c3443e3eed8bdd68c40c2d11ab",
+        "config_sha256": "326708a9df238105c65956f544c7a063a23bd441ad84bb27cec15f0b3ef4e487",
+        "expected_violation": "NoDeleteBeforeSafeCommit"
+      },
+      {
+        "model": "AppProfileRules",
+        "config": "AppProfileRules.cfg",
+        "distinct": 122,
+        "source_sha256": "8bbf6713c9c30b406ba9dce1b1425168d89ed50a86642c12ec994fa0d501c0f7",
+        "config_sha256": "fdf8d44b90c26403022eec1b044e32767564b5cadf7b1881b067d1b1704d4454",
+        "expected_violation": "FirstMatchingRuleWins"
+      },
+      {
+        "model": "HistoryRecords",
+        "config": "HistoryRecords.cfg",
+        "distinct": 1220,
+        "source_sha256": "5b50f6dacacbf54cae3567633a3a109283f4bf8bbbc1d6c188370d0c6dc4cb67",
+        "config_sha256": "a6a5194766080e94615136ae7c8ddc947e66ef026430110e7365d286e47a8b61",
+        "expected_violation": "ReferencedOrLeasedAudioRetained"
+      },
+      {
+        "model": "RuntimeConfiguration",
+        "config": "RuntimeConfiguration.cfg",
+        "distinct": 173,
+        "source_sha256": "0a749560a7e77312afaaedaf149cdf77e02125532fb22c00703e8d4cfbad6e9e",
+        "config_sha256": "86affb384afb3253808c2aea66888c3b7332fce0de3f6321ba6f49842fdf3e7e",
+        "expected_violation": "ActiveKeyComesFromActiveSlot"
+      },
+      {
+        "model": "AsyncSettings",
+        "config": "AsyncSettings.cfg",
+        "distinct": 40,
+        "source_sha256": "42682aee0d1a9fc72390b8c43d3e1d216bf3f3bfc5ae6fee13a654a1e05e61f4",
+        "config_sha256": "bd825d5ef79a1d0b3885bf3c97240d81eb60d27e0692e06d46956db335623949",
+        "expected_violation": "NoPostUnmountPublication"
+      },
+      {
+        "model": "RecordingLifecycle",
+        "config": "RecordingLifecycle.cfg",
+        "distinct": 58,
+        "source_sha256": "c7f64b6b8b30162550120bfe572a1fccfb06ad6fb950f30efe94882335fa784b",
+        "config_sha256": "a14a89237179004678da5ac7d6e37ec4358eae0ba1f50486211fb3bb083cec56",
+        "expected_violation": "CancelledNeverActive"
+      },
+      {
+        "model": "EngineDownload",
+        "config": "EngineDownload.cfg",
+        "distinct": 7,
+        "source_sha256": "ba5d07b1e766236a217b88890d252f56187e06f2862e5674e2a9ac7dd17b3921",
+        "config_sha256": "c56902da87e65a81c7a15a4e32314696238c3f2a415701771df600a79428875e",
+        "expected_violation": "RunningOwnsSlot"
+      },
+      {
+        "model": "ContextRouting",
+        "config": "ContextRouting.cfg",
+        "distinct": 314930,
+        "source_sha256": "2d8ce5fac75022d74c701390b8d782b4b5056734a80af59c7752c658b9e0677b",
+        "config_sha256": "56738851b465abf93d2d6bba89f1d13b7d7131c81948dc2bbc7af113623f53b6",
+        "expected_violation": "DisabledScreenStaysOff"
+      },
+      {
+        "model": "WindowLifecycle",
+        "config": "WindowLifecycle.cfg",
+        "distinct": 107,
+        "source_sha256": "2ca2463cfa224c5774ef627f87ae7b8a180a07fab7eeab830d3f6b2295fc00f7",
+        "config_sha256": "157d3cf732a3cfd38a43bcfd5d75f278f3d7d48f5c0286ccc25809371000ae67",
+        "expected_violation": "NoStaleShow"
+      },
+      {
+        "model": "HotkeyLifecycle",
+        "config": "HotkeyLifecycle.cfg",
+        "distinct": 1419,
+        "source_sha256": "7c4ebcde6916505405dad21465576b39064254cf1e181e060e4ca66c10054db9",
+        "config_sha256": "cc7fee4b02264292d746718e05fe779d56995856bb5b8eb9987f0aaf2d89abdd",
+        "expected_violation": "OldReleaseCannotStopNewRecording"
+      },
+      {
+        "model": "CapturePipeline",
+        "config": "CapturePipelineNegative.cfg",
+        "distinct": 82,
+        "source_sha256": "f21d95f8036cc5505cd4abb9c921edc6b5e210fef9d9ed7477b36fb2b230415d",
+        "config_sha256": "fa18af298a3fe8bf19ded6b99e9aff081852699f1a19b638100125b067a27cf4",
+        "expected_violation": "NativeSamplesRequireAcceptedWorker"
+      }
+    ],
+    "hash_policy": "SHA-256 of actual local input bytes; checkout line endings can change raw hashes.",
+    "reuse": "Unchanged successful positive runs reused only after source/config hash equality and successful TLC log validation; new models and all negative controls executed at the final checkpoint."
+  },
+  "lean": {
+    "status": "passed",
+    "theorem_count": 24,
+    "source_sha256": "645405f70c4d823b596bf87151c623eee834dc05f23c19b7dae03bd60b8507ef",
+    "theorems": [
+      "staleCommitIsInert",
+      "logoutRejectsEarlierCompletion",
+      "externalClipboardIsPreserved",
+      "leasedAudioIsRetained",
+      "referencedAudioIsRetained",
+      "samplesStayBounded",
+      "lateNativeCannotWriteIntoFallback",
+      "savingAudioRequiresConsent",
+      "explicitProcessingAlwaysExecutes",
+      "uncertainAutoFailsOpen",
+      "skippedPolishPreservesExactText",
+      "userCorrectionSurvivesReview",
+      "replacementRequiresAllThreeMatches",
+      "repeatedPressIsIgnored",
+      "updatePreservesProfile",
+      "publishPreservesProfile",
+      "reachableProfilesHaveNoStalePending",
+      "executableSourceSchemeIsRejected",
+      "fileSourceSchemeIsRejected",
+      "explicitLightIgnoresSystem",
+      "explicitDarkIgnoresSystem",
+      "systemThemeTracksSystem",
+      "firstApplicableIsMatch",
+      "earlierRulesDoNotMatch"
+    ],
+    "unfinished_declarations": 0
+  },
+  "implementation": {
+    "rust": {
+      "status": "passed",
+      "unit_passed": 587,
+      "integration_passed": 16,
+      "ignored": 8,
+      "advisory_performance_filtered": 1,
+      "command": "cargo test --manifest-path src-tauri/Cargo.toml --all-targets --locked -- --skip services::qwen_hotword_service::tests::hotword_correction_p95_stays_below_one_millisecond"
+    },
+    "frontend": {
+      "status": "passed",
+      "functional_tests": 437,
+      "fluidity_tests": 1,
+      "lint": "passed",
+      "typecheck_build": "passed",
+      "bundle_budget": "passed",
+      "command": "pnpm check"
+    },
+    "python": {
+      "status": "passed",
+      "unit_tests": 96,
+      "atomicity_tests": 13,
+      "compileall": "passed",
+      "commands": [
+        "uv run --no-sync python -m compileall -q scripts src-tauri/resources",
+        "uv run --no-sync python -m unittest discover -s src-tauri/resources -p test_*.py",
+        "uv run --no-sync python scripts/test_build_engine_atomicity.py"
+      ]
+    },
+    "rustfmt": "passed",
+    "clippy_warnings_denied": "passed",
+    "whitespace_check": "passed",
+    "frozen_oauth_test_git_object": "495dc01a55edf4e50757d2db8e5f4dbb2e62fa31",
+    "model_status_test_sha256": "a385a8022cbbd422c396d8c13daaf55c11a9d88ef6d536eaac1d29cee7d1db8",
+    "independent_review": "Accepted final OAuth/provider and hotkey source correspondence; root reproduced functional gates. Native failure injection remains outside this evidence."
+  },
+  "assumptions": [
+    "Finite TLC bounds and component decomposition are explicit in COVERAGE.md; counts across workloads are not globally unique application states.",
+    "Progress assumes stated scheduling, timeout and I/O fairness; generation counters do not wrap.",
+    "Windows, Tauri, audio drivers, platform keyring, filesystem, SQLite, browser/network and learned model internals are trusted environmental inputs.",
+    "Source guards and interface-scaffold RED evidence are identified explicitly; they are not original-service native runtime reproductions.",
+    "No live user OAuth, microphone or charged provider round-trip was required or claimed."
+  ],
+  "ci": "See the current PR head checks and downloadable formal-contract-results artifact; remote results are not inferred from local test results."
+}

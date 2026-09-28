@@ -1,90 +1,76 @@
-# App state models
+# Application formal contracts
 
-`AppWorkflow.tla` is one bounded state machine for selected user-visible
-workflows. Its `app` record connects settings and credentials, engine readiness,
-recording, ASR, Jev/LLM routing, context, results, optional storage, input,
-selection, assistant, history, subtitles, and updates. The nine configurations
-explore different feature combinations while checking the same `TypeOK` and
-`Safety` invariants:
+The application state model covers recording/capture/hotkeys, all four engine
+classes, credentials/OAuth, providers/settings/personalization, context/routing,
+selection/assistant, history, windows/subtitles, updates, theme/autostart and
+bundled protocols.
 
-| Workloads | Behaviors exercised together |
+[`verification.json`](verification.json) binds **120 registered commands**,
+**16 event families**, **15 lifecycle entries** and **11 protocol families** to
+obligations, model operators, source/test paths and explicit assumptions. CI
+rejects inventory drift, missing anchors, unasserted/unreachable mapped
+obligations, failed models/proofs and negative controls that no longer find the
+expected counterexample. Registry membership is correspondence evidence, not
+automatic proof of a Rust/TypeScript function.
+
+## Verification layers
+
+| Layer | What is established |
 | --- | --- |
-| `Mixed` | Local dictation, settings, download, selection, foreground changes, history/audio, screen context, and clipboard paste. |
-| `Speech`, `CloudSpeech` | All four recording modes; local/cloud readiness; Jev skip and LLM success/failure; assistant conversation; consent and output paths. |
-| `EngineSpeech` | Download and engine-switch requests interleaved with recording; busy requests are rejected without changing the engine configuration. |
-| `Selection` | Two selection versions, three actions, cancellation, result acceptance, replace/copy/search, and target-window changes. |
-| `AssistantWeb` | Assistant recording with screen context and enabled web search, including source and failure outcomes. |
-| `Subtitles` | Recording, interim/final subtitle delivery, and ignored stale or late interim events. |
-| `History` | An existing record, query/export/delete, audio reprocessing, and an audio lease surviving source deletion. |
-| `Management` | Settings saves, local model download/cancel, engine switch, cloud credential, and update check/open. |
+| Integrated AppWorkflow, nine workloads | Cross-subsystem safety: recording/output, consent/context/clipboard, download/configuration, assistant/selection, history/subtitles and updates. All declared actions must be reached across workloads. |
+| Component TLA+ models | Deeper interleavings and validation/error partitions, with explicit finite bounds and conditional fairness for progress. |
+| Lean StateContracts | Parameter-independent ownership/decision contracts, profile-version induction, first matching rule, consent, clipboard preservation, sample cap, correction provenance and theme. No sorry, admit or declared axiom. |
+| Implementation correspondence | Actual regression tests and source-path review, including a source guard requiring provider/endpoint/key snapshots before OAuth awaits. This is not compiler refinement. |
+| Negative controls | Legacy races and deliberate guard removals must fail with Java exit 12 and the named violated invariant. Required CI gates. |
 
-The integrated transitions correspond to these implementation paths:
+## Model families
 
-| State path | Main implementation |
+| Area | Models |
 | --- | --- |
-| Settings, credentials, engine and download | `src-tauri/src/services/profile_service.rs`, `src-tauri/src/commands/profile.rs`, `src-tauri/src/commands/funasr.rs`, `src-tauri/src/services/download_service.rs` |
-| Recording, ASR, Jev, AI processing, screen context and input | `src-tauri/src/commands/audio.rs`, `src-tauri/src/services/audio_service/finalize.rs`, `src-tauri/src/services/assistant_service.rs`, `src-tauri/src/commands/clipboard.rs` |
-| Subtitle events and assistant conversation | `src/pages/SubtitleOverlay.tsx`, `src-tauri/src/commands/assistant.rs`, `src/hooks/useRecording.ts` |
-| Selection actions | `src-tauri/src/commands/selection.rs`, `src-tauri/src/services/selection_service.rs`, `src/pages/SelectionOverlay.tsx` |
-| History and audio lease | `src-tauri/src/commands/history.rs`, `src-tauri/src/services/history_service.rs` |
-| Updates | `src-tauri/src/commands/updater.rs` |
+| Recording and capture | RecordingLifecycle, CapturePipeline, MicrophoneMonitor |
+| Hotkeys | HotkeyLifecycle (three event-kind runs plus registration workload), HotkeyPendingStart, HotkeyRegistrationEpoch, HotkeyRegistrationFailure |
+| Engines and migration | EngineDownload, RuntimeConfiguration, ModelDirectoryMigration |
+| Authentication and provider pairing | OAuthLifecycle, OAuthStorage, ProviderRequests |
+| Settings and personalization | ProfilePersistence, SettingsContracts, Personalization, AppProfileRules, AsyncSettings |
+| Routing, tasks and history | ContextRouting, TaskOwnership, HistoryRecords |
+| Windows and UI state | WindowLifecycle, UiPreferences |
+| Protocols and transport | RequestProtocols, LlmTransport |
 
-The model checks consent for history, audio, screenshots and assistant search;
-screen/selection target identity; no assistant auto-paste; conditional clipboard
-restoration; download/configuration pinning; engine-switch rejection; audio-file
-retention under a reprocessing lease; and settings version ordering. TLC's action
-coverage is checked across all nine workloads so a disconnected action cannot
-silently pass every invariant.
+AppWorkflow is the additional integrated model. The registry is the authoritative
+positive configuration/negative-control list. Operator names and concrete
+source/test anchors are recorded per contract there.
 
-See [COVERAGE.md](COVERAGE.md) for the command-to-model audit and the concrete
-paths that these checks do not cover.
+## Reproduce
 
-The smaller models explore specific interleavings more deeply:
-
-| Model | App code | Safety properties |
-| --- | --- | --- |
-| `RecordingLifecycle` | `commands/audio.rs`, `state/app_state.rs`, `services/audio_service/finalize.rs`, `hooks/useRecording.ts` | A cancelled start cannot become active; stale sessions cannot replace the current snapshot; delivered state events cannot move the UI backward. |
-| `TaskOwnership` | `commands/selection.rs`, `commands/assistant.rs` | The newest installed request owns its cancellation slot; an old completion cannot clear it. |
-| `ProfilePersistence` | `services/profile_service.rs`, `state/app_state.rs` | A queued save contains the newest profile snapshot and generation; after timers settle, disk reflects the latest update. |
-| `EngineDownload` | `services/download_service.rs`, `commands/funasr.rs` | A running download retains its slot and engine/model-directory configuration until it exits. |
-
-`TaskOwnershipLegacy.cfg` reproduces an old interleaving: request 1 reserves a
-generation, request 2 reserves and installs a newer generation, then request 1
-installs and cancels request 2. `ProfilePersistenceLegacy.cfg` reproduces two
-updates whose generation reservations and pending-save publications cross, so
-an older snapshot replaces the newest pending save. These two configurations
-are expected to fail and are not CI gates. The ordinary `.cfg` files model the
-fixed operations and must pass.
-
-Run with Java 11+ and the official [TLA+ tools release](https://github.com/tlaplus/tlaplus/releases/tag/v1.8.0):
+Use Python 3.10+, Java 21, official TLA+ tools **1.8.0** and Lean **4.34.1**.
+Official binary downloads and SHA-256 digests are pinned in
+[CI](../.github/workflows/ci.yml).
 
 ```sh
-curl -fsSL https://github.com/tlaplus/tlaplus/releases/download/v1.8.0/tla2tools.jar -o /tmp/tla2tools.jar
-echo 'ab4694601923fd5ac06452abbf847c366a5054a3d739552085edd6ed986c29ec  /tmp/tla2tools.jar' | sha256sum --check
-for model in RecordingLifecycle TaskOwnership ProfilePersistence EngineDownload; do
-  java -XX:+UseParallelGC -jar /tmp/tla2tools.jar \
-    -noGenerateSpecTE -metadir "/tmp/light-whisper-tlc-$model" \
-    -config "formal/$model.cfg" "formal/$model.tla"
-done
-for workload in Mixed Speech CloudSpeech Selection Management EngineSpeech AssistantWeb Subtitles History; do
-  config="formal/AppWorkflow${workload}.cfg"
-  if [ "$workload" = Mixed ]; then config=formal/AppWorkflow.cfg; fi
-  java -XX:+UseParallelGC -jar /tmp/tla2tools.jar \
-    -noGenerateSpecTE -coverage 1 \
-    -metadir "/tmp/light-whisper-app-$workload" \
-    -config "$config" formal/AppWorkflow.tla \
-    > "/tmp/light-whisper-app-$workload.log"
-done
-python scripts/check_tla_action_coverage.py /tmp/light-whisper-app-*.log
+python scripts/check_formal.py --inventory-only
+python scripts/check_formal.py --tlc-jar /path/to/tla2tools.jar \
+  --lean /path/to/lean-4.34.1-linux/bin/lean --logs /path/to/formal-results
 ```
 
-The component configurations use two sessions, requests, updates, or downloads
-and up to two engine configuration changes. `AppWorkflow` uses one recording,
-up to two selection versions, one settings change, and one engine switch per
-workload. These are finite-state checks, not an unbounded proof. Recording entry
-abstracts hotkeys and buttons; configuration versioning abstracts hotwords,
-correction and app-specific rules; credential availability abstracts API keys
-and account login. Audio samples, ASR/LLM output quality, provider protocols,
-network and disk failures, UI layout, and progress are outside the state model.
-TLC verifies the specified transitions; Rust/TypeScript conformance is supported
-by the mapped code paths and tests, not proved by TLC alone.
+The runner saves per-configuration TLC logs, Lean output and a summary with
+measured state counts/source hashes. See [delivery results](evidence/results.json),
+[coverage boundaries](COVERAGE.md) and [implementation evidence](evidence/source-contracts.md).
+
+## Proof boundary
+
+This verifies application **state/protocol contracts**, not every instruction
+of compiled Rust/TypeScript/Python, unrestricted Cartesian-product combinations,
+or Windows/Tauri/CPAL/WASAPI/keyring/SQLite/browser/network implementations.
+Native primitives supply success/failure inputs; concrete parser/URL/length
+partitions have implementation tests. Pixel layout, accessibility, floating
+point signal conversion and ASR/LLM linguistic quality are not mathematical
+claims of this state model; implementation tests remain required.
+
+Lean proves the listed abstract contracts without finite bounds, but does not
+provide a verified compiler/source-equivalence bridge. Progress requires stated
+scheduler/timeouts/I/O assumptions; generation counters must not wrap.
+OAuthLifecycle.MemoryMatchesDisk describes successful atomic publication;
+physical partial failures are separately modeled in OAuthStorage. Committed
+atomic writes are assumed durable under normal restart. If all marker/deletion
+writes fail, logout clears current-process memory and returns an error; impossible
+storage writes cannot ensure durable logout across restart.

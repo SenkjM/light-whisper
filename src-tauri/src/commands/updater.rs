@@ -170,3 +170,42 @@ fn open_external_url(url: &str) -> Result<(), AppError> {
         .map_err(|err| AppError::Other(format!("打开下载页面失败: {}", err)))?;
     Ok(())
 }
+
+#[cfg(test)]
+mod validation_tests {
+    use super::{is_version_newer, validate_release_url};
+
+    #[test]
+    fn release_urls_require_exact_github_host_and_https() {
+        for url in [
+            "https://github.com/a/b/releases",
+            "https://www.github.com/a/b",
+        ] {
+            assert!(validate_release_url(url).is_ok(), "{url}");
+        }
+        for url in [
+            "http://github.com/a",
+            "https://github.com.evil.example/a",
+            "https://github.com@evil.example/a",
+            "file:///tmp/a",
+            "javascript:alert(1)",
+            "not a url",
+        ] {
+            assert!(validate_release_url(url).is_err(), "{url}");
+        }
+    }
+
+    #[test]
+    fn numeric_version_order_is_lexicographic_with_zero_padding() {
+        for (latest, current, expected) in [
+            ("v1.6.3", "1.6.2", true),
+            ("1.10", "1.9.9", true),
+            ("1.6", "1.6.0", false),
+            ("1.6.2", "1.6.2", false),
+            ("1.5.99", "1.6.0", false),
+            ("1.6.2-rc1", "1.6.1", true),
+        ] {
+            assert_eq!(is_version_newer(latest, current), expected);
+        }
+    }
+}

@@ -1,30 +1,60 @@
 # Coverage audit
 
-This is an audit of the TLA+ checks against the 120 Tauri commands registered in
-`src-tauri/src/lib.rs`. An action being reachable in TLC says only that its
-abstract transition can occur. It does not show that every command, branch, or
-Rust/TypeScript implementation path is represented.
+The former audit exposed recording-only assumptions, Boolean authentication,
+missing lifecycle/protocol models and a vacuous subtitle-final assertion. The
+registry now assigns every current command/event/lifecycle/protocol boundary to
+an explicit contract, with actual source and evidence paths.
 
-| Product area | Current formal coverage | Missing behavior |
-| --- | --- | --- |
-| Recording and output | Start/cancel/stop, ASR result/failure, four modes, Jev skip or LLM path, display, paste and clipboard restoration. `RecordingLifecycle` checks two sessions. | Microphone device selection and level monitor, native/CPAL fallback, audio samples, streaming ASR hypotheses, hotkey press/release and toggle-mode transitions. |
-| Engine setup | Local download/cancel, cloud readiness and one engine switch; `EngineDownload` checks task/config ownership. | Four concrete engine implementations, model-directory changes, endpoint/model selection, restart/start failures, online key-slot changes. |
-| Settings and personalization | One abstract settings version and debounced-save race in `ProfilePersistence`. | Profile import/export, hotword add/remove, correction learning/review, per-app rules, provider/model discovery and the independent setting combinations. |
-| Authentication | A Boolean API-key availability flag. | OpenAI Codex and Grok Build browser/device-code login, refresh, logout, keyring/disk persistence and their concurrent interleavings. |
-| Assistant and selection | Assistant result/conversation, one enabled web-search path, selection versions/actions, target-window and source-text checks. `TaskOwnership` checks cancellation slots. | Web-search Off/Auto and explicit no-search routing, search-source validation, assistant retry, selection overlay/window lifecycle and selection screenshot context. |
-| History and subtitles | Consent, one record, query/export/delete, audio reprocess lease, one subtitle session and stale/final event handling. | Record contents, retention cleanup, multiple records, subtitle window show/hide generations and detailed stable/tentative text behavior. |
-| Updates and UI | Check/update-page state. | URL validation, network updater behavior, UI layout, settings-page state, theme and accessibility. |
+| Area | Formal contracts and implementation correspondence |
+| --- | --- |
+| Recording/output | Reservation, cancellation, four modes, finalization, consent, paste/restoration; audio/finalize, useRecording and clipboard tests. |
+| Capture/monitor | Native acceptance/fallback, worker/device identity, sample cap, detached workers and monitor generations; native tests, publication guard and disposed-effect regression. |
+| Hotkeys | Three roles, conflict/backend partitions, hold/toggle, duplicates, session stops, queued starts and obsolete native/dispatch messages; per-gate owner, recording-lock bind, fresh mode gates and never-reused native IDs. |
+| Engine/model management | Four engine classes, start/restart/failure, key slots/regions, downloads, busy exclusion and directory migration; engine/native/path and settings tests. |
+| Authentication/providers | Browser/device/refresh/logout, partial storage, provider/key/endpoint pairing and storage errors; coordinator/challenge/metadata tests, snapshot source guard and provider tests. |
+| Settings/personalization | Version ordering, preference publication, providers/import/export, hotwords/corrections/app rules; profile/state/settings tests and unbounded Lean induction/first-match proofs. |
+| Context/processing | Independent Off/On/Auto settings and app overrides, explicit operations/no-search, unknown fail-open, captured screenshots and meaning audit; Jev routing/task and context tests. |
+| Assistant/selection | Cancellation/conversation/retry, search/source partitions, result ownership and exact-context replacement; production unit and overlay tests. |
+| History | Multiple/shared records, consent, transactional deletion, retention/GC failures, export/leases/reprocessing; SQLite-backed tests and HistoryPage. |
+| Windows/UI | Startup/tray/exit, manual/session generations, terminal subtitles, theme/autostart/navigation; window/overlay/tray/capability/system settings tests. |
+| Protocols/transport | Tagged JSONL replies, native streaming, cloud result/error classes, SSE timeouts/retries/cancellation; Python server and Rust protocol/transport tests. |
+| Updates/validation | Actual numeric version parser, HTTPS GitHub release URL and http(s) source/provider partitions; URL/input and normalization tests. |
 
-The existing nine `AppWorkflow` configurations cover *selected* combinations of
-these areas. They do not enumerate the cross product of all settings, engines,
-accounts, windows and requests. All 57 modeled actions are reachable, but this
-is not full feature coverage or an implementation refinement proof. There are
-no liveness properties, so the model also does not establish that operations
-eventually finish. Treat the passing result as evidence for the listed safety
-properties under the stated bounds, not as certification of the entire app.
+## Bounds and decomposition
 
-During this audit, removing the late-interim guard from `InterimSubtitle` still
-passed the old `SubtitleFinalStaysFinal` invariant. The invariant now records
-that a final subtitle was seen and requires it to remain final in that session;
-the same mutation produces a TLC counterexample. The production subtitle guard
-and its regression test remain in place.
+- Integrated workloads use one recording, up to two selection contexts and one
+  settings change/engine switch each; components explore deeper interleavings.
+- Most components use two sessions/requests/contexts. Hotkeys additionally use
+  four registrations and a representative replacement/conflict sequence; all
+  three event kinds pass through the common dispatcher in separate runs.
+  The registration-epoch model uses two queued events, three epochs, one mode
+  change and one shortcut replacement, with both native and dispatch queues.
+  The setup-failure model explores successful setup, lifecycle failure and both
+  restoration outcomes, including stale-gate/orphan-registration cleanup.
+  Physical native IDs remain owned by queued cleanup until the backend drains
+  them; this is eventual under scheduling fairness, not instant OS removal.
+- History uses five rows, two audio identities, one lease and bounded retention.
+  Shared rows and deletion during reprocessing are reachable cases.
+- Runtime enumerates Qwen/R2T2/GLM/Alibaba, two regions/directories, two key saves,
+  one download/input and bounded generations.
+- Routing independently enumerates three polish/screen/search modes, two app
+  overrides, four request modes and Yes/No/Unknown inputs.
+- Parameter-independent ownership/version/first-match/consent/restoration and
+  decision contracts have Lean proofs. Production correspondence is reviewed
+  code plus tests, not an automatic source refinement theorem.
+
+## What the gates mean
+
+Inventory equality checks that no current registered boundary is omitted.
+Reachability checks abstract actions; configured invariants/properties check
+safety/progress under explicit bounds/fairness; negative controls check
+sensitivity to removed guards. Source review/tests check correspondence. None
+alone certifies every source branch or an external dependency.
+
+Read-only getters share a snapshot contract. Validation families share a
+valid/invalid partition with concrete validator tests. Folder/browser/window/
+clipboard/driver operations delegate to native primitives whose success/failure
+are modeled inputs; pixel geometry and foreign-app consumption are reviewed/
+tested outside mathematical state claims. Learned output contents are inputs,
+not a proof of model accuracy. These are explicit exclusions, never counted as
+proved. New boundaries or source changes require renewed correspondence review.

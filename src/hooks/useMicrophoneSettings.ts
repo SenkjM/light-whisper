@@ -70,8 +70,9 @@ export function useMicrophoneSettings({
 
     const startMonitor = async () => {
       try {
+        if (disposed) return;
         await stopMicrophoneLevelMonitor().catch(() => undefined);
-        if (!active || !micLevelMonitorEnabled || isRecording) {
+        if (disposed || !active || !micLevelMonitorEnabled || isRecording) {
           if (!disposed) {
             setMicMonitorReady(false);
             setMicLevel(0);

@@ -330,8 +330,8 @@ pub async fn set_web_search_api_key(
 ) -> Result<(), String> {
     let keyring_user = web_search_keyring_user(&provider)
         .ok_or_else(|| "当前搜索方式不使用独立 API Key".to_string())?;
+    llm_provider::save_or_delete_api_key(&app_handle, keyring_user, &api_key)?;
     state.set_web_search_api_key(web_search_provider_cache_key(&provider), api_key.clone());
-    llm_provider::save_or_delete_api_key(&app_handle, keyring_user, &api_key);
     Ok(())
 }
 

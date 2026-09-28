@@ -26,6 +26,9 @@ export function useAsrEngineSettings({
   const { t } = useTranslation();
   const configVersion = useRef(0);
   const keyReadVersion = useRef(0);
+  const modelSelectionVersion = useRef(0);
+  const modelsRequestId = useRef(0);
+  const mounted = useRef(false);
   const transitioning = useRef(false);
   const [engine, setEngineState] = useState("qwen3-asr-0.6b");
   const [engineLoading, setEngineLoading] = useState(true);
@@ -59,14 +62,18 @@ export function useAsrEngineSettings({
   );
 
   useEffect(() => {
+    mounted.current = true;
     const version = configVersion.current;
     const keyVersion = keyReadVersion.current;
+    const modelVersion = modelSelectionVersion.current;
+    const catalogVersion = modelsRequestId.current;
     let disposed = false;
     const current = () => !disposed && version === configVersion.current;
     getEngine().then((value) => {
+      if (!current()) return;
       setEngineState(value);
       setEngineLoading(false);
-    }).catch(() => setEngineLoading(false));
+    }).catch(() => { if (current()) setEngineLoading(false); });
     getOnlineAsrApiKey().then((key) => {
       if (current() && keyVersion === keyReadVersion.current) setOnlineAsrApiKeyState(key || "");
     }).catch(() => {});
@@ -76,16 +83,21 @@ export function useAsrEngineSettings({
       setOnlineAsrUrl(endpoint.url);
     }).catch(() => {});
     getAlibabaAsrConfig().then((config) => {
-      setAlibabaAsrModelState(config.model);
-      setAlibabaAsrModelsState(config.models);
+      if (!current()) return;
+      if (modelVersion === modelSelectionVersion.current) setAlibabaAsrModelState(config.model);
+      if (catalogVersion === modelsRequestId.current) setAlibabaAsrModelsState(config.models);
     }).catch(() => {});
-    return () => { disposed = true; };
+    return () => { disposed = true; mounted.current = false; modelsRequestId.current += 1; };
   }, []);
 
   const refreshAlibabaModels = useCallback(async () => {
+    const requestId = ++modelsRequestId.current;
+    const version = configVersion.current;
+    const current = () => mounted.current && requestId === modelsRequestId.current && version === configVersion.current;
     setAlibabaAsrModelsLoading(true);
     try {
       const result = await listAlibabaAsrModels();
+      if (!current()) return;
       if (result.models.length > 0) {
         setAlibabaAsrModelsState(result.models);
         setAlibabaAsrModelsSource(result.source);
@@ -93,7 +105,7 @@ export function useAsrEngineSettings({
     } catch {
       // Keep the last fallback/live list when the refresh cannot reach the service.
     } finally {
-      setAlibabaAsrModelsLoading(false);
+      if (current()) setAlibabaAsrModelsLoading(false);
     }
   }, []);
 
@@ -116,6 +128,8 @@ export function useAsrEngineSettings({
       }
       await setEngine(newEngine);
       configVersion.current += 1;
+      modelsRequestId.current += 1;
+      setAlibabaAsrModelsLoading(false);
       setOnlineAsrApiKeyState("");
       setOnlineAsrUrl("");
       setEngineState(newEngine);
@@ -155,6 +169,8 @@ export function useAsrEngineSettings({
       }
       const endpoint = await setOnlineAsrEndpoint(region);
       configVersion.current += 1;
+      modelsRequestId.current += 1;
+      setAlibabaAsrModelsLoading(false);
       if (engine === "alibaba-asr") setOnlineAsrApiKeyState("");
       setOnlineAsrRegion(endpoint.region);
       setOnlineAsrUrl(endpoint.url);
@@ -187,6 +203,7 @@ export function useAsrEngineSettings({
   const handleAlibabaAsrModelSelect = useCallback(async (model: string) => {
     try {
       await setAlibabaAsrModel(model);
+      modelSelectionVersion.current += 1;
       setAlibabaAsrModelState(model);
     } catch {
       // Keep the previous model when persistence fails.

@@ -76,12 +76,21 @@ pub async fn transcribe(
 ) -> Result<TranscriptionResult, AppError> {
     validate_audio_payload(&audio_data)?;
 
-    let api_key = state.read_online_asr_api_key();
+    let _asr_guard = state.engine.native_asr_owner.lock().await;
+    let (api_key, url) = {
+        let _configuration = state.engine.funasr_lifecycle_op.lock().await;
+        if paths::read_engine_config() != "glm-asr" {
+            return Err(AppError::Asr("语音识别引擎已切换，请重试".into()));
+        }
+        (
+            state.read_online_asr_api_key(),
+            format!("{}{}", paths::read_online_asr_endpoint(), GLM_ASR_PATH),
+        )
+    };
     if api_key.is_empty() {
         return Err(AppError::Asr("GLM-ASR API Key 未配置".into()));
     }
 
-    let url = format!("{}{}", paths::read_online_asr_endpoint(), GLM_ASR_PATH);
     let form = build_form(audio_data, state)?;
 
     let resp = state

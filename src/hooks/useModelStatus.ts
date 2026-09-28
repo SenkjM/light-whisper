@@ -257,6 +257,7 @@ export function useModelStatus(): UseModelStatusReturn {
 
   // Listen for funasr-status events (loading progress, crashed, etc.)
   useEffect(() => {
+    let disposed = false;
     let unlisten: (() => void) | undefined;
 
     type FunasrStatusPayload = {
@@ -272,7 +273,7 @@ export function useModelStatus(): UseModelStatusReturn {
       unlisten = await listen<FunasrStatusPayload>(
         "funasr-status",
         (event) => {
-          if (!mountedRef.current) return;
+          if (disposed || !mountedRef.current) return;
           const { status, message } = event.payload;
           applyStatusSnapshot(event.payload);
 
@@ -307,10 +308,12 @@ export function useModelStatus(): UseModelStatusReturn {
           }
         }
       );
+      if (disposed) unlisten();
     };
 
     setup();
     return () => {
+      disposed = true;
       unlisten?.();
     };
   }, [applyStatusSnapshot, checkStatus, clearPolling, enterErrorState, enterNeedDownloadState, startPolling]);

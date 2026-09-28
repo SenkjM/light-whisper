@@ -144,8 +144,7 @@ pub async fn set_selection_api_key(
 ) -> Result<(), String> {
     let provider = validate_provider(state.inner(), &provider)?;
     let user = llm_provider::keyring_user_for_provider(&provider);
-    llm_provider::save_or_delete_api_key(&app_handle, &user, api_key.trim());
-    Ok(())
+    llm_provider::save_or_delete_api_key(&app_handle, &user, api_key.trim())
 }
 
 #[tauri::command]

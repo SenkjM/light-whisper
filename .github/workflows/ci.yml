@@ -18,9 +18,9 @@ concurrency:
 
 jobs:
   formal:
-    name: App and core state models
+    name: Application formal contracts
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 20
     steps:
       - name: Check out repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -33,27 +33,31 @@ jobs:
           distribution: temurin
           java-version: '21'
 
-      - name: Check app and core state models
+      - name: Check inventory, TLA models, Lean proofs and counterexamples
         shell: bash
         run: |
           curl -fsSL https://github.com/tlaplus/tlaplus/releases/download/v1.8.0/tla2tools.jar -o "$RUNNER_TEMP/tla2tools.jar"
           echo 'ab4694601923fd5ac06452abbf847c366a5054a3d739552085edd6ed986c29ec  '"$RUNNER_TEMP/tla2tools.jar" | sha256sum --check
-          for model in RecordingLifecycle TaskOwnership ProfilePersistence EngineDownload; do
-            java -XX:+UseParallelGC -jar "$RUNNER_TEMP/tla2tools.jar" \
-              -noGenerateSpecTE \
-              -metadir "$RUNNER_TEMP/tlc-$model" \
-              -config "formal/$model.cfg" "formal/$model.tla"
-          done
-          for workload in Mixed Speech CloudSpeech Selection Management EngineSpeech AssistantWeb Subtitles History; do
-            config="formal/AppWorkflow${workload}.cfg"
-            if [ "$workload" = Mixed ]; then config="formal/AppWorkflow.cfg"; fi
-            java -XX:+UseParallelGC -jar "$RUNNER_TEMP/tla2tools.jar" \
-              -noGenerateSpecTE -coverage 1 \
-              -metadir "$RUNNER_TEMP/tlc-app-$workload" \
-              -config "$config" formal/AppWorkflow.tla \
-              | tee "$RUNNER_TEMP/tlc-app-$workload.log"
-          done
-          python scripts/check_tla_action_coverage.py "$RUNNER_TEMP"/tlc-app-*.log
+          curl -fsSL https://github.com/leanprover/lean4/releases/download/v4.34.1/lean-4.34.1-linux.tar.zst -o "$RUNNER_TEMP/lean.tar.zst"
+          echo '47bf4bbd78f70c2e9670598ab7124d92b6efb7330ff33e5fbb4030f6fd72e4e4  '"$RUNNER_TEMP/lean.tar.zst" | sha256sum --check
+          tar --zstd -xf "$RUNNER_TEMP/lean.tar.zst" -C "$RUNNER_TEMP"
+          python scripts/check_formal.py \
+            --tlc-jar "$RUNNER_TEMP/tla2tools.jar" \
+            --lean "$RUNNER_TEMP/lean-4.34.1-linux/bin/lean" \
+            --logs "$RUNNER_TEMP/formal-results"
+
+      - name: Upload formal evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: formal-contract-results
+          path: |
+            ${{ runner.temp }}/formal-results/**/tlc.log
+            ${{ runner.temp }}/formal-results/**/result.json
+            ${{ runner.temp }}/formal-results/summary.json
+            ${{ runner.temp }}/formal-results/lean.log
+          if-no-files-found: ignore
+          retention-days: 14
 
   frontend:
     name: Frontend

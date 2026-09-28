@@ -296,12 +296,11 @@ pub async fn set_online_asr_api_key(
         _ => active_user,
     };
 
-    llm_provider::save_or_delete_api_key(&app_handle, target_user, &api_key);
-
-    // keyring IO 不占生命周期锁；保存完成后再用生命周期锁把“活跃槽重读→
-    // runtime cache/ready/event 更新”组成原子提交，避免引擎或区域切换后旧 key
-    // 覆盖新 provider 的运行时凭据。
+    // Serialize storage and cache publication with region/engine changes and
+    // other saves. The captured target slot remains the caller's intent.
     let _lifecycle_guard = state.engine.funasr_lifecycle_op.lock().await;
+    llm_provider::save_or_delete_api_key(&app_handle, target_user, &api_key)
+        .map_err(AppError::Other)?;
     let current_active_user = active_online_keyring_user();
 
     // 只有当目标槽和当前活跃槽一致时，才更新运行时缓存与就绪状态，
@@ -407,6 +406,7 @@ pub async fn set_alibaba_asr_model(model: String) -> Result<serde_json::Value, A
 /// 决定是否要提示用户。
 #[tauri::command]
 pub async fn list_alibaba_asr_models(
+    app_handle: tauri::AppHandle,
     state: tauri::State<'_, AppState>,
 ) -> Result<serde_json::Value, AppError> {
     #[derive(serde::Deserialize)]
@@ -418,8 +418,22 @@ pub async fn list_alibaba_asr_models(
         id: Option<String>,
     }
 
-    let api_key = state.read_online_asr_api_key();
-    let base = paths::read_alibaba_endpoint();
+    let (api_key, base) = {
+        let _configuration = state.engine.funasr_lifecycle_op.lock().await;
+        use tauri_plugin_keyring::KeyringExt;
+        let key_slot = if paths::read_alibaba_region() == "domestic" {
+            ALIBABA_ASR_CN_KEYRING_USER
+        } else {
+            ALIBABA_ASR_INTL_KEYRING_USER
+        };
+        let api_key = app_handle
+            .keyring()
+            .get_password(llm_provider::KEYRING_SERVICE, key_slot)
+            .ok()
+            .flatten()
+            .unwrap_or_default();
+        (api_key, paths::read_alibaba_endpoint())
+    };
 
     let fallback = || {
         serde_json::json!({

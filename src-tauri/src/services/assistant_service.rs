@@ -918,27 +918,18 @@ async fn generate_content_inner(
     request_context: AssistantRequestContext,
 ) -> Result<AssistantOutcome, AppError> {
     let request_started = Instant::now();
-    let assistant_provider =
-        state.with_profile(|profile| profile.llm_provider.resolve_assistant_provider());
-    let assistant_manual_api_key = {
-        let assistant_api_key = state.read_assistant_api_key();
-        if !assistant_api_key.trim().is_empty() {
-            assistant_api_key
-        } else {
-            let active_provider =
-                state.with_profile(|profile| profile.llm_provider.resolve_active_provider());
-            if assistant_provider == active_provider {
-                state.read_ai_polish_api_key()
-            } else {
-                String::new()
-            }
-        }
-    };
-    let api_key = codex_oauth_service::resolve_api_key_for_provider(
+    let config = state.llm_provider_config();
+    let endpoint = llm_provider::assistant_endpoint_for_config(&config);
+    let assistant_provider = endpoint.provider.clone();
+    let assistant_manual_api_key =
+        llm_provider::load_api_key_for_provider(app_handle, &assistant_provider);
+    let api_key = codex_oauth_service::resolve_api_key_for_provider_with_auth_mode(
         app_handle,
         state,
         &assistant_provider,
         &assistant_manual_api_key,
+        config.openai_auth_mode,
+        config.xai_auth_mode,
     )
     .await
     .map_err(AppError::Other)?;
@@ -948,8 +939,6 @@ async fn generate_content_inner(
         ));
     }
 
-    let config = state.llm_provider_config();
-    let endpoint = llm_provider::assistant_endpoint_for_config(&config);
     let ws = state.with_profile(|p| p.web_search.clone());
     let is_codex_chatgpt_bearer =
         codex_oauth_service::decode_chatgpt_bearer_token(&api_key).is_some();

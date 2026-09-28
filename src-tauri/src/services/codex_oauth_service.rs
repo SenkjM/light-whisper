@@ -11,6 +11,7 @@ use tokio::net::TcpListener;
 
 use crate::services::grok_build_oauth_service;
 use crate::services::llm_provider::KEYRING_SERVICE;
+use crate::state::oauth_session::OAuthOperation;
 use crate::state::user_profile::{LlmProviderConfig, OpenaiAuthMode, XaiAuthMode};
 use crate::state::AppState;
 use crate::utils::paths;
@@ -60,6 +61,10 @@ pub struct OpenaiCodexOauthDeviceCodeChallenge {
     pub user_code: String,
     pub device_auth_id: String,
     pub interval_secs: u64,
+}
+
+fn device_challenge_binding(challenge: &OpenaiCodexOauthDeviceCodeChallenge) -> String {
+    format!("{}\0{}", challenge.device_auth_id, challenge.user_code)
 }
 
 #[derive(Debug, Deserialize)]
@@ -144,6 +149,8 @@ pub struct ChatgptBearerToken {
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 struct PersistedOpenaiCodexOauthSession {
+    #[serde(default)]
+    pub logged_out: bool,
     pub expires_at_ms: Option<u64>,
     pub account_id: Option<String>,
     pub email: Option<String>,
@@ -199,27 +206,76 @@ fn session_meta_path() -> std::path::PathBuf {
     paths::get_data_dir().join("openai_codex_oauth_session.json")
 }
 
-fn read_session_meta() -> PersistedOpenaiCodexOauthSession {
-    std::fs::read_to_string(session_meta_path())
-        .ok()
-        .and_then(|raw| serde_json::from_str::<PersistedOpenaiCodexOauthSession>(&raw).ok())
-        .unwrap_or_default()
+fn read_session_meta_at(
+    path: &std::path::Path,
+) -> Result<Option<PersistedOpenaiCodexOauthSession>, String> {
+    match std::fs::read_to_string(path) {
+        Ok(raw) => {
+            let value: serde_json::Value = serde_json::from_str(&raw)
+                .map_err(|_| "读取 Codex OAuth 元数据失败".to_string())?;
+            let object = value
+                .as_object()
+                .ok_or_else(|| "读取 Codex OAuth 元数据失败".to_string())?;
+            if !object.keys().any(|key| {
+                matches!(
+                    key.as_str(),
+                    "logged_out" | "expires_at_ms" | "account_id" | "email" | "plan_type"
+                )
+            }) {
+                return Err("读取 Codex OAuth 元数据失败".to_string());
+            }
+            serde_json::from_value(value)
+                .map(Some)
+                .map_err(|_| "读取 Codex OAuth 元数据失败".to_string())
+        }
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(None),
+        Err(_) => Err("读取 Codex OAuth 元数据失败".to_string()),
+    }
+}
+
+fn read_session_meta() -> Result<Option<PersistedOpenaiCodexOauthSession>, String> {
+    read_session_meta_at(&session_meta_path())
+}
+
+fn write_metadata_at(
+    path: &std::path::Path,
+    metadata: &PersistedOpenaiCodexOauthSession,
+) -> Result<(), String> {
+    let raw =
+        serde_json::to_vec(metadata).map_err(|_| "序列化 Codex OAuth 元数据失败".to_string())?;
+    paths::atomic_write(path, &raw).map_err(|_| "保存 Codex OAuth 元数据失败".to_string())
 }
 
 fn write_session_meta(session: &OpenaiCodexOauthSession) -> Result<(), String> {
     let persisted = PersistedOpenaiCodexOauthSession {
+        logged_out: false,
         expires_at_ms: session.expires_at_ms,
         account_id: session.account_id.clone(),
         email: session.email.clone(),
         plan_type: session.plan_type.clone(),
     };
-    let raw = serde_json::to_string(&persisted)
-        .map_err(|err| format!("序列化 Codex OAuth 元数据失败: {err}"))?;
-    std::fs::write(session_meta_path(), raw)
-        .map_err(|err| format!("保存 Codex OAuth 元数据失败: {err}"))
+    write_metadata_at(&session_meta_path(), &persisted)
+}
+
+fn write_logout_tombstone() -> Result<(), String> {
+    let metadata = PersistedOpenaiCodexOauthSession {
+        logged_out: true,
+        ..Default::default()
+    };
+    write_metadata_at(&session_meta_path(), &metadata)
 }
 
 fn load_session_from_storage(app_handle: &tauri::AppHandle) -> Option<OpenaiCodexOauthSession> {
+    let meta = match read_session_meta() {
+        Ok(meta) => meta,
+        Err(_) => {
+            log::warn!("忽略不可读的 Codex OAuth 元数据");
+            return None;
+        }
+    };
+    if meta.as_ref().is_some_and(|meta| meta.logged_out) {
+        return None;
+    }
     let refresh_token = app_handle
         .keyring()
         .get_password(KEYRING_SERVICE, SESSION_REFRESH_TOKEN_KEYRING_USER)
@@ -227,17 +283,16 @@ fn load_session_from_storage(app_handle: &tauri::AppHandle) -> Option<OpenaiCode
         .flatten()
         .filter(|value| !value.trim().is_empty());
 
-    if let Some(refresh_token) = refresh_token {
-        let meta = read_session_meta();
+    if let (Some(meta), Some(refresh_token)) = (meta.as_ref(), refresh_token) {
         return Some(OpenaiCodexOauthSession {
             id_token: String::new(),
             access_token: String::new(),
             refresh_token,
             api_key: String::new(),
             expires_at_ms: meta.expires_at_ms,
-            account_id: meta.account_id,
-            email: meta.email,
-            plan_type: meta.plan_type,
+            account_id: meta.account_id.clone(),
+            email: meta.email.clone(),
+            plan_type: meta.plan_type.clone(),
         });
     }
 
@@ -247,12 +302,18 @@ fn load_session_from_storage(app_handle: &tauri::AppHandle) -> Option<OpenaiCode
         .ok()
         .flatten()
         .and_then(|raw| serde_json::from_str::<OpenaiCodexOauthSession>(&raw).ok())
+        .filter(|session| {
+            !session.id_token.trim().is_empty()
+                && !session.access_token.trim().is_empty()
+                && !session.refresh_token.trim().is_empty()
+        })
 }
 
 fn save_session_to_storage(
     app_handle: &tauri::AppHandle,
     session: &OpenaiCodexOauthSession,
 ) -> Result<(), String> {
+    write_logout_tombstone()?;
     app_handle
         .keyring()
         .set_password(
@@ -260,22 +321,58 @@ fn save_session_to_storage(
             SESSION_REFRESH_TOKEN_KEYRING_USER,
             &session.refresh_token,
         )
-        .map_err(|err| format!("保存 Codex OAuth refresh token 失败: {err}"))?;
-    write_session_meta(session)?;
-    let _ = app_handle
-        .keyring()
-        .delete_password(KEYRING_SERVICE, SESSION_KEYRING_USER);
-    Ok(())
+        .map_err(|_| "保存 Codex OAuth refresh token 失败".to_string())?;
+    delete_keyring_password(
+        app_handle,
+        SESSION_KEYRING_USER,
+        "删除 Codex OAuth legacy 会话",
+    )?;
+    // Commit valid metadata last; any earlier failure leaves the intent marker.
+    write_session_meta(session)
 }
 
-fn clear_session_from_storage(app_handle: &tauri::AppHandle) {
-    let _ = app_handle
-        .keyring()
-        .delete_password(KEYRING_SERVICE, SESSION_KEYRING_USER);
-    let _ = app_handle
-        .keyring()
-        .delete_password(KEYRING_SERVICE, SESSION_REFRESH_TOKEN_KEYRING_USER);
-    let _ = std::fs::remove_file(session_meta_path());
+fn delete_keyring_password(
+    app_handle: &tauri::AppHandle,
+    user: &str,
+    description: &str,
+) -> Result<(), String> {
+    match app_handle.keyring().delete_password(KEYRING_SERVICE, user) {
+        Ok(()) | Err(keyring::Error::NoEntry) => Ok(()),
+        Err(_) => Err(format!("{description} 失败")),
+    }
+}
+
+fn clear_session_from_storage(app_handle: &tauri::AppHandle) -> Result<(), String> {
+    let mut errors = Vec::new();
+    if let Err(error) = write_logout_tombstone() {
+        errors.push(error);
+    }
+    if let Err(error) = delete_keyring_password(
+        app_handle,
+        SESSION_KEYRING_USER,
+        "删除 Codex OAuth legacy 会话",
+    ) {
+        errors.push(error);
+    }
+    if let Err(error) = delete_keyring_password(
+        app_handle,
+        SESSION_REFRESH_TOKEN_KEYRING_USER,
+        "删除 Codex OAuth refresh token",
+    ) {
+        errors.push(error);
+    }
+    if errors.is_empty() {
+        match std::fs::remove_file(session_meta_path()) {
+            Ok(()) => {}
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
+            Err(_) => errors.push("删除 Codex OAuth 元数据失败".to_string()),
+        }
+    }
+    if errors.is_empty() {
+        Ok(())
+    } else {
+        Err(errors.join("; "))
+    }
 }
 
 fn decode_jwt_claims(jwt: &str) -> Option<JwtClaims> {
@@ -894,11 +991,19 @@ async fn session_from_token_response(
 fn persist_login_session(
     app_handle: &tauri::AppHandle,
     state: &AppState,
+    operation: OAuthOperation,
     session: OpenaiCodexOauthSession,
 ) -> Result<OpenaiCodexOauthStatus, String> {
-    save_session_to_storage(app_handle, &session)?;
-    state.set_openai_codex_oauth_session(Some(session.clone()));
-    Ok(make_status(Some(&session)))
+    let status = make_status(Some(&session));
+    let committed = state
+        .openai_codex_oauth_state()
+        .commit(operation, session, |session| {
+            save_session_to_storage(app_handle, session)
+        })?;
+    if !committed {
+        return Err("OpenAI Codex OAuth 登录已被更新的操作取代，请重试。".to_string());
+    }
+    Ok(status)
 }
 
 pub(crate) fn should_prewarm_runtime_session(
@@ -925,8 +1030,12 @@ pub(crate) fn should_prewarm_runtime_session(
 async fn refresh_session_if_needed(
     app_handle: &tauri::AppHandle,
     state: &AppState,
-    mut session: OpenaiCodexOauthSession,
-) -> Result<OpenaiCodexOauthSession, String> {
+) -> Result<Option<OpenaiCodexOauthSession>, String> {
+    let _refresh_guard = state.openai_codex_oauth_state().lock_refresh().await;
+    let Some((operation, mut session)) = state.openai_codex_oauth_state().snapshot_for_refresh()
+    else {
+        return Ok(None);
+    };
     let refresh_start = std::time::Instant::now();
     if !session_needs_refresh(&session) && session_has_runtime_auth_material(&session) {
         log::info!(
@@ -935,7 +1044,7 @@ async fn refresh_session_if_needed(
             !session.api_key.trim().is_empty(),
             !session.access_token.trim().is_empty()
         );
-        return Ok(session);
+        return Ok(Some(session));
     }
 
     let needs_rehydration =
@@ -998,24 +1107,44 @@ async fn refresh_session_if_needed(
             }
         };
     enrich_session_from_tokens(&mut refreshed, None);
-    save_session_to_storage(app_handle, &refreshed)?;
-    state.set_openai_codex_oauth_session(Some(refreshed.clone()));
+    let committed = state
+        .openai_codex_oauth_state()
+        .commit(operation, refreshed, |session| {
+            save_session_to_storage(app_handle, session)
+        })?;
+    if !committed {
+        return Err("OpenAI Codex OAuth 会话已被更新的操作取代，请重试。".to_string());
+    }
+    let refreshed = state
+        .read_openai_codex_oauth_session()
+        .ok_or_else(|| "OpenAI Codex OAuth 会话在刷新后不可用，请重试。".to_string())?;
     log::info!(
         "OpenAI Codex OAuth 认证材料重水化完成 ({}ms): api_key={}, bearer={}",
         refresh_start.elapsed().as_millis(),
         !refreshed.api_key.trim().is_empty(),
         !refreshed.access_token.trim().is_empty()
     );
-    Ok(refreshed)
+    Ok(Some(refreshed))
 }
 
 pub fn sync_runtime_session(
     app_handle: &tauri::AppHandle,
     state: &AppState,
 ) -> Option<OpenaiCodexOauthSession> {
-    let session = load_session_from_storage(app_handle);
-    state.set_openai_codex_oauth_session(session.clone());
-    session
+    let login = state.openai_codex_oauth_state().begin_login();
+    let operation = login.token();
+    let loaded = load_session_from_storage(app_handle);
+    let result = match loaded {
+        Some(session) => state
+            .openai_codex_oauth_state()
+            .commit(operation, session, |_| Ok(())),
+        None => Ok(false),
+    };
+    drop(login);
+    if let Err(error) = result {
+        log::warn!("恢复 OpenAI Codex OAuth 会话失败: {error}");
+    }
+    state.read_openai_codex_oauth_session()
 }
 
 pub fn status(state: &AppState) -> OpenaiCodexOauthStatus {
@@ -1039,7 +1168,6 @@ pub async fn prewarm_runtime_session(
         return Ok(());
     }
     let session = session.expect("prewarm decision requires a session");
-
     let start = std::time::Instant::now();
     log::info!(
         "OpenAI Codex OAuth 启动预热开始: cached_api_key={}, cached_bearer={}, expires_at_ms={:?}",
@@ -1047,7 +1175,7 @@ pub async fn prewarm_runtime_session(
         !session.access_token.trim().is_empty(),
         session.expires_at_ms
     );
-    refresh_session_if_needed(app_handle, state, session).await?;
+    refresh_session_if_needed(app_handle, state).await?;
     log::info!(
         "OpenAI Codex OAuth 启动预热完成 ({}ms)",
         start.elapsed().as_millis()
@@ -1059,6 +1187,8 @@ pub async fn login(
     app_handle: &tauri::AppHandle,
     state: &AppState,
 ) -> Result<OpenaiCodexOauthStatus, String> {
+    let login = state.openai_codex_oauth_state().begin_login();
+    let operation = login.token();
     let listeners = bind_callback_listeners().await?;
     let redirect_uri = format!("http://localhost:{}{CALLBACK_PATH}", listeners.port);
     let (code_verifier, code_challenge) = generate_pkce_pair();
@@ -1089,7 +1219,7 @@ pub async fn login(
         }
     };
 
-    let status = match persist_login_session(app_handle, state, session) {
+    let status = match persist_login_session(app_handle, state, operation, session) {
         Ok(status) => status,
         Err(err) => {
             let html = callback_html("Authorization Failed", &err, false);
@@ -1097,6 +1227,7 @@ pub async fn login(
             return Err(err);
         }
     };
+    drop(login);
     let html = callback_html(
         "Authorization Successful",
         "可以关闭这个页面并返回轻语。",
@@ -1110,7 +1241,19 @@ pub async fn login(
 pub async fn start_device_code_login(
     state: &AppState,
 ) -> Result<OpenaiCodexOauthDeviceCodeChallenge, String> {
+    let login = state.openai_codex_oauth_state().begin_login();
+    let operation = login.token();
     let challenge = request_device_code(&state.http_client).await?;
+    if challenge.device_auth_id.trim().is_empty() || challenge.user_code.trim().is_empty() {
+        return Err("OpenAI Codex 设备码响应无效，请重试。".to_string());
+    }
+    let published = state
+        .openai_codex_oauth_state()
+        .publish_challenge(operation, device_challenge_binding(&challenge))?;
+    if !published {
+        return Err("OpenAI Codex 设备码登录已被更新的操作取代，请重试。".to_string());
+    }
+    drop(login);
     if let Err(err) = webbrowser::open(&challenge.verification_url) {
         log::warn!(
             "打开 OpenAI Codex 设备码验证页失败，前端将展示 URL: {}",
@@ -1125,6 +1268,15 @@ pub async fn complete_device_code_login(
     state: &AppState,
     challenge: OpenaiCodexOauthDeviceCodeChallenge,
 ) -> Result<OpenaiCodexOauthStatus, String> {
+    if challenge.device_auth_id.trim().is_empty() || challenge.user_code.trim().is_empty() {
+        return Err("OpenAI Codex 设备码已失效，请重新开始登录。".to_string());
+    }
+    let binding = device_challenge_binding(&challenge);
+    let login = state
+        .openai_codex_oauth_state()
+        .claim_challenge(&binding)
+        .ok_or_else(|| "OpenAI Codex 设备码已失效，请重新开始登录。".to_string())?;
+    let operation = login.token();
     let authorization = poll_device_code_authorization(&state.http_client, &challenge).await?;
     let redirect_uri = format!("{ISSUER}/deviceauth/callback");
     let token_response = exchange_code_for_tokens(
@@ -1135,12 +1287,16 @@ pub async fn complete_device_code_login(
     )
     .await?;
     let session = session_from_token_response(state, token_response).await?;
-    persist_login_session(app_handle, state, session)
+    let result = persist_login_session(app_handle, state, operation, session);
+    drop(login);
+    result
 }
 
-pub fn logout(app_handle: &tauri::AppHandle, state: &AppState) {
-    clear_session_from_storage(app_handle);
-    state.set_openai_codex_oauth_session(None);
+pub fn logout(app_handle: &tauri::AppHandle, state: &AppState) -> Result<(), String> {
+    state
+        .openai_codex_oauth_state()
+        .invalidate(None, || clear_session_from_storage(app_handle))
+        .map(|_| ())
 }
 
 pub async fn resolve_api_key_for_provider(
@@ -1208,11 +1364,13 @@ pub async fn resolve_api_key_for_provider_with_auth_mode(
         }
         OpenaiAuthMode::Oauth => {
             // 明确走 OAuth：读 session，忽略手填 key
-            let Some(session) = state.read_openai_codex_oauth_session() else {
+            if state.read_openai_codex_oauth_session().is_none() {
+                return Ok(String::new());
+            }
+
+            let Some(session) = refresh_session_if_needed(app_handle, state).await? else {
                 return Ok(String::new());
             };
-
-            let session = refresh_session_if_needed(app_handle, state, session).await?;
             if !session.api_key.trim().is_empty() {
                 return encode_oauth_api_key(&session.api_key)
                     .ok_or_else(|| "包装 OpenAI OAuth API Key 失败".to_string());
@@ -1272,6 +1430,21 @@ mod tests {
     }
 
     #[test]
+    fn device_challenge_binding_uses_server_device_id_and_user_code() {
+        let challenge = OpenaiCodexOauthDeviceCodeChallenge {
+            verification_url: "https://example.invalid".to_string(),
+            user_code: "USER-CODE".to_string(),
+            device_auth_id: "device-auth".to_string(),
+            interval_secs: 5,
+        };
+
+        assert_eq!(
+            device_challenge_binding(&challenge),
+            "device-auth\0USER-CODE"
+        );
+    }
+
+    #[test]
     fn callback_page_uses_the_native_ui_font_stack() {
         let html = callback_html("<Title>", "Message & details", false);
 
@@ -1283,5 +1456,32 @@ mod tests {
         assert!(html.contains("letter-spacing:-.02em"));
         assert!(html.contains("&lt;Title&gt;"));
         assert!(html.contains("Message &amp; details"));
+    }
+
+    #[test]
+    fn oauth_metadata_rejects_malformed_json_and_non_file_atomic_targets() {
+        let root = std::env::temp_dir().join(format!(
+            "light-whisper-codex-oauth-{}-{}",
+            std::process::id(),
+            now_ms()
+        ));
+        std::fs::create_dir_all(&root).expect("temporary metadata directory");
+        let metadata_path = root.join("session.json");
+        assert!(read_session_meta_at(&metadata_path)
+            .expect("missing metadata is distinguishable")
+            .is_none());
+        crate::utils::paths::atomic_write(&metadata_path, b"{malformed")
+            .expect("malformed metadata");
+
+        assert!(read_session_meta_at(&metadata_path).is_err());
+        crate::utils::paths::atomic_write(&metadata_path, b"{}").expect("empty metadata");
+        assert!(read_session_meta_at(&metadata_path).is_err());
+
+        let target_directory = root.join("target-directory");
+        std::fs::create_dir_all(&target_directory).expect("atomic target directory");
+        let metadata = PersistedOpenaiCodexOauthSession::default();
+        assert!(write_metadata_at(&target_directory, &metadata).is_err());
+
+        std::fs::remove_dir_all(root).expect("temporary metadata cleanup");
     }
 }

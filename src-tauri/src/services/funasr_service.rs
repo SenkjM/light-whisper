@@ -864,15 +864,29 @@ async fn send_command_impl(
         &mut process.stdout,
         Duration::from_secs(SERVER_RESPONSE_TIMEOUT_SECS),
         "等待 FunASR 响应",
-        |response: &ServerResponse| match response.request_id {
-            Some(actual) => actual == request_id,
-            None => {
-                log::warn!("FunASR 响应缺少 request_id，按旧协议兼容处理");
-                true
-            }
+        |response: &ServerResponse| {
+            server_response_matches_request(response.request_id, request_id)
         },
     )
     .await
+}
+
+fn server_response_matches_request(actual: Option<u64>, expected: u64) -> bool {
+    // Every bundled server echoes request_id. An untagged response cannot be
+    // distinguished from a late reply after cancellation or timeout.
+    actual == Some(expected)
+}
+
+#[cfg(test)]
+mod request_identity_tests {
+    use super::server_response_matches_request;
+
+    #[test]
+    fn untagged_late_reply_cannot_satisfy_a_new_request() {
+        assert!(!server_response_matches_request(None, 2));
+        assert!(!server_response_matches_request(Some(1), 2));
+        assert!(server_response_matches_request(Some(2), 2));
+    }
 }
 
 async fn try_send_exit_command(process: &mut FunasrProcess) -> Result<(), AppError> {

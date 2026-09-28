@@ -1,15 +1,17 @@
 use crate::commands::audio::{
-    start_recording_inner, stop_recording_inner, RECORDING_ALREADY_ACTIVE_ERROR,
+    start_recording_with_start_owner, stop_recording_inner, RECORDING_ALREADY_ACTIVE_ERROR,
     RECORDING_NOT_READY_ERROR, RECORDING_START_CANCELLED_ERROR,
 };
 use crate::state::{AppState, RecordingSlot, RecordingTrigger};
 use crate::utils::AppError;
 use std::sync::atomic::Ordering;
+use std::sync::Arc;
 use tauri::Manager;
 
 use super::{
-    emit_recording_error, is_toggle_mode, now_unix_ms, reset_hotkey_gate_for_trigger,
-    update_hotkey_diagnostic_for_trigger, HotkeyEventGate, HOTKEY_REPRESS_DEBOUNCE_MS,
+    emit_recording_error, hotkey_configuration_lock, hotkey_gate_is_current, is_toggle_mode,
+    now_unix_ms, reset_hotkey_event_gate, update_hotkey_diagnostic_for_trigger, HotkeyEventGate,
+    HOTKEY_REPRESS_DEBOUNCE_MS,
 };
 
 // Recording start/stop business logic
@@ -24,6 +26,8 @@ pub(super) fn handle_hotkey_start(
     app_handle: tauri::AppHandle,
     shortcut_label: String,
     trigger: RecordingTrigger,
+    gate: Arc<HotkeyEventGate>,
+    generation: u64,
 ) {
     tauri::async_runtime::spawn(async move {
         let state = app_handle.state::<AppState>();
@@ -34,11 +38,12 @@ pub(super) fn handle_hotkey_start(
         let grab_handle =
             tokio::task::spawn_blocking(crate::commands::clipboard::grab_selected_text);
 
-        match start_recording_inner(
+        match start_recording_with_start_owner(
             app_handle.clone(),
             state.inner(),
             trigger,
             Some(grab_handle),
+            Some((gate.start_owner.clone(), generation)),
         )
         .await
         {
@@ -51,14 +56,16 @@ pub(super) fn handle_hotkey_start(
                 );
             }
             Err(AppError::Audio(message)) if is_ignorable_start_audio_error(&message) => {
-                if is_toggle_mode() {
-                    reset_hotkey_gate_for_trigger(trigger);
+                let _transition = gate.transition.lock();
+                if gate.start_owner.fail(generation) {
+                    reset_hotkey_event_gate(&gate);
                 }
                 log::debug!("忽略热键 {} 的开始请求: {}", shortcut_label, message);
             }
             Err(AppError::Audio(message)) => {
-                if is_toggle_mode() {
-                    reset_hotkey_gate_for_trigger(trigger);
+                let _transition = gate.transition.lock();
+                if gate.start_owner.fail(generation) {
+                    reset_hotkey_event_gate(&gate);
                 }
                 // Audio startup failures already publish a session-scoped
                 // recording-state + start_error from start_recording_inner.
@@ -73,8 +80,9 @@ pub(super) fn handle_hotkey_start(
                 });
             }
             Err(err) => {
-                if is_toggle_mode() {
-                    reset_hotkey_gate_for_trigger(trigger);
+                let _transition = gate.transition.lock();
+                if gate.start_owner.fail(generation) {
+                    reset_hotkey_event_gate(&gate);
                 }
                 let message = err.to_string();
                 log::warn!("热键 {} 开始录音失败: {}", shortcut_label, message);
@@ -131,41 +139,22 @@ pub(super) fn handle_hotkey_stop(
     });
 }
 
-pub(super) fn handle_current_hotkey_stop(
-    app_handle: tauri::AppHandle,
-    shortcut_label: String,
-    trigger: RecordingTrigger,
-) {
-    let expected_session_id = app_handle
-        .state::<AppState>()
-        .recording
-        .recording
-        .lock()
-        .as_ref()
-        .filter(|slot| slot.trigger() == trigger)
-        .map(RecordingSlot::session_id);
-    if let Some(session_id) = expected_session_id {
-        handle_hotkey_stop(app_handle, shortcut_label, trigger, session_id);
-    } else {
-        log::debug!(
-            "忽略热键 {} 的停止请求：当前活跃录音不属于 trigger={:?}",
-            shortcut_label,
-            trigger
-        );
-    }
-}
-
 // ---------------------------------------------------------------------------
 // Dispatch — supports both hold and toggle modes
 // ---------------------------------------------------------------------------
 
 pub(super) fn dispatch_hotkey_press(
     app_handle: &tauri::AppHandle,
-    gate: &HotkeyEventGate,
+    gate: &Arc<HotkeyEventGate>,
     trigger: RecordingTrigger,
     pressed_log: &str,
     shortcut_label: &str,
 ) {
+    let _configuration = hotkey_configuration_lock().lock();
+    let _transition = gate.transition.lock();
+    if !gate.registered.load(Ordering::Acquire) || !hotkey_gate_is_current(trigger, gate) {
+        return;
+    }
     let active_trigger = app_handle
         .state::<AppState>()
         .recording
@@ -204,7 +193,14 @@ pub(super) fn dispatch_hotkey_press(
                 diagnostic.last_event_at_ms = Some(now_ms);
                 diagnostic.last_released_at_ms = Some(now_ms);
             });
-            handle_current_hotkey_stop(app_handle.clone(), shortcut_label.to_string(), trigger);
+            if let Some(session_id) = gate.start_owner.release() {
+                handle_hotkey_stop(
+                    app_handle.clone(),
+                    shortcut_label.to_string(),
+                    trigger,
+                    session_id,
+                );
+            }
         } else {
             // Turn on — apply debounce
             let now_ms = now_unix_ms();
@@ -222,7 +218,14 @@ pub(super) fn dispatch_hotkey_press(
                 diagnostic.last_event_at_ms = Some(now_ms);
                 diagnostic.last_pressed_at_ms = Some(now_ms);
             });
-            handle_hotkey_start(app_handle.clone(), shortcut_label.to_string(), trigger);
+            let generation = gate.start_owner.begin();
+            handle_hotkey_start(
+                app_handle.clone(),
+                shortcut_label.to_string(),
+                trigger,
+                gate.clone(),
+                generation,
+            );
         }
         return;
     }
@@ -253,17 +256,26 @@ pub(super) fn dispatch_hotkey_press(
             diagnostic.last_event_at_ms = Some(now_ms);
             diagnostic.last_pressed_at_ms = Some(now_ms);
         });
-        handle_hotkey_start(app_handle.clone(), shortcut_label.to_string(), trigger);
+        let generation = gate.start_owner.begin();
+        handle_hotkey_start(
+            app_handle.clone(),
+            shortcut_label.to_string(),
+            trigger,
+            gate.clone(),
+            generation,
+        );
     }
 }
 
 pub(super) fn dispatch_hotkey_release(
     app_handle: &tauri::AppHandle,
-    gate: &HotkeyEventGate,
+    gate: &Arc<HotkeyEventGate>,
     trigger: RecordingTrigger,
     released_log: &str,
     shortcut_label: &str,
 ) {
+    let _configuration = hotkey_configuration_lock().lock();
+    let _transition = gate.transition.lock();
     // In toggle mode, release is a no-op (press handles both start and stop)
     if is_toggle_mode() {
         return;
@@ -280,6 +292,13 @@ pub(super) fn dispatch_hotkey_release(
             diagnostic.last_event_at_ms = Some(now_ms);
             diagnostic.last_released_at_ms = Some(now_ms);
         });
-        handle_current_hotkey_stop(app_handle.clone(), shortcut_label.to_string(), trigger);
+        if let Some(session_id) = gate.start_owner.release() {
+            handle_hotkey_stop(
+                app_handle.clone(),
+                shortcut_label.to_string(),
+                trigger,
+                session_id,
+            );
+        }
     }
 }

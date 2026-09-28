@@ -81,7 +81,17 @@ pub(crate) async fn start_recording_inner(
     // 调用方（如 hotkey 路径）在 start 之前已 spawn 的选中文本抓取任务，
     // 会被存进最终创建的 RecordingSession，由 finalize/discard 路径负责回收。
     // 本函数如果在任何路径上提前失败，这个本地 Option 会自然 drop，JoinHandle 被 detach。
+    edit_grab: Option<tokio::task::JoinHandle<Option<String>>>,
+) -> Result<u64, AppError> {
+    start_recording_with_start_owner(app_handle, state, trigger, edit_grab, None).await
+}
+
+pub(crate) async fn start_recording_with_start_owner(
+    app_handle: tauri::AppHandle,
+    state: &AppState,
+    trigger: RecordingTrigger,
     mut edit_grab: Option<tokio::task::JoinHandle<Option<String>>>,
+    start_owner: Option<(Arc<crate::commands::hotkey::HotkeyStartOwner>, u64)>,
 ) -> Result<u64, AppError> {
     let lifecycle_guard = state.engine.funasr_lifecycle_op.lock().await;
     if !state.is_funasr_ready() {
@@ -91,8 +101,6 @@ pub(crate) async fn start_recording_inner(
     // 在任何字幕窗口/异步任务启动前抓取目标应用。后续收尾可能延迟数秒，
     // 不能再读取届时的前台窗口来决定历史或截图策略。
     let foreground_app = crate::utils::foreground::get_foreground_app();
-
-    audio_service::stop_microphone_level_monitor(state);
 
     let (session_id, show_gen, stop_flag, stop_notify, starting_snapshot) = {
         let mut guard = state.recording.recording.lock();
@@ -104,6 +112,15 @@ pub(crate) async fn start_recording_inner(
             .session_counter
             .fetch_add(1, Ordering::Relaxed)
             + 1;
+        // Bind while holding the recording slot lock. A concurrent release
+        // either cancels this pending intent or obtains this exact session ID
+        // and waits for installation before the guarded stop can run.
+        if start_owner
+            .as_ref()
+            .is_some_and(|(owner, generation)| !owner.bind(*generation, session_id))
+        {
+            return Err(AppError::Audio(RECORDING_START_CANCELLED_ERROR.into()));
+        }
         // Reserve the generation before spawning any async window work. A
         // delayed show from this session can never advance the generation
         // after a newer session has already reserved its own.
@@ -133,6 +150,7 @@ pub(crate) async fn start_recording_inner(
             .expect("new recording session must own the latest snapshot");
         (session_id, show_gen, stop_flag, stop_notify, snapshot)
     };
+    audio_service::stop_microphone_level_monitor(state);
     drop(lifecycle_guard);
 
     emit_recording_state(&app_handle, &starting_snapshot, true, false, false, None);
