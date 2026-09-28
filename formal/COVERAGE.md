@@ -7,11 +7,11 @@ an explicit contract, with actual source and evidence paths.
 
 | Area | Formal contracts and implementation correspondence |
 | --- | --- |
-| Recording/output | Reservation, cancellation, four modes, finalization, consent, paste/restoration; audio/finalize, useRecording and clipboard tests. |
+| Recording/output | Reservation, cancellation, four modes, finalization, consent, paste/restoration and disposed listeners; audio/finalize, useRecording/disposal and clipboard tests. |
 | Capture/monitor | Native acceptance/fallback, worker/device identity, sample cap, detached workers and monitor generations; native tests, publication guard and disposed-effect regression. |
 | Hotkeys | Three roles, conflict/backend partitions, hold/toggle, duplicates, session stops, queued starts and obsolete native/dispatch messages; per-gate owner, recording-lock bind, fresh mode gates and never-reused native IDs. |
-| Engine/model management | Four engine classes, start/restart/failure, key slots/regions, downloads, busy exclusion and directory migration; engine/native/path and settings tests. |
-| Authentication/providers | Browser/device/refresh/logout, partial storage, provider/key/endpoint pairing and storage errors; coordinator/challenge/metadata tests, snapshot source guard and provider tests. |
+| Engine/model management | Four engine classes, start/restart/failure, key slots/regions, downloads, busy exclusion, directory migration and frontend cancel/retry/unmount generations; engine/native/path, settings and download cancellation tests. |
+| Authentication/providers | Browser/device/refresh/logout, partial storage, provider/key/endpoint pairing, captured authentication choices, one-session catalog credentials and storage/cache publication; coordinator/challenge/metadata/key interleaving tests, eight LLM/catalog snapshot paths and provider tests. |
 | Settings/personalization | Version ordering, preference publication, providers/import/export, hotwords/corrections/app rules; profile/state/settings tests and unbounded Lean induction/first-match proofs. |
 | Context/processing | Independent Off/On/Auto settings and app overrides, explicit operations/no-search, unknown fail-open, captured screenshots and meaning audit; Jev routing/task and context tests. |
 | Assistant/selection | Cancellation/conversation/retry, search/source partitions, result ownership and exact-context replacement; production unit and overlay tests. |
@@ -37,6 +37,18 @@ an explicit contract, with actual source and evidence paths.
   Shared rows and deletion during reprocessing are reachable cases.
 - Runtime enumerates Qwen/R2T2/GLM/Alibaba, two regions/directories, two key saves,
   one download/input and bounded generations.
+- Web search publication separates ownership, keyring I/O and cache publication
+  for two save/load operations; zero represents deletion. Startup/lazy reads
+  share the same critical section. Cache equality is asserted after operations
+  settle, with failures leaving prior values intact.
+- Provider authentication enumerates explicit OAuth/API-key and inferred default
+  choices, two accounts, logout and a settings change. Resolved credentials are
+  frozen together; logout does not recall an already captured outbound request.
+- Download UI enumerates two pending requests, cancellation/manual retry,
+  timer generations and effect replay. Each completion records the observable
+  publication count before/after; stale completions cannot change it. A separate
+  EventSubscriptionLifecycle covers recording listeners, pending registration,
+  late cleanup, at-most-once unlisten and suppression of retired effects.
 - Routing independently enumerates three polish/screen/search modes, two app
   overrides, four request modes and Yes/No/Unknown inputs.
 - Parameter-independent ownership/version/first-match/consent/restoration and
@@ -50,6 +62,12 @@ Reachability checks abstract actions; configured invariants/properties check
 safety/progress under explicit bounds/fairness; negative controls check
 sensitivity to removed guards. Source review/tests check correspondence. None
 alone certifies every source branch or an external dependency.
+
+Reachability is accepted only for the registry's explicit state-changing action
+list. Properties must be configured assertions or positive named conjuncts of
+assertions; negative/conditional mentions, comments and strings are rejected.
+The verifier's own ten regression tests reproduced seven false passes before
+this gate was tightened.
 
 Read-only getters share a snapshot contract. Validation families share a
 valid/invalid partition with concrete validator tests. Folder/browser/window/

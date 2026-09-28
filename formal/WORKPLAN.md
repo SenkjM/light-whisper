@@ -42,6 +42,13 @@ machine-code refinement proof.
 | Async settings | Context and request versions, discovery, debounce/unmount, failure retention | Provider/model/device/settings hooks |
 | Request protocols | Request/response identity, retries, cancellation, terminal/partial output | Rust/Python engine and LLM transports |
 | Validation | URL/length/path partitions, import errors, update version rules | IPC and external-data validation |
+| Credential publication | Phased storage/cache ownership, captured auth choices and account pairing | Web key setters/getters/startup, all LLM/catalog auth callers |
+| UI disposal/cancellation | Revoked timers, stale promise completion and retired listeners | Model download and recording hooks |
+
+The verifier itself has ten regression cases: a reachable predicate is not an
+asserted property, and references under negation/implication, strings or comments
+cannot establish an obligation. Only explicit state-changing actions may use
+reachability evidence.
 
 The model/implementation slices are recorded in verification.json, README.md,
 COVERAGE.md and evidence/source-contracts.md. Final gate status and measured

@@ -8,8 +8,8 @@ bundled protocols.
 [`verification.json`](verification.json) binds **120 registered commands**,
 **16 event families**, **15 lifecycle entries** and **11 protocol families** to
 obligations, model operators, source/test paths and explicit assumptions. CI
-rejects inventory drift, missing anchors, unasserted/unreachable mapped
-obligations, failed models/proofs and negative controls that no longer find the
+rejects inventory drift, missing anchors, unasserted properties, unreachable
+explicitly declared actions, failed models/proofs and negative controls that no longer find the
 expected counterexample. Registry membership is correspondence evidence, not
 automatic proof of a Rust/TypeScript function.
 
@@ -31,9 +31,11 @@ automatic proof of a Rust/TypeScript function.
 | Hotkeys | HotkeyLifecycle (three event-kind runs plus registration workload), HotkeyPendingStart, HotkeyRegistrationEpoch, HotkeyRegistrationFailure |
 | Engines and migration | EngineDownload, RuntimeConfiguration, ModelDirectoryMigration |
 | Authentication and provider pairing | OAuthLifecycle, OAuthStorage, ProviderRequests |
+| Credential publication and account snapshots | WebSearchKeys, ProviderAuthSnapshot |
 | Settings and personalization | ProfilePersistence, SettingsContracts, Personalization, AppProfileRules, AsyncSettings |
 | Routing, tasks and history | ContextRouting, TaskOwnership, HistoryRecords |
 | Windows and UI state | WindowLifecycle, UiPreferences |
+| Download timers and event subscriptions | DownloadUiLifecycle, EventSubscriptionLifecycle |
 | Protocols and transport | RequestProtocols, LlmTransport |
 
 AppWorkflow is the additional integrated model. The registry is the authoritative
@@ -55,6 +57,12 @@ python scripts/check_formal.py --tlc-jar /path/to/tla2tools.jar \
 The runner saves per-configuration TLC logs, Lean output and a summary with
 measured state counts/source hashes. See [delivery results](evidence/results.json),
 [coverage boundaries](COVERAGE.md) and [implementation evidence](evidence/source-contracts.md).
+
+The binding gate treats actions and properties separately. Only named actions
+with state updates may use execution coverage. Every mapped safety/liveness
+property must be an actual configured INVARIANT/PROPERTY, or a positive conjunct
+of one. References inside negation, implication, comments or strings never count
+as checking that property. Ten verifier regressions exercise this distinction.
 
 ## Proof boundary
 

@@ -13,6 +13,43 @@ ROOT = Path(__file__).resolve().parents[1]
 TLC_SHA256 = "ab4694601923fd5ac06452abbf847c366a5054a3d739552085edd6ed986c29ec"
 
 
+def tla_code(source: str) -> str:
+    """Keep code/line structure, excluding comments and literal contents."""
+    code, depth, index = [], 0, 0
+    while index < len(source):
+        pair = source[index:index + 2]
+        if pair == "(*":
+            depth += 1
+            code.append("  ")
+            index += 2
+        elif depth and pair == "*)":
+            depth -= 1
+            code.append("  ")
+            index += 2
+        elif depth:
+            code.append("\n" if source[index] == "\n" else " ")
+            index += 1
+        elif pair == r"\*":
+            end = source.find("\n", index)
+            end = len(source) if end == -1 else end
+            code.append(" " * (end - index))
+            index = end
+        elif source[index] == '"':
+            index += 1
+            while index < len(source) and source[index] != '"':
+                index += 2 if source[index] == "\\" else 1
+            if index >= len(source):
+                raise ValueError("unterminated TLA string")
+            code.append('""')
+            index += 1
+        else:
+            code.append(source[index])
+            index += 1
+    if depth:
+        raise ValueError("unterminated TLA comment")
+    return re.sub(r"^=+\s*$", "", "".join(code), flags=re.M)
+
+
 def event_inventory() -> set[str]:
     names = set()
     patterns = [
@@ -100,26 +137,35 @@ def tlc(jar: Path, model: str, config: Path, source: Path, directory: Path,
 
 
 def check_model_bindings(manifest: dict, model: str, logs: Path) -> None:
-    source = (ROOT / "formal" / f"{model}.tla").read_text(encoding="utf-8")
+    source = tla_code((ROOT / "formal" / f"{model}.tla").read_text(encoding="utf-8"))
     declarations = list(re.finditer(r"^(\w+)(?:\([^\n]*\))?\s*==", source, re.M))
     bodies = {match[1]: source[match.end():declarations[index + 1].start() if index + 1 < len(declarations) else len(source)]
               for index, match in enumerate(declarations)}
     checked, observed = set(), set()
     for config in manifest["runs"][model]:
         checked.update(re.findall(r"^(?:INVARIANT|PROPERTY)\s+(\w+)",
-                                  (ROOT / "formal" / config).read_text(encoding="utf-8"), re.M))
+                                  tla_code((ROOT / "formal" / config).read_text(encoding="utf-8")), re.M))
         output = (logs / Path(config).stem / "tlc.log").read_text(encoding="utf-8")
         observed.update(name for name, count in re.findall(
             r"^<(\w+) line [^\n]+>: \d+:(\d+)$", output, re.M) if int(count) > 0)
-    # Aggregate invariants such as Safety must actually contain their named obligations.
+    # Only a positive conjunction or alias entails its operands. Merely naming
+    # a predicate in a negation, implication, string or comment proves nothing.
     while True:
-        closure = checked | {word for name in checked for word in re.findall(r"\b\w+\b", bodies[name]) if word in bodies}
+        closure = set(checked)
+        for name in checked:
+            body = bodies[name].strip()
+            if re.fullmatch(r"(?:/\\\s*)?\w+(?:\s*/\\\s*\w+)*", body):
+                closure.update(word for word in re.findall(r"\w+", body) if word in bodies)
         if closure == checked:
             break
         checked = closure
     bound = {operator for contract in manifest["contracts"].values()
              for operator in contract["models"].get(model, [])}
-    missing = bound - checked - observed
+    actions = set(manifest.get("actions", {}).get(model, []))
+    for action in actions:
+        if action not in bodies or not re.search(r"\b\w+'", bodies[action]):
+            raise ValueError(f"declared action has no state transition: {model}.{action}")
+    missing = (bound - actions - checked) | ((bound & actions) - observed)
     if missing:
         raise ValueError(f"unexercised/unasserted obligations in {model}: {sorted(missing)}")
 

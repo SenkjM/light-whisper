@@ -602,7 +602,7 @@
   },
   "contracts": {
     "recording": {
-      "obligation": "Reserve, cancel, stop and publish only the current recording session; final UI events cannot regress.",
+      "obligation": "Reserve, cancel, stop and publish only the current recording session; final UI events cannot regress; disposed recording listeners cannot act.",
       "models": {
         "RecordingLifecycle": [
           "Start",
@@ -613,6 +613,12 @@
         "AppWorkflow": [
           "StopRecording",
           "AssistantNeverPastes"
+        ],
+        "EventSubscriptionLifecycle": [
+          "NoDisposedEventEffects",
+          "CleanupAtMostOnce",
+          "RegisteredOwnerIsLive",
+          "LateRegistrationsAreCleaned"
         ]
       },
       "implementation": [
@@ -621,6 +627,7 @@
       ],
       "evidence": [
         "src/hooks/__tests__/useRecording.test.tsx",
+        "src/hooks/__tests__/useRecordingDisposal.test.tsx",
         "src-tauri/src/commands/audio.rs"
       ],
       "assumptions": "CPAL/OS capture and scheduler termination are environmental inputs; two sessions in TLC, Nat ownership contracts in Lean."
@@ -700,20 +707,30 @@
       "assumptions": "Four engine classes; model output correctness and filesystem/driver/network primitives are outside proof. Ready/error values are environmental inputs."
     },
     "download": {
-      "obligation": "A cancelled download retains ownership/configuration until worker termination; cleanup cannot release a newer task.",
+      "obligation": "A cancelled download retains ownership/configuration until worker termination; cleanup cannot release a newer task; cancellation/unmount revoke frontend timers and old asynchronous callbacks.",
       "models": {
         "EngineDownload": [
           "Cancel",
           "Exit",
           "RunningOwnsSlot",
           "RunningUsesCurrentConfig"
+        ],
+        "DownloadUiLifecycle": [
+          "NoRetryAfterCancellation",
+          "AutoStartsHavePermission",
+          "OldRequestCannotPublish",
+          "DisposedListenerCannotAct",
+          "NoTimerAfterUnmount",
+          "RequestsSettle"
         ]
       },
       "implementation": [
-        "src-tauri/src/services/download_service.rs"
+        "src-tauri/src/services/download_service.rs",
+        "src/hooks/useModelStatus.ts"
       ],
       "evidence": [
-        "src-tauri/src/services/download_service.rs"
+        "src-tauri/src/services/download_service.rs",
+        "src/hooks/__tests__/useModelStatusCancellation.test.tsx"
       ],
       "assumptions": "Filesystem writes and HTTP completion are environmental outcomes; scheduler fairness is required for worker settlement."
     },
@@ -786,23 +803,33 @@
       "assumptions": "Identity-provider authentication and cryptography are trusted; generation counters must not wrap; storage durability is a separate obligation."
     },
     "keys": {
-      "obligation": "Failed keyring write/delete is returned before publishing runtime caches; missing deletes are idempotent.",
+      "obligation": "Failed keyring write/delete is returned before publishing runtime caches; missing deletes are idempotent; saves, lazy loads and startup restore serialize storage and cache publication.",
       "models": {
         "SettingsContracts": [
           "KeyWrite",
           "CredentialFailureIsReported",
           "FailedStorageDoesNotPublishKey"
+        ],
+        "WebSearchKeys": [
+          "QuiescentKeysAgree",
+          "NoStaleReadPublication",
+          "PendingOperationOwnsGate",
+          "OperationsSettle"
         ]
       },
       "implementation": [
         "src-tauri/src/services/llm_provider.rs",
         "src-tauri/src/commands/ai_polish.rs",
         "src-tauri/src/commands/assistant.rs",
-        "src-tauri/src/commands/funasr.rs"
+        "src-tauri/src/commands/funasr.rs",
+        "src-tauri/src/lib.rs",
+        "src-tauri/src/state/app_state.rs#with_web_search_key_operation"
       ],
       "evidence": [
         "src-tauri/src/services/llm_provider.rs#credential_persistence_tests",
-        "src-tauri/src/commands/assistant.rs#keyed_web_search_providers_use_isolated_keyring_slots"
+        "src-tauri/src/commands/assistant.rs#keyed_web_search_providers_use_isolated_keyring_slots",
+        "src-tauri/src/state/web_search_key_tests.rs",
+        "scripts/check_request_snapshot.py"
       ],
       "assumptions": "Single keyring operations are atomic; physical OAuth multi-store commits are modeled separately. Getter failure is an unavailable credential, never proof of deletion."
     },
@@ -849,7 +876,7 @@
       "assumptions": "The valid/invalid abstraction is instantiated by actual validators and unit partitions; it is not a proof of every Rust string/parser branch."
     },
     "providers": {
-      "obligation": "Custom provider fields validate before mutation; removed provider references resolve to safe existing roles.",
+      "obligation": "Custom provider fields validate before mutation; removed provider references resolve to safe existing roles; every LLM/catalog request freezes provider, endpoint and auth choice, and account credentials are resolved from one session.",
       "models": {
         "SettingsContracts": [
           "ProviderEdit",
@@ -860,16 +887,27 @@
         "ProviderRequests": [
           "CredentialOnlyGoesToItsProvider",
           "RequestUsesCapturedEndpoint"
+        ],
+        "ProviderAuthSnapshot": [
+          "CapturedAuthModeIsUsed",
+          "CatalogAndKeyShareSession",
+          "RequestsSettle"
         ]
       },
       "implementation": [
         "src-tauri/src/commands/profile.rs",
         "src-tauri/src/state/user_profile.rs",
-        "src-tauri/src/services/llm_provider.rs"
+        "src-tauri/src/services/llm_provider.rs",
+        "src-tauri/src/commands/ai_polish.rs#list_ai_models",
+        "src-tauri/src/commands/selection.rs#run_llm_action",
+        "src-tauri/src/services/screen_vision_service.rs#describe_images",
+        "src-tauri/src/services/codex_oauth_service.rs#resolve_provider_auth_with_auth_mode"
       ],
       "evidence": [
         "src-tauri/src/commands/profile.rs#llm_config_update_rejects_invalid_custom_endpoint_base_url",
         "src-tauri/src/state/user_profile.rs",
+        "src-tauri/src/commands/ai_polish.rs#resolved_catalog_bearer_is_not_replaced_by_a_new_login",
+        "src-tauri/src/services/codex_oauth_service.rs#resolved_oauth_api_key_and_catalog_token_come_from_one_session",
         "scripts/check_request_snapshot.py"
       ],
       "assumptions": "URL parser and provider network behavior are trusted; built-in/custom represent equivalent reference classes, not all server features."
@@ -1280,9 +1318,76 @@
     ],
     "HotkeyRegistrationFailure": [
       "HotkeyRegistrationFailure.cfg"
+    ],
+    "WebSearchKeys": [
+      "WebSearchKeys.cfg"
+    ],
+    "ProviderAuthSnapshot": [
+      "ProviderAuthSnapshot.cfg"
+    ],
+    "DownloadUiLifecycle": [
+      "DownloadUiLifecycle.cfg"
+    ],
+    "EventSubscriptionLifecycle": [
+      "EventSubscriptionLifecycle.cfg"
     ]
   },
+  "actions": {
+    "RecordingLifecycle": ["Start", "CancelStarting"],
+    "AppWorkflow": ["StopRecording", "StartAssistantChat", "CancelAssistantChat", "ReplaceSelection", "SearchSelection", "CheckUpdate", "OpenRelease"],
+    "MicrophoneMonitor": ["Begin", "Stop"],
+    "EngineDownload": ["Cancel", "Exit"],
+    "SettingsContracts": ["KeyWrite", "Preference", "ProviderEdit", "RemoveProvider", "OpenUrl"]
+  },
   "negative": [
+    {
+      "name": "download-ui-stale-completion",
+      "model": "DownloadUiLifecycle",
+      "config": "DownloadUiLifecycleStale.cfg",
+      "invariant": "OldRequestCannotPublish"
+    },
+    {
+      "name": "recording-disposed-subscription",
+      "model": "EventSubscriptionLifecycle",
+      "config": "EventSubscriptionLifecycleLegacy.cfg",
+      "invariant": "NoDisposedEventEffects"
+    },
+    {
+      "name": "web-key-write-interleaving",
+      "model": "WebSearchKeys",
+      "config": "WebSearchKeysLegacy.cfg",
+      "invariant": "QuiescentKeysAgree"
+    },
+    {
+      "name": "web-key-stale-load",
+      "model": "WebSearchKeys",
+      "config": "WebSearchKeysStaleLoad.cfg",
+      "invariant": "NoStaleReadPublication"
+    },
+    {
+      "name": "provider-live-auth-mode",
+      "model": "ProviderAuthSnapshot",
+      "config": "ProviderAuthSnapshotMode.cfg",
+      "invariant": "CapturedAuthModeIsUsed"
+    },
+    {
+      "name": "catalog-mixed-account",
+      "model": "ProviderAuthSnapshot",
+      "config": "ProviderAuthSnapshotAccount.cfg",
+      "invariant": "CatalogAndKeyShareSession"
+    },
+    {
+      "name": "download-ui-retry-after-cancel",
+      "model": "DownloadUiLifecycle",
+      "config": "DownloadUiLifecycleCancel.cfg",
+      "invariant": "NoRetryAfterCancellation"
+    },
+    {
+      "name": "disposed-ui-listener",
+      "model": "DownloadUiLifecycle",
+      "config": "DownloadUiLifecycleDisposal.cfg",
+      "invariant": "DisposedListenerCannotAct"
+    },
     {
       "name": "hotkey-native-orphan",
       "model": "HotkeyRegistrationFailure",

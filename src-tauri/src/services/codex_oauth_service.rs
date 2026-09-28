@@ -460,19 +460,40 @@ pub fn is_oauth_origin_auth(input: &str) -> bool {
     decode_chatgpt_bearer_token(input).is_some() || decode_oauth_api_key(input).is_some()
 }
 
-/// Returns the refreshed ChatGPT bearer material already held by the current
-/// OAuth session. Model discovery uses this even when inference prefers the
-/// OAuth-derived API key, because the Codex catalog is account- and plan-aware.
-pub fn current_chatgpt_bearer_token(state: &AppState) -> Option<ChatgptBearerToken> {
-    let session = state.read_openai_codex_oauth_session()?;
-    let access_token = session.access_token.trim();
-    if access_token.is_empty() {
-        return None;
-    }
+pub struct ResolvedProviderAuth {
+    pub api_key: String,
+    pub chatgpt_token: Option<ChatgptBearerToken>,
+}
 
-    Some(ChatgptBearerToken {
+impl ResolvedProviderAuth {
+    fn api_key(api_key: String) -> Self {
+        Self {
+            api_key,
+            chatgpt_token: None,
+        }
+    }
+}
+
+fn auth_from_openai_session(
+    session: OpenaiCodexOauthSession,
+) -> Result<ResolvedProviderAuth, String> {
+    let access_token = session.access_token.trim();
+    let chatgpt_token = (!access_token.is_empty()).then(|| ChatgptBearerToken {
         access_token: access_token.to_string(),
         account_id: session.account_id,
+    });
+    let api_key = if !session.api_key.trim().is_empty() {
+        encode_oauth_api_key(&session.api_key)
+            .ok_or_else(|| "包装 OpenAI OAuth API Key 失败".to_string())?
+    } else if let Some(token) = &chatgpt_token {
+        encode_chatgpt_bearer_token(token)
+            .ok_or_else(|| "编码 OpenAI Codex bearer 会话失败".to_string())?
+    } else {
+        String::new()
+    };
+    Ok(ResolvedProviderAuth {
+        api_key,
+        chatgpt_token,
     })
 }
 
@@ -1299,23 +1320,6 @@ pub fn logout(app_handle: &tauri::AppHandle, state: &AppState) -> Result<(), Str
         .map(|_| ())
 }
 
-pub async fn resolve_api_key_for_provider(
-    app_handle: &tauri::AppHandle,
-    state: &AppState,
-    provider: &str,
-    manual_api_key: &str,
-) -> Result<String, String> {
-    resolve_api_key_for_provider_with_auth_mode(
-        app_handle,
-        state,
-        provider,
-        manual_api_key,
-        None,
-        None,
-    )
-    .await
-}
-
 pub async fn resolve_api_key_for_provider_with_auth_mode(
     app_handle: &tauri::AppHandle,
     state: &AppState,
@@ -1324,32 +1328,54 @@ pub async fn resolve_api_key_for_provider_with_auth_mode(
     auth_mode_override: Option<OpenaiAuthMode>,
     xai_auth_mode_override: Option<XaiAuthMode>,
 ) -> Result<String, String> {
+    resolve_provider_auth_with_auth_mode(
+        app_handle,
+        state,
+        provider,
+        manual_api_key,
+        auth_mode_override,
+        xai_auth_mode_override,
+    )
+    .await
+    .map(|auth| auth.api_key)
+}
+
+/// Modes are captured by the caller. None means infer from login state,
+/// so a later profile edit cannot change an already-started request's choice.
+pub async fn resolve_provider_auth_with_auth_mode(
+    app_handle: &tauri::AppHandle,
+    state: &AppState,
+    provider: &str,
+    manual_api_key: &str,
+    auth_mode: Option<OpenaiAuthMode>,
+    xai_auth_mode: Option<XaiAuthMode>,
+) -> Result<ResolvedProviderAuth, String> {
     let manual_api_key = manual_api_key.trim();
 
     if provider == XAI_PROVIDER {
-        let stored_mode = state.llm_provider_config().xai_auth_mode;
         let effective_mode = grok_build_oauth_service::effective_xai_auth_mode(
-            xai_auth_mode_override.or(stored_mode),
+            xai_auth_mode,
             state.read_grok_build_oauth_session().is_some(),
         );
         return match effective_mode {
-            XaiAuthMode::ApiKey => Ok(manual_api_key.to_string()),
+            XaiAuthMode::ApiKey => Ok(ResolvedProviderAuth::api_key(manual_api_key.to_string())),
             XaiAuthMode::Oauth => {
-                grok_build_oauth_service::resolve_oauth_origin_api_key(app_handle, state).await
+                grok_build_oauth_service::resolve_oauth_origin_api_key(app_handle, state)
+                    .await
+                    .map(ResolvedProviderAuth::api_key)
             }
         };
     }
 
     // 非 OpenAI provider：直接返回用户填的 key（可能为空，由调用方决定报错）
     if provider != OPENAI_PROVIDER {
-        return Ok(manual_api_key.to_string());
+        return Ok(ResolvedProviderAuth::api_key(manual_api_key.to_string()));
     }
 
     // OpenAI：按用户选的认证方式分支。存储的偏好可能是 None（用户还没点过开关），
     // 那就按 OAuth 登录状态智能推断：登录过 → Oauth；没登录 → ApiKey。
     // 这跟前端的默认计算保持一致，避免前后端对同一条 profile 给出不同决策。
-    let stored_mode = state.llm_provider_config().openai_auth_mode;
-    let effective_mode = auth_mode_override.or(stored_mode).unwrap_or_else(|| {
+    let effective_mode = auth_mode.unwrap_or_else(|| {
         if state.read_openai_codex_oauth_session().is_some() {
             OpenaiAuthMode::Oauth
         } else {
@@ -1360,31 +1386,18 @@ pub async fn resolve_api_key_for_provider_with_auth_mode(
     match effective_mode {
         OpenaiAuthMode::ApiKey => {
             // 明确走 API Key：只看手填的 key，即使 OAuth 已登录也不用
-            Ok(manual_api_key.to_string())
+            Ok(ResolvedProviderAuth::api_key(manual_api_key.to_string()))
         }
         OpenaiAuthMode::Oauth => {
             // 明确走 OAuth：读 session，忽略手填 key
             if state.read_openai_codex_oauth_session().is_none() {
-                return Ok(String::new());
+                return Ok(ResolvedProviderAuth::api_key(String::new()));
             }
 
             let Some(session) = refresh_session_if_needed(app_handle, state).await? else {
-                return Ok(String::new());
+                return Ok(ResolvedProviderAuth::api_key(String::new()));
             };
-            if !session.api_key.trim().is_empty() {
-                return encode_oauth_api_key(&session.api_key)
-                    .ok_or_else(|| "包装 OpenAI OAuth API Key 失败".to_string());
-            }
-
-            if session.access_token.trim().is_empty() {
-                return Ok(String::new());
-            }
-
-            encode_chatgpt_bearer_token(&ChatgptBearerToken {
-                access_token: session.access_token,
-                account_id: session.account_id,
-            })
-            .ok_or_else(|| "编码 OpenAI Codex bearer 会话失败".to_string())
+            auth_from_openai_session(session)
         }
     }
 }
@@ -1392,6 +1405,38 @@ pub async fn resolve_api_key_for_provider_with_auth_mode(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn resolved_oauth_api_key_and_catalog_token_come_from_one_session() {
+        let session = OpenaiCodexOauthSession {
+            api_key: "derived-key-a".into(),
+            access_token: "bearer-a".into(),
+            account_id: Some("account-a".into()),
+            ..Default::default()
+        };
+        let auth = auth_from_openai_session(session).unwrap();
+        assert_eq!(
+            decode_oauth_api_key(&auth.api_key).as_deref(),
+            Some("derived-key-a")
+        );
+        let token = auth.chatgpt_token.unwrap();
+        assert_eq!(token.access_token, "bearer-a");
+        assert_eq!(token.account_id.as_deref(), Some("account-a"));
+    }
+
+    #[test]
+    fn resolved_bearer_encoding_preserves_its_catalog_identity() {
+        let auth = auth_from_openai_session(OpenaiCodexOauthSession {
+            access_token: "bearer-only".into(),
+            account_id: Some("bearer-account".into()),
+            ..Default::default()
+        })
+        .unwrap();
+        let encoded = decode_chatgpt_bearer_token(&auth.api_key).unwrap();
+        let token = auth.chatgpt_token.unwrap();
+        assert_eq!(encoded.access_token, token.access_token);
+        assert_eq!(encoded.account_id, token.account_id);
+    }
 
     #[test]
     fn device_code_response_accepts_string_interval_and_usercode_alias() {

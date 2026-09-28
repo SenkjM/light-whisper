@@ -8,7 +8,9 @@ ROOT = Path(__file__).resolve().parents[1]
 PATHS = {
     "src-tauri/src/services/ai_polish_service.rs": ["polish_text_with_overrides_detailed", "edit_text"],
     "src-tauri/src/services/assistant_service.rs": ["generate_content_inner"],
-    "src-tauri/src/commands/profile.rs": ["extract_corrections_via_llm"],
+    "src-tauri/src/commands/profile.rs": ["extract_corrections_via_llm", "run_correction_validation"],
+    "src-tauri/src/commands/selection.rs": ["run_llm_action"],
+    "src-tauri/src/services/screen_vision_service.rs": ["describe_images"],
 }
 
 
@@ -22,7 +24,7 @@ def check(revision: str | None = None) -> None:
             body = source[start:end]
             resolve = body.index("codex_oauth_service::resolve_api_key_for_provider")
             before, after = body[:resolve], body[resolve:]
-            required = ["let config = state.llm_provider_config();", "let endpoint = llm_provider::",
+            required = ["let config = state.llm_provider_config();", "let endpoint =", "_for_config(&config)",
                         "load_api_key_for_provider(app_handle,"]
             if any(fragment not in before for fragment in required):
                 raise ValueError(f"{path}:{name}: endpoint/key must be snapshotted before auth")
@@ -60,7 +62,37 @@ def check(revision: str | None = None) -> None:
         body = body[:body.index("\n}")]
         if body.index("write_session_meta(") < body.index("delete_keyring_password("):
             raise ValueError(f"{path}: valid metadata must commit after all credential mutations")
-    print("PASS provider/key snapshot conformance: four LLM and three cloud ASR paths")
+    def read(path: str) -> str:
+        return subprocess.check_output(["git", "show", f"{revision}:{path}"], cwd=ROOT,
+                                       text=True, encoding="utf-8") if revision else (ROOT / path).read_text(encoding="utf-8")
+
+    catalog = read("src-tauri/src/commands/ai_polish.rs")
+    catalog = catalog[catalog.index("pub async fn list_ai_models("):]
+    catalog = catalog[:catalog.index("\n}")]
+    resolve = catalog.index("codex_oauth_service::resolve_provider_auth_with_auth_mode")
+    if "let config = state.llm_provider_config();" not in catalog[:resolve] or any(
+        live in catalog[resolve:] for live in ["state.llm_provider_config()", "current_chatgpt_bearer_token"]
+    ) or "auth.chatgpt_token" not in catalog:
+        raise ValueError("model catalog must use captured configuration and paired resolved auth")
+    resolver = read("src-tauri/src/services/codex_oauth_service.rs")
+    resolver = resolver[resolver.index("pub async fn resolve_provider_auth_with_auth_mode("):]
+    resolver = resolver[:resolver.index("\n}")]
+    if "state.llm_provider_config()" in resolver or "auth_from_openai_session(session)" not in resolver:
+        raise ValueError("auth resolution must preserve captured modes and pair one session's credentials")
+
+    assistant = read("src-tauri/src/commands/assistant.rs")
+    for name in ["set_web_search_api_key", "get_web_search_api_key"]:
+        body = assistant[assistant.index(f"pub async fn {name}("):]
+        body = body[:body.index("\n}")]
+        gate = body.index("state.with_web_search_key_operation(||")
+        storage = body.index("save_or_delete_api_key" if name.startswith("set_") else "let cached =")
+        if gate > storage:
+            raise ValueError(f"{name}: key storage/read and cache publication require common ownership")
+    startup = read("src-tauri/src/lib.rs")
+    startup = startup[startup.index("for search_provider in ["):]
+    if startup.index("state.with_web_search_key_operation(||") > startup.index(".get_password("):
+        raise ValueError("startup web key restore must use the same publication owner")
+    print("PASS provider/key snapshot conformance: eight LLM/catalog and three cloud ASR paths; web key publication ownership")
 
 
 if __name__ == "__main__":

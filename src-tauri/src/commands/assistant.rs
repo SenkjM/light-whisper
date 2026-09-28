@@ -330,9 +330,11 @@ pub async fn set_web_search_api_key(
 ) -> Result<(), String> {
     let keyring_user = web_search_keyring_user(&provider)
         .ok_or_else(|| "当前搜索方式不使用独立 API Key".to_string())?;
-    llm_provider::save_or_delete_api_key(&app_handle, keyring_user, &api_key)?;
-    state.set_web_search_api_key(web_search_provider_cache_key(&provider), api_key.clone());
-    Ok(())
+    state.with_web_search_key_operation(|| {
+        llm_provider::save_or_delete_api_key(&app_handle, keyring_user, &api_key)?;
+        state.set_web_search_api_key(web_search_provider_cache_key(&provider), api_key);
+        Ok(())
+    })
 }
 
 #[tauri::command]
@@ -344,20 +346,19 @@ pub async fn get_web_search_api_key(
     let cache_key = web_search_provider_cache_key(&provider);
     let keyring_user = web_search_keyring_user(&provider)
         .ok_or_else(|| "当前搜索方式不使用独立 API Key".to_string())?;
-    let cached = state.read_web_search_api_key(cache_key);
-    if !cached.is_empty() {
-        return Ok(cached);
-    }
-    let key = app_handle
-        .keyring()
-        .get_password(llm_provider::KEYRING_SERVICE, keyring_user)
-        .ok()
-        .flatten()
-        .unwrap_or_default();
-    if !key.is_empty() {
+    state.with_web_search_key_operation(|| {
+        let cached = state.read_web_search_api_key(cache_key);
+        if !cached.is_empty() {
+            return Ok(cached);
+        }
+        let key = app_handle
+            .keyring()
+            .get_password(llm_provider::KEYRING_SERVICE, keyring_user)
+            .map_err(|error| format!("读取搜索 API Key 失败: {error}"))?
+            .unwrap_or_default();
         state.set_web_search_api_key(cache_key, key.clone());
-    }
-    Ok(key)
+        Ok(key)
+    })
 }
 
 #[cfg(test)]

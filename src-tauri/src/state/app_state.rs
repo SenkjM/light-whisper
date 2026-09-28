@@ -393,6 +393,7 @@ pub struct ProfileState {
     pub grok_build_oauth_session: OAuthSessionState<GrokBuildOauthSession>,
     pub online_asr_api_key: Arc<parking_lot::Mutex<String>>,
     pub web_search_api_keys: Arc<parking_lot::Mutex<HashMap<String, String>>>,
+    web_search_key_operation: parking_lot::Mutex<()>,
     pub assistant_image_support_cache: Arc<parking_lot::Mutex<HashMap<String, bool>>>,
     pub ai_polish_stream_started_sessions: Arc<parking_lot::Mutex<HashSet<u64>>>,
 }
@@ -591,6 +592,11 @@ impl AppState {
             .get(provider)
             .cloned()
             .unwrap_or_default()
+    }
+
+    pub fn with_web_search_key_operation<R>(&self, operation: impl FnOnce() -> R) -> R {
+        let _operation = self.profile.web_search_key_operation.lock();
+        operation()
     }
 
     pub fn set_web_search_api_key(&self, provider: impl Into<String>, api_key: impl Into<String>) {

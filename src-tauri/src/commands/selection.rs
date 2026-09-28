@@ -445,11 +445,13 @@ async fn run_llm_action(
     let config = state.llm_provider_config();
     let endpoint = llm_provider::selection_endpoint_for_config(&config);
     let manual_api_key = llm_provider::load_api_key_for_provider(app_handle, &endpoint.provider);
-    let api_key = codex_oauth_service::resolve_api_key_for_provider(
+    let api_key = codex_oauth_service::resolve_api_key_for_provider_with_auth_mode(
         app_handle,
         state,
         &endpoint.provider,
         &manual_api_key,
+        config.openai_auth_mode,
+        config.xai_auth_mode,
     )
     .await
     .map_err(AppError::Other)?;

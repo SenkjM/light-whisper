@@ -19,12 +19,26 @@ Baseline: d29cd45db8876bd7bcfa915ae642af3b0fcc4bbe, PR #9.
 | Hotkey registration identity | Same-backend mode switch retained a gate; native registrations reused fixed IDs | Mode changes always replace gates; configuration/dispatch serialize; native IDs never reuse. Actual allocator RED, static mode guard RED, two new TLA counterexamples and exhaustion test. |
 | Hotkey rollback | Lifecycle failure republished a retired gate and could leak a new native registration; errors were ignored | Clear new registrations, rebuild old specs with fresh gate/ID, clear affected slots on restoration failure and return errors; setup-failure model and two static source RED/GREEN guards. |
 | Subtitle final | Earlier assertion passed with late-interim guard removed | Independent final-seen state; same mutation now violates SubtitleFinalStaysFinal; production guard/regression retained. |
+| Formal binding gate | Seven verifier regressions failed because predicate reachability and negated/comment/string references counted as proof | Ten regressions now pass; safety/liveness must be asserted, and only explicitly declared state-changing actions can use reachability. |
+| Web search cache publication | Compiled legacy operation seam gave settled disk/cache pairs (second, first) and (new, old) | Real operation mutex covers setter, lazy getter and startup storage/cache publication; three frozen tests pass. WebSearchKeys separates I/O and publication, and two legacy controls violate settled equality/stale-load rejection. |
+| Model catalog auth | Actual catalog helper RED returned account B's bearer for a resolved account A key | Config captured before auth; resolver returns key and catalog token from the same session. Account-switch regression plus derived-key/bearer pairing tests pass; ProviderAuthSnapshot includes account change/logout. |
+| Auxiliary LLM auth | Extended source guard found correction validation lacked OAuth resolution and selection/vision lacked captured auth modes | Correction validation, selection, vision and catalog join the four original LLM snapshot paths; resolver no longer rereads live profile preferences. Guard covers eight LLM/catalog plus three cloud paths. |
+| Download cancel/retry | Four actual hook tests failed: initial/retry timers survived cancellation, late rejection retried, retired listener restarted the engine | Owned timer plus generation invalidation on cancel/retry/unmount; promise and effect guards. All four frozen regressions pass; DownloadUiLifecycle includes pending completion and StrictMode replay with two failing legacy controls. |
+| Recording listener disposal | Two actual hook regressions showed a post-unmount/retired listener could display a toast | Shared event callback checks its owning effect's disposal before running; both tests pass and delayed listener cleanup is checked. |
+| Final model correspondence review | Recording was bound to a download listener model, and stale completion used only a guard-derived flag | Separate EventSubscriptionLifecycle models pending/late registration and recording effects. Download completion records before/after publication counts; an independent legacy control fails OldRequestCannotPublish. |
 
 OAuth declaration-scaffold RED is interface evidence, not original-service race
 reproduction. Hotkey/monitor pure-seam RED has the same limit; actual source
 interleavings and negative models separately establish the baseline mismatch.
 Source guards are static checks, not Rust execution proofs. Final commands/results
 are in results.json and the exact-head CI run on the PR.
+
+The web-search operation seam RED is also interface evidence: its body initially
+ran the closure without ownership, matching the source interleaving. The three
+production callers were then wired to the tested mutex and independently reviewed.
+The download/recording listener and catalog-helper RED cases execute the actual
+production hook/helper. Static source-guard failures are kept separate from these
+runtime regressions. Frozen new test hashes are recorded in results.json.
 
 Profile updates retain version ordering; normalization and provenance have actual
 unit tests. App rules retain first-match/captured context. Cloud key saves serialize disk/cache publication with configuration changes. Directory migration

@@ -34,11 +34,13 @@ pub async fn describe_images(
     let endpoint = llm_provider::screen_vision_endpoint_for_config(&config)
         .ok_or_else(|| "屏幕视觉模型配置不完整".to_string())?;
     let manual_api_key = llm_provider::load_api_key_for_provider(app_handle, &endpoint.provider);
-    let api_key = codex_oauth_service::resolve_api_key_for_provider(
+    let api_key = codex_oauth_service::resolve_api_key_for_provider_with_auth_mode(
         app_handle,
         state,
         &endpoint.provider,
         &manual_api_key,
+        config.openai_auth_mode,
+        config.xai_auth_mode,
     )
     .await?;
     if api_key.trim().is_empty() {
