@@ -60,6 +60,7 @@ uv lock --check
 uv run --no-sync python -m compileall -q scripts src-tauri/resources
 uv run --no-sync python -m unittest discover -s src-tauri/resources -p "test_*.py"
 uv run --no-sync python scripts/test_build_engine_atomicity.py
+uv run --no-sync python scripts/test_release_ci.py
 cargo fmt --manifest-path src-tauri/Cargo.toml --all -- --check
 cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets --locked -- -D warnings
 cargo test --manifest-path src-tauri/Cargo.toml --all-targets --locked -- --skip services::qwen_hotword_service::tests::hotword_correction_p95_stays_below_one_millisecond
@@ -67,6 +68,9 @@ git diff --check
 ```
 
 CI measures the skipped timing-sensitive hotword benchmark separately as advisory.
+CI also runs the [TLA+ and Lean contracts](../formal/README.md), including verifier
+regressions and intentional counterexamples, and uploads the proof logs. The
+release gate requires this job to succeed for the exact candidate commit.
 
 ## Troubleshooting
 

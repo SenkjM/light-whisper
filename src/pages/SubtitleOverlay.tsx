@@ -194,6 +194,7 @@ export default function SubtitleOverlay() {
   // Completed results must be fully readable before their hide timer starts.
   const smoothText = useSmoothText(text, { enabled: !interimSegments && phase !== "result" });
   const latestSessionIdRef = useRef(0);
+  const finalTranscriptionSessionIdRef = useRef(0);
   const latestRevisionRef = useRef(-1);
   const pairedOutcomeRevisionRef = useRef<{ sessionId: number; revision: number } | null>(null);
   const terminalSessionIdRef = useRef(0);
@@ -265,6 +266,7 @@ export default function SubtitleOverlay() {
     const isNewSession = sessionId > latestSessionIdRef.current;
     if (isNewSession) {
       latestSessionIdRef.current = sessionId;
+      finalTranscriptionSessionIdRef.current = 0;
       latestRevisionRef.current = -1;
       pairedOutcomeRevisionRef.current = null;
       terminalSessionIdRef.current = 0;
@@ -851,6 +853,8 @@ export default function SubtitleOverlay() {
           if (sessionId === terminalSessionIdRef.current) return;
           if (typeof sessionId === "number") {
             if (sessionId < latestSessionIdRef.current) return;
+            if (sessionId > latestSessionIdRef.current) finalTranscriptionSessionIdRef.current = 0;
+            if (interim && sessionId === finalTranscriptionSessionIdRef.current) return;
             latestSessionIdRef.current = sessionId;
           }
           setMode(event.payload.mode ?? "dictation");
@@ -864,6 +868,7 @@ export default function SubtitleOverlay() {
             setFadingOut(false);
             return;
           }
+          if (typeof sessionId === "number") finalTranscriptionSessionIdRef.current = sessionId;
 
           const finalText = incomingText.trim();
           clearFadeTimer();

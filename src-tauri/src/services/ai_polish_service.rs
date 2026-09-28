@@ -1022,14 +1022,18 @@ pub async fn polish_text_with_overrides_detailed(
         emit_polish_status(app_handle, "auth", text, "", "", session_id);
     }
 
-    let active_provider = state.active_llm_provider();
-    let manual_api_key = state.read_ai_polish_api_key();
+    let config = state.llm_provider_config();
+    let endpoint = llm_provider::endpoint_for_config(&config);
+    let active_provider = endpoint.provider.clone();
+    let manual_api_key = llm_provider::load_api_key_for_provider(app_handle, &active_provider);
     let auth_start = std::time::Instant::now();
-    let api_key = codex_oauth_service::resolve_api_key_for_provider(
+    let api_key = codex_oauth_service::resolve_api_key_for_provider_with_auth_mode(
         app_handle,
         state,
         &active_provider,
         &manual_api_key,
+        config.openai_auth_mode,
+        config.xai_auth_mode,
     )
     .await
     .inspect_err(|e| {
@@ -1062,7 +1066,6 @@ pub async fn polish_text_with_overrides_detailed(
         emit_polish_status(app_handle, "polishing", text, "", "", session_id);
     }
 
-    let endpoint = llm_provider::endpoint_for_config(&state.llm_provider_config());
     if emit_status {
         emit_polish_status(app_handle, "prompt", text, "", "", session_id);
     }
@@ -1223,18 +1226,21 @@ pub async fn edit_text(
     app_handle: &tauri::AppHandle,
     session_id: u64,
 ) -> Result<EditOutcome, String> {
-    let api_key = codex_oauth_service::resolve_api_key_for_provider(
+    let config = state.llm_provider_config();
+    let endpoint = llm_provider::endpoint_for_config(&config);
+    let manual_key = llm_provider::load_api_key_for_provider(app_handle, &endpoint.provider);
+    let api_key = codex_oauth_service::resolve_api_key_for_provider_with_auth_mode(
         app_handle,
         state,
-        &state.active_llm_provider(),
-        &state.read_ai_polish_api_key(),
+        &endpoint.provider,
+        &manual_key,
+        config.openai_auth_mode,
+        config.xai_auth_mode,
     )
     .await?;
     if api_key.is_empty() {
         return Err("AI 未配置 API Key，且未完成 OpenAI Codex 登录，无法执行编辑".into());
     }
-
-    let endpoint = llm_provider::endpoint_for_config(&state.llm_provider_config());
 
     let system_prompt = r#"
 <role>

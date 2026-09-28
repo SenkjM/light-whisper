@@ -202,17 +202,15 @@ fn validate_chat_history(
 pub(crate) fn begin_assistant_chat_task(
     state: &AppState,
 ) -> (u64, tokio::sync::oneshot::Receiver<()>) {
+    let mut current = state.ui.assistant_chat_cancel.lock();
     let generation = state
         .ui
         .assistant_chat_generation
         .fetch_add(1, Ordering::AcqRel)
         + 1;
     let (cancel, cancel_rx) = tokio::sync::oneshot::channel();
-    let previous = state
-        .ui
-        .assistant_chat_cancel
-        .lock()
-        .replace(AssistantChatTask { generation, cancel });
+    let previous = current.replace(AssistantChatTask { generation, cancel });
+    drop(current);
     if let Some(previous) = previous {
         let _ = previous.cancel.send(());
     }
@@ -230,16 +228,14 @@ pub(crate) fn clear_assistant_chat_task(state: &AppState, generation: u64) {
 }
 
 fn cancel_assistant_chat_task(state: &AppState) -> bool {
+    let mut current = state.ui.assistant_chat_cancel.lock();
+    let task = current.take();
     state
         .ui
         .assistant_chat_generation
         .fetch_add(1, Ordering::AcqRel);
-    state
-        .ui
-        .assistant_chat_cancel
-        .lock()
-        .take()
-        .is_some_and(|task| task.cancel.send(()).is_ok())
+    drop(current);
+    task.is_some_and(|task| task.cancel.send(()).is_ok())
 }
 
 fn validate_assistant_source_url(value: &str) -> Result<reqwest::Url, AppError> {
@@ -334,9 +330,11 @@ pub async fn set_web_search_api_key(
 ) -> Result<(), String> {
     let keyring_user = web_search_keyring_user(&provider)
         .ok_or_else(|| "当前搜索方式不使用独立 API Key".to_string())?;
-    state.set_web_search_api_key(web_search_provider_cache_key(&provider), api_key.clone());
-    llm_provider::save_or_delete_api_key(&app_handle, keyring_user, &api_key);
-    Ok(())
+    state.with_web_search_key_operation(|| {
+        llm_provider::save_or_delete_api_key(&app_handle, keyring_user, &api_key)?;
+        state.set_web_search_api_key(web_search_provider_cache_key(&provider), api_key);
+        Ok(())
+    })
 }
 
 #[tauri::command]
@@ -348,20 +346,19 @@ pub async fn get_web_search_api_key(
     let cache_key = web_search_provider_cache_key(&provider);
     let keyring_user = web_search_keyring_user(&provider)
         .ok_or_else(|| "当前搜索方式不使用独立 API Key".to_string())?;
-    let cached = state.read_web_search_api_key(cache_key);
-    if !cached.is_empty() {
-        return Ok(cached);
-    }
-    let key = app_handle
-        .keyring()
-        .get_password(llm_provider::KEYRING_SERVICE, keyring_user)
-        .ok()
-        .flatten()
-        .unwrap_or_default();
-    if !key.is_empty() {
+    state.with_web_search_key_operation(|| {
+        let cached = state.read_web_search_api_key(cache_key);
+        if !cached.is_empty() {
+            return Ok(cached);
+        }
+        let key = app_handle
+            .keyring()
+            .get_password(llm_provider::KEYRING_SERVICE, keyring_user)
+            .map_err(|error| format!("读取搜索 API Key 失败: {error}"))?
+            .unwrap_or_default();
         state.set_web_search_api_key(cache_key, key.clone());
-    }
-    Ok(key)
+        Ok(key)
+    })
 }
 
 #[cfg(test)]

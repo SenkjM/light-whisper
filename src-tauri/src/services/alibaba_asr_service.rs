@@ -22,7 +22,19 @@ pub async fn transcribe(
     state: &AppState,
     audio_wav: Vec<u8>,
 ) -> Result<TranscriptionResult, AppError> {
-    let api_key = state.read_online_asr_api_key();
+    let _asr_guard = state.engine.native_asr_owner.lock().await;
+    let (api_key, base, model, region) = {
+        let _configuration = state.engine.funasr_lifecycle_op.lock().await;
+        if paths::read_engine_config() != "alibaba-asr" {
+            return Err(AppError::Asr("语音识别引擎已切换，请重试".into()));
+        }
+        (
+            state.read_online_asr_api_key(),
+            paths::read_alibaba_endpoint(),
+            paths::read_alibaba_model(),
+            paths::read_alibaba_region(),
+        )
+    };
     if api_key.is_empty() {
         return Err(AppError::Asr("Alibaba DashScope API Key 未配置".into()));
     }
@@ -33,12 +45,10 @@ pub async fn transcribe(
         )));
     }
 
-    let base = paths::read_alibaba_endpoint();
-    let model = paths::read_alibaba_model();
     log::info!(
         "DashScope ASR 请求: model={}, region={}, 音频 {} KB",
         model,
-        paths::read_alibaba_region(),
+        region,
         audio_wav.len() / 1024,
     );
 

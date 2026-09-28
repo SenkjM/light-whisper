@@ -1,0 +1,1744 @@
+{
+  "schema": 1,
+  "proof_boundary": "Formal contracts plus reviewed implementation/test correspondence; not compiler refinement or native dependency proof.",
+  "commands": {
+    "commands::funasr::start_funasr": [
+      "engine"
+    ],
+    "commands::funasr::restart_funasr": [
+      "engine"
+    ],
+    "commands::funasr::get_engine": [
+      "engine"
+    ],
+    "commands::funasr::set_engine": [
+      "engine"
+    ],
+    "commands::funasr::check_funasr_status": [
+      "engine"
+    ],
+    "commands::funasr::check_model_files": [
+      "engine"
+    ],
+    "commands::funasr::set_online_asr_endpoint": [
+      "engine"
+    ],
+    "commands::funasr::get_online_asr_endpoint": [
+      "engine"
+    ],
+    "commands::funasr::get_alibaba_asr_config": [
+      "engine"
+    ],
+    "commands::funasr::set_alibaba_asr_model": [
+      "engine"
+    ],
+    "commands::funasr::set_r2t2_config": [
+      "engine"
+    ],
+    "commands::funasr::transcribe_audio": [
+      "engine",
+      "transport"
+    ],
+    "commands::funasr::download_models": [
+      "download"
+    ],
+    "commands::funasr::cancel_model_download": [
+      "download"
+    ],
+    "commands::funasr::set_online_asr_api_key": [
+      "keys",
+      "engine"
+    ],
+    "commands::funasr::get_online_asr_api_key": [
+      "keys",
+      "engine"
+    ],
+    "commands::funasr::list_alibaba_asr_models": [
+      "discovery"
+    ],
+    "commands::funasr::get_models_dir": [
+      "directory"
+    ],
+    "commands::funasr::set_models_dir": [
+      "directory"
+    ],
+    "commands::funasr::pick_folder": [
+      "directory"
+    ],
+    "commands::clipboard::copy_to_clipboard": [
+      "clipboard"
+    ],
+    "commands::clipboard::paste_text": [
+      "clipboard"
+    ],
+    "commands::codex_oauth::login_openai_codex_oauth": [
+      "oauth"
+    ],
+    "commands::codex_oauth::start_openai_codex_oauth_device_code": [
+      "oauth"
+    ],
+    "commands::codex_oauth::complete_openai_codex_oauth_device_code": [
+      "oauth"
+    ],
+    "commands::codex_oauth::logout_openai_codex_oauth": [
+      "oauth"
+    ],
+    "commands::codex_oauth::get_openai_codex_oauth_status": [
+      "oauth"
+    ],
+    "commands::grok_build_oauth::login_grok_build_oauth": [
+      "oauth"
+    ],
+    "commands::grok_build_oauth::start_grok_build_oauth_device_code": [
+      "oauth"
+    ],
+    "commands::grok_build_oauth::complete_grok_build_oauth_device_code": [
+      "oauth"
+    ],
+    "commands::grok_build_oauth::logout_grok_build_oauth": [
+      "oauth"
+    ],
+    "commands::grok_build_oauth::get_grok_build_oauth_status": [
+      "oauth"
+    ],
+    "commands::window::hide_main_window": [
+      "windows"
+    ],
+    "commands::window::show_subtitle_window": [
+      "windows"
+    ],
+    "commands::window::hide_subtitle_window": [
+      "windows"
+    ],
+    "commands::hotkey::register_custom_hotkey": [
+      "hotkeys"
+    ],
+    "commands::hotkey::register_translation_hotkey": [
+      "hotkeys"
+    ],
+    "commands::hotkey::register_assistant_hotkey": [
+      "hotkeys"
+    ],
+    "commands::hotkey::unregister_all_hotkeys": [
+      "hotkeys"
+    ],
+    "commands::hotkey::set_recording_mode": [
+      "hotkeys"
+    ],
+    "commands::hotkey::get_hotkey_diagnostic": [
+      "hotkeys"
+    ],
+    "commands::audio::start_recording": [
+      "recording",
+      "capture"
+    ],
+    "commands::audio::stop_recording": [
+      "recording",
+      "capture"
+    ],
+    "commands::audio::get_recording_snapshot": [
+      "recording",
+      "capture"
+    ],
+    "commands::audio::test_microphone": [
+      "capture",
+      "monitor"
+    ],
+    "commands::audio::list_input_devices": [
+      "capture",
+      "monitor"
+    ],
+    "commands::audio::set_input_device": [
+      "capture",
+      "monitor"
+    ],
+    "commands::audio::start_microphone_level_monitor": [
+      "monitor"
+    ],
+    "commands::audio::stop_microphone_level_monitor": [
+      "monitor"
+    ],
+    "commands::audio::set_input_method": [
+      "preferences",
+      "recording"
+    ],
+    "commands::audio::set_sound_enabled": [
+      "preferences",
+      "recording"
+    ],
+    "commands::ai_polish::set_ai_polish_config": [
+      "keys",
+      "preferences"
+    ],
+    "commands::ai_polish::get_ai_polish_api_key": [
+      "keys",
+      "preferences"
+    ],
+    "commands::ai_polish::set_ai_polish_api_key": [
+      "keys",
+      "preferences"
+    ],
+    "commands::ai_polish::set_assistant_api_key": [
+      "keys",
+      "preferences"
+    ],
+    "commands::ai_polish::get_assistant_api_key": [
+      "keys",
+      "preferences"
+    ],
+    "commands::ai_polish::set_ai_polish_screen_context_enabled": [
+      "preferences",
+      "routing"
+    ],
+    "commands::ai_polish::set_screen_context_enabled": [
+      "preferences",
+      "routing"
+    ],
+    "commands::ai_polish::list_ai_models": [
+      "discovery",
+      "providers"
+    ],
+    "commands::jev::set_jev_config": [
+      "preferences",
+      "routing"
+    ],
+    "commands::jev::set_jev_provider": [
+      "preferences",
+      "routing"
+    ],
+    "commands::jev::set_polish_mode": [
+      "preferences",
+      "routing"
+    ],
+    "commands::jev::set_jev_features": [
+      "preferences",
+      "routing"
+    ],
+    "commands::jev::set_screen_context_mode": [
+      "preferences",
+      "routing"
+    ],
+    "commands::jev::set_web_search_mode": [
+      "preferences",
+      "routing"
+    ],
+    "commands::jev::get_jev_api_key": [
+      "keys"
+    ],
+    "commands::jev::set_jev_api_key": [
+      "keys"
+    ],
+    "commands::profile::get_user_profile": [
+      "profile-save"
+    ],
+    "commands::profile::set_history_settings": [
+      "history",
+      "preferences",
+      "profile-save"
+    ],
+    "commands::profile::set_app_profile_rules": [
+      "app-rules",
+      "preferences",
+      "profile-save"
+    ],
+    "commands::profile::add_hot_word": [
+      "personalization",
+      "profile-save"
+    ],
+    "commands::profile::remove_hot_word": [
+      "personalization",
+      "profile-save"
+    ],
+    "commands::profile::export_user_profile": [
+      "personalization",
+      "profile-save"
+    ],
+    "commands::profile::import_user_profile": [
+      "personalization",
+      "profile-save"
+    ],
+    "commands::profile::submit_user_correction": [
+      "personalization",
+      "profile-save"
+    ],
+    "commands::profile::validate_corrections": [
+      "personalization",
+      "profile-save"
+    ],
+    "commands::profile::remove_correction": [
+      "personalization",
+      "profile-save"
+    ],
+    "commands::profile::set_llm_provider_config": [
+      "providers",
+      "preferences",
+      "profile-save"
+    ],
+    "commands::profile::set_screen_vision_config": [
+      "providers",
+      "preferences",
+      "profile-save"
+    ],
+    "commands::profile::add_custom_provider": [
+      "providers",
+      "preferences",
+      "profile-save"
+    ],
+    "commands::profile::update_custom_provider": [
+      "providers",
+      "preferences",
+      "profile-save"
+    ],
+    "commands::profile::remove_custom_provider": [
+      "providers",
+      "preferences",
+      "profile-save"
+    ],
+    "commands::profile::get_llm_reasoning_support": [
+      "providers",
+      "preferences",
+      "profile-save"
+    ],
+    "commands::profile::get_screen_vision_api_key": [
+      "keys"
+    ],
+    "commands::profile::set_screen_vision_api_key": [
+      "keys"
+    ],
+    "commands::profile::set_translation_target": [
+      "preferences",
+      "profile-save"
+    ],
+    "commands::profile::set_translation_hotkey": [
+      "preferences",
+      "profile-save"
+    ],
+    "commands::profile::set_custom_prompt": [
+      "preferences",
+      "profile-save"
+    ],
+    "commands::profile::set_polish_structure_level": [
+      "preferences",
+      "profile-save"
+    ],
+    "commands::profile::set_openai_fast_mode": [
+      "preferences",
+      "profile-save"
+    ],
+    "commands::profile::set_correction_validation_config": [
+      "preferences",
+      "profile-save"
+    ],
+    "commands::updater::check_app_update": [
+      "updater"
+    ],
+    "commands::updater::open_app_release_page": [
+      "updater"
+    ],
+    "commands::assistant::set_assistant_hotkey": [
+      "preferences",
+      "routing",
+      "profile-save"
+    ],
+    "commands::assistant::set_assistant_system_prompt": [
+      "preferences",
+      "routing",
+      "profile-save"
+    ],
+    "commands::assistant::set_assistant_screen_context_enabled": [
+      "preferences",
+      "routing",
+      "profile-save"
+    ],
+    "commands::assistant::set_web_search_config": [
+      "preferences",
+      "routing",
+      "profile-save"
+    ],
+    "commands::assistant::continue_assistant_conversation": [
+      "assistant"
+    ],
+    "commands::assistant::cancel_assistant_conversation": [
+      "assistant"
+    ],
+    "commands::assistant::retry_assistant_request": [
+      "assistant"
+    ],
+    "commands::assistant::open_assistant_source": [
+      "assistant"
+    ],
+    "commands::assistant::set_web_search_api_key": [
+      "keys"
+    ],
+    "commands::assistant::get_web_search_api_key": [
+      "keys"
+    ],
+    "commands::selection::set_selection_assistant_config": [
+      "preferences",
+      "profile-save",
+      "selection"
+    ],
+    "commands::selection::set_selection_api_key": [
+      "keys"
+    ],
+    "commands::selection::get_selection_api_key": [
+      "keys"
+    ],
+    "commands::selection::resize_selection_window": [
+      "windows",
+      "selection"
+    ],
+    "commands::selection::hide_selection_assistant": [
+      "windows",
+      "selection"
+    ],
+    "commands::selection::start_selection_window_drag": [
+      "windows",
+      "selection"
+    ],
+    "commands::selection::get_selection_overlay_state": [
+      "windows",
+      "selection"
+    ],
+    "commands::selection::copy_selection": [
+      "selection",
+      "clipboard",
+      "transport"
+    ],
+    "commands::selection::replace_selection": [
+      "selection",
+      "clipboard",
+      "transport"
+    ],
+    "commands::selection::search_selection": [
+      "selection",
+      "clipboard",
+      "transport"
+    ],
+    "commands::selection::run_selection_action": [
+      "selection",
+      "clipboard",
+      "transport"
+    ],
+    "commands::selection::cancel_selection_action": [
+      "selection",
+      "clipboard",
+      "transport"
+    ],
+    "commands::history::list_transcription_history": [
+      "history"
+    ],
+    "commands::history::get_transcription_history_stats": [
+      "history"
+    ],
+    "commands::history::delete_transcription_history": [
+      "history"
+    ],
+    "commands::history::export_transcription_history": [
+      "history"
+    ],
+    "commands::history::reprocess_transcription_history": [
+      "history"
+    ]
+  },
+  "events": {
+    "ai-polish-status": [
+      "recording",
+      "transport"
+    ],
+    "assistant-chat-stream": [
+      "assistant",
+      "transport"
+    ],
+    "assistant-stream": [
+      "assistant",
+      "subtitles"
+    ],
+    "funasr-status": [
+      "engine"
+    ],
+    "history-updated": [
+      "history"
+    ],
+    "hotkey-diagnostic": [
+      "hotkeys"
+    ],
+    "jev-polish-audit": [
+      "routing"
+    ],
+    "microphone-level": [
+      "monitor"
+    ],
+    "model-download-status": [
+      "download"
+    ],
+    "models-migrate-status": [
+      "directory"
+    ],
+    "recording-error": [
+      "recording"
+    ],
+    "recording-outcome": [
+      "recording"
+    ],
+    "recording-state": [
+      "recording"
+    ],
+    "selection-stream": [
+      "selection",
+      "transport"
+    ],
+    "transcription-result": [
+      "recording",
+      "subtitles"
+    ],
+    "waveform": [
+      "capture"
+    ]
+  },
+  "lifecycle": {
+    "startup.profile-load-and-keyring-sync": [
+      "profile-save",
+      "providers",
+      "keys",
+      "oauth"
+    ],
+    "startup.hotkey-and-selection-hook-registration": [
+      "hotkeys",
+      "selection"
+    ],
+    "startup.engine-prewarm-and-window-create": [
+      "engine",
+      "windows"
+    ],
+    "timer.profile-debounce-save": [
+      "profile-save"
+    ],
+    "timer.correction-review": [
+      "personalization"
+    ],
+    "timer.history-retention-and-audio-gc": [
+      "history"
+    ],
+    "capture.native-worker-ready-and-detach": [
+      "capture"
+    ],
+    "capture.fallback-cpal-worker": [
+      "capture"
+    ],
+    "tray.main-show-hide-and-exit": [
+      "windows"
+    ],
+    "exit.audio-monitor-selection-hooks-and-engine-child": [
+      "windows",
+      "monitor",
+      "engine"
+    ],
+    "react.model-device-effect-cleanup": [
+      "discovery",
+      "monitor"
+    ],
+    "react.subtitle-and-selection-terminal-publication": [
+      "subtitles",
+      "selection"
+    ],
+    "react.theme-storage-media-query": [
+      "ui-preferences"
+    ],
+    "plugin.autostart-confirmation": [
+      "ui-preferences"
+    ],
+    "react.navigation-and-settings-persistence": [
+      "ui-preferences",
+      "preferences"
+    ]
+  },
+  "protocols": {
+    "python-jsonl.qwen3-asr": [
+      "transport",
+      "engine"
+    ],
+    "python-jsonl.r2t2": [
+      "transport",
+      "engine"
+    ],
+    "http.glm-asr": [
+      "transport",
+      "engine"
+    ],
+    "websocket.alibaba-asr": [
+      "transport",
+      "engine"
+    ],
+    "python.native-stream-control-and-mmap": [
+      "capture",
+      "transport"
+    ],
+    "llm.chat-responses-anthropic-sse-retry": [
+      "transport",
+      "providers"
+    ],
+    "oauth.codex-browser-device-refresh": [
+      "oauth"
+    ],
+    "oauth.grok-browser-device-refresh": [
+      "oauth"
+    ],
+    "search.google-exa-tavily-serper-brave-native": [
+      "assistant",
+      "routing"
+    ],
+    "persistence.profile-json-keyring-sqlite-audio": [
+      "profile-save",
+      "keys",
+      "history",
+      "personalization"
+    ],
+    "ipc.tauri-command-and-event-dto": [
+      "recording",
+      "preferences",
+      "transport"
+    ]
+  },
+  "contracts": {
+    "recording": {
+      "obligation": "Reserve, cancel, stop and publish only the current recording session; final UI events cannot regress; disposed recording listeners cannot act.",
+      "models": {
+        "RecordingLifecycle": [
+          "Start",
+          "CancelStarting",
+          "CancelledNeverActive",
+          "UiIsLatestDelivered"
+        ],
+        "AppWorkflow": [
+          "StopRecording",
+          "AssistantNeverPastes"
+        ],
+        "EventSubscriptionLifecycle": [
+          "NoDisposedEventEffects",
+          "CleanupAtMostOnce",
+          "RegisteredOwnerIsLive",
+          "LateRegistrationsAreCleaned"
+        ]
+      },
+      "implementation": [
+        "src-tauri/src/commands/audio.rs",
+        "src/hooks/useRecording.ts"
+      ],
+      "evidence": [
+        "src/hooks/__tests__/useRecording.test.tsx",
+        "src/hooks/__tests__/useRecordingDisposal.test.tsx",
+        "src-tauri/src/commands/audio.rs"
+      ],
+      "assumptions": "CPAL/OS capture and scheduler termination are environmental inputs; two sessions in TLC, Nat ownership contracts in Lean."
+    },
+    "capture": {
+      "obligation": "Native handoff is accepted once; CPAL fallback owns its samples; cap samples and snapshot the selected device.",
+      "models": {
+        "CapturePipeline": [
+          "HandoffIsAcceptedOnce",
+          "SampleCapNeverExceeded",
+          "FallbackOwnsBuffer",
+          "NativeDeviceIsSnapshotted"
+        ]
+      },
+      "implementation": [
+        "src-tauri/src/services/audio_service/capture.rs",
+        "src-tauri/src/services/audio_service/native_recording.rs"
+      ],
+      "evidence": [
+        "src-tauri/src/services/audio_service/native_capture_tests.rs",
+        "src-tauri/src/services/audio_service/native_integration_tests.rs",
+        "formal/evidence/capture.md"
+      ],
+      "assumptions": "Audio driver success and sample values are inputs; bounded samples represent arbitrary content; RecordingOwnsMonitor begins after the synchronous stop, not the earlier slot reservation."
+    },
+    "monitor": {
+      "obligation": "Stop invalidates pending starts; recording ownership prevents late idle-monitor publication; disposed effects never restart monitoring.",
+      "models": {
+        "MicrophoneMonitor": [
+          "Begin",
+          "Stop",
+          "OnlyCurrentIdleStartPublishes"
+        ],
+        "CapturePipeline": [
+          "MonitorDeviceIsResolved"
+        ]
+      },
+      "implementation": [
+        "src-tauri/src/services/audio_service/monitor.rs",
+        "src/hooks/useMicrophoneSettings.ts"
+      ],
+      "evidence": [
+        "src/hooks/__tests__/useMicrophoneSettings.test.tsx",
+        "src-tauri/src/services/audio_service/monitor.rs#stop_and_new_recording_reject_late_monitor_start"
+      ],
+      "assumptions": "Driver initialization can take time and must observe cancellation; the property guards publication, not an instantaneous hardware shutdown guarantee."
+    },
+    "engine": {
+      "obligation": "Engine/directory changes respect busy capture/download; late starts cannot publish; cloud readiness uses its captured key slot.",
+      "models": {
+        "AsyncSettings": [
+          "NoPostUnmountPublication"
+        ],
+        "RuntimeConfiguration": [
+          "DownloadPinsConfiguration",
+          "AsrPinsEngine",
+          "ActiveKeyComesFromActiveSlot",
+          "NoStaleStartPublication"
+        ],
+        "EngineDownload": [
+          "RunningUsesCurrentConfig"
+        ]
+      },
+      "implementation": [
+        "src-tauri/src/commands/funasr.rs",
+        "src-tauri/src/services/funasr_service.rs",
+        "src-tauri/src/services/alibaba_asr_service.rs",
+        "src-tauri/src/services/glm_asr_service.rs",
+        "src/hooks/useModelStatus.ts"
+      ],
+      "evidence": [
+        "src-tauri/src/commands/funasr.rs",
+        "src/hooks/__tests__/useAsrEngineSettings.test.tsx",
+        "src/hooks/__tests__/useModelStatus.test.tsx",
+        "scripts/check_request_snapshot.py"
+      ],
+      "assumptions": "Four engine classes; model output correctness and filesystem/driver/network primitives are outside proof. Ready/error values are environmental inputs."
+    },
+    "download": {
+      "obligation": "A cancelled download retains ownership/configuration until worker termination; cleanup cannot release a newer task; cancellation/unmount revoke frontend timers and old asynchronous callbacks.",
+      "models": {
+        "EngineDownload": [
+          "Cancel",
+          "Exit",
+          "RunningOwnsSlot",
+          "RunningUsesCurrentConfig"
+        ],
+        "DownloadUiLifecycle": [
+          "NoRetryAfterCancellation",
+          "AutoStartsHavePermission",
+          "OldRequestCannotPublish",
+          "DisposedListenerCannotAct",
+          "NoTimerAfterUnmount",
+          "RequestsSettle"
+        ]
+      },
+      "implementation": [
+        "src-tauri/src/services/download_service.rs",
+        "src/hooks/useModelStatus.ts"
+      ],
+      "evidence": [
+        "src-tauri/src/services/download_service.rs",
+        "src/hooks/__tests__/useModelStatusCancellation.test.tsx"
+      ],
+      "assumptions": "Filesystem writes and HTTP completion are environmental outcomes; scheduler fairness is required for worker settlement."
+    },
+    "directory": {
+      "obligation": "Copy before committing destination; never delete source until current destination and runtime readiness are rechecked.",
+      "models": {
+        "ModelDirectoryMigration": [
+          "NoDeleteBeforeSafeCommit",
+          "NoNestedCopy",
+          "FailureRetainsSource",
+          "RuntimeFailureIsVisible"
+        ]
+      },
+      "implementation": [
+        "src-tauri/src/commands/funasr.rs",
+        "src-tauri/src/utils/paths.rs",
+        "src/hooks/useModelDirectorySettings.ts"
+      ],
+      "evidence": [
+        "src-tauri/src/utils/paths.rs",
+        "src/pages/__tests__/SettingsPageAsrDevices.test.tsx"
+      ],
+      "assumptions": "Canonical path resolution and successful copies are trusted filesystem operations; source deletion failures must remain visible."
+    },
+    "discovery": {
+      "obligation": "Only the newest request for current provider/engine/auth context may publish; failure retains same-context data.",
+      "models": {
+        "AsyncSettings": [
+          "NoCrossProviderData",
+          "NoModelsWithoutAuth",
+          "NoPostUnmountPublication",
+          "RequestsSettle"
+        ]
+      },
+      "implementation": [
+        "src/hooks/useModelDiscovery.ts",
+        "src/hooks/useAsrEngineSettings.ts",
+        "src-tauri/src/commands/ai_polish.rs"
+      ],
+      "evidence": [
+        "src/hooks/__tests__/useModelDiscovery.test.tsx",
+        "src/hooks/__tests__/useAsrEngineSettings.test.tsx",
+        "src/pages/__tests__/SettingsPageProviderDiscovery.test.tsx"
+      ],
+      "assumptions": "Upstream catalog contents and availability are inputs; finite two-request/context interleavings; HTTP schemas are checked by implementation tests."
+    },
+    "oauth": {
+      "obligation": "Browser/device/refresh owners must remain current; logout and newer login reject old commits and stale fatal refresh.",
+      "models": {
+        "OAuthLifecycle": [
+          "LogoutWins",
+          "NewLoginWins",
+          "NewLoginSurvivesStaleFailure",
+          "RequestsSettle"
+        ],
+        "OAuthStorage": [
+          "InvalidMetadataCannotRestoreRefreshToken",
+          "AcknowledgedLogoutCannotReload"
+        ]
+      },
+      "implementation": [
+        "src-tauri/src/state/oauth_session.rs",
+        "src-tauri/src/services/codex_oauth_service.rs",
+        "src-tauri/src/services/grok_build_oauth_service.rs"
+      ],
+      "evidence": [
+        "src-tauri/src/state/oauth_session_tests.rs",
+        "formal/evidence/oauth-gate.md"
+      ],
+      "assumptions": "Identity-provider authentication and cryptography are trusted; generation counters must not wrap; storage durability is a separate obligation."
+    },
+    "keys": {
+      "obligation": "Failed keyring write/delete is returned before publishing runtime caches; missing deletes are idempotent; saves, lazy loads and startup restore serialize storage and cache publication.",
+      "models": {
+        "SettingsContracts": [
+          "KeyWrite",
+          "CredentialFailureIsReported",
+          "FailedStorageDoesNotPublishKey"
+        ],
+        "WebSearchKeys": [
+          "QuiescentKeysAgree",
+          "NoStaleReadPublication",
+          "PendingOperationOwnsGate",
+          "OperationsSettle"
+        ]
+      },
+      "implementation": [
+        "src-tauri/src/services/llm_provider.rs",
+        "src-tauri/src/commands/ai_polish.rs",
+        "src-tauri/src/commands/assistant.rs",
+        "src-tauri/src/commands/funasr.rs",
+        "src-tauri/src/lib.rs",
+        "src-tauri/src/state/app_state.rs#with_web_search_key_operation"
+      ],
+      "evidence": [
+        "src-tauri/src/services/llm_provider.rs#credential_persistence_tests",
+        "src-tauri/src/commands/assistant.rs#keyed_web_search_providers_use_isolated_keyring_slots",
+        "src-tauri/src/state/web_search_key_tests.rs",
+        "scripts/check_request_snapshot.py"
+      ],
+      "assumptions": "Single keyring operations are atomic; physical OAuth multi-store commits are modeled separately. Getter failure is an unavailable credential, never proof of deletion."
+    },
+    "profile-save": {
+      "obligation": "Each profile update queues its own current version under the same ordering lock; settled disk is latest.",
+      "models": {
+        "ProfilePersistence": [
+          "LatestPendingWhenQueued",
+          "SettledDiskMatchesMemory"
+        ]
+      },
+      "implementation": [
+        "src-tauri/src/services/profile_service.rs",
+        "src-tauri/src/state/app_state.rs"
+      ],
+      "evidence": [
+        "src-tauri/src/services/profile_service.rs",
+        "src-tauri/src/state/app_state.rs"
+      ],
+      "assumptions": "Debounce timer and atomic filesystem replacement eventually succeed for settlement; Lean proves version ordering over arbitrary Nat updates."
+    },
+    "preferences": {
+      "obligation": "Normalize/validate before publication; optional clears are explicit; runtime-only flags do not overwrite other fields.",
+      "models": {
+        "SettingsContracts": [
+          "Preference",
+          "NoInvalidPreferencePublication",
+          "SnapshotsDoNotPredictFuture"
+        ],
+        "ProfilePersistence": [
+          "LatestPendingWhenQueued"
+        ]
+      },
+      "implementation": [
+        "src-tauri/src/commands/profile.rs",
+        "src-tauri/src/commands/jev.rs",
+        "src-tauri/src/commands/audio.rs"
+      ],
+      "evidence": [
+        "src-tauri/src/commands/profile.rs",
+        "src-tauri/src/commands/jev_tests.rs",
+        "src/components/settings/__tests__/P0SettingsSections.test.tsx"
+      ],
+      "assumptions": "The valid/invalid abstraction is instantiated by actual validators and unit partitions; it is not a proof of every Rust string/parser branch."
+    },
+    "providers": {
+      "obligation": "Custom provider fields validate before mutation; removed provider references resolve to safe existing roles; every LLM/catalog request freezes provider, endpoint and auth choice, and account credentials are resolved from one session.",
+      "models": {
+        "SettingsContracts": [
+          "ProviderEdit",
+          "RemoveProvider",
+          "ResolvedProvidersExist",
+          "NoInvalidPreferencePublication"
+        ],
+        "ProviderRequests": [
+          "CredentialOnlyGoesToItsProvider",
+          "RequestUsesCapturedEndpoint"
+        ],
+        "ProviderAuthSnapshot": [
+          "CapturedAuthModeIsUsed",
+          "CatalogAndKeyShareSession",
+          "RequestsSettle"
+        ]
+      },
+      "implementation": [
+        "src-tauri/src/commands/profile.rs",
+        "src-tauri/src/state/user_profile.rs",
+        "src-tauri/src/services/llm_provider.rs",
+        "src-tauri/src/commands/ai_polish.rs#list_ai_models",
+        "src-tauri/src/commands/selection.rs#run_llm_action",
+        "src-tauri/src/services/screen_vision_service.rs#describe_images",
+        "src-tauri/src/services/codex_oauth_service.rs#resolve_provider_auth_with_auth_mode"
+      ],
+      "evidence": [
+        "src-tauri/src/commands/profile.rs#llm_config_update_rejects_invalid_custom_endpoint_base_url",
+        "src-tauri/src/state/user_profile.rs",
+        "src-tauri/src/commands/ai_polish.rs#resolved_catalog_bearer_is_not_replaced_by_a_new_login",
+        "src-tauri/src/services/codex_oauth_service.rs#resolved_oauth_api_key_and_catalog_token_come_from_one_session",
+        "scripts/check_request_snapshot.py"
+      ],
+      "assumptions": "URL parser and provider network behavior are trusted; built-in/custom represent equivalent reference classes, not all server features."
+    },
+    "personalization": {
+      "obligation": "Blocked hotwords cannot be relearned automatically; concurrent user corrections survive automatic review; exported data excludes credentials.",
+      "models": {
+        "Personalization": [
+          "BlockedWordsCannotBePromoted",
+          "UserRulesSurviveAutomaticChanges",
+          "ExportContainsNoCredential",
+          "ReviewSettles"
+        ]
+      },
+      "implementation": [
+        "src-tauri/src/services/profile_service.rs",
+        "src-tauri/src/commands/profile.rs",
+        "src-tauri/src/state/user_profile.rs"
+      ],
+      "evidence": [
+        "src-tauri/src/services/profile_service.rs",
+        "src-tauri/src/commands/profile.rs",
+        "src/pages/__tests__/SettingsPageExportPath.test.tsx"
+      ],
+      "assumptions": "Canonical text normalization, JSON schema and learned suggestions are input partitions; explicit user imports/removals may replace user rules."
+    },
+    "app-rules": {
+      "obligation": "First matching enabled rule wins; inheritance uses baseline; source window context stays captured.",
+      "models": {
+        "AppProfileRules": [
+          "FirstMatchingRuleWins",
+          "InheritUsesBaseline",
+          "CapturedContextIsStable"
+        ]
+      },
+      "implementation": [
+        "src-tauri/src/state/user_profile.rs",
+        "src-tauri/src/services/audio_service/finalize.rs"
+      ],
+      "evidence": [
+        "src-tauri/src/state/user_profile.rs",
+        "formal/lean/StateContracts.lean#firstApplicable"
+      ],
+      "assumptions": "Matching predicates are inputs; Lean proves first-match selection for arbitrary rule counts, TLC checks two rules and values."
+    },
+    "routing": {
+      "obligation": "Off stays off; explicit actions execute; unknown Auto answers fail open; no-search and captured-window decisions are respected.",
+      "models": {
+        "ContextRouting": [
+          "ExplicitOperationsExecute",
+          "DisabledScreenStaysOff",
+          "DisabledSearchStaysOff",
+          "ExplicitNoSearchIsHonored",
+          "UnknownPolishFailsOpen",
+          "ScreenUsesRecordedWindow",
+          "AuditCannotReplaceOutput"
+        ]
+      },
+      "implementation": [
+        "src-tauri/src/services/jev_service.rs",
+        "src-tauri/src/services/ai_polish_service.rs",
+        "src-tauri/src/services/assistant_service.rs"
+      ],
+      "evidence": [
+        "src-tauri/src/services/jev_polish_routing_tests.rs",
+        "src-tauri/src/services/jev_tasks_tests.rs",
+        "src-tauri/src/services/deepseek_native_web_search_tests.rs"
+      ],
+      "assumptions": "Classifier/model answers are Yes/No/Unknown inputs; linguistic quality is not proved. Screen and polish overrides are independent variables."
+    },
+    "assistant": {
+      "obligation": "Current task owns cancellation; old completion cannot clear it; only assistant workflow emits chat, validated sources can open.",
+      "models": {
+        "TaskOwnership": [
+          "NewestInstalledOwnsSlot"
+        ],
+        "AppWorkflow": [
+          "StartAssistantChat",
+          "CancelAssistantChat",
+          "AssistantNeverPastes",
+          "WebSearchConsent"
+        ],
+        "SettingsContracts": [
+          "NoExecutableUrl"
+        ]
+      },
+      "implementation": [
+        "src-tauri/src/commands/assistant.rs",
+        "src-tauri/src/services/assistant_service.rs"
+      ],
+      "evidence": [
+        "src-tauri/src/commands/assistant.rs#clearing_an_old_generation_keeps_the_new_task_cancellable",
+        "src/pages/__tests__/SubtitleOverlay.test.tsx"
+      ],
+      "assumptions": "Network response content and browser opening are trusted external outcomes; request timeout/scheduler progress is required."
+    },
+    "selection": {
+      "obligation": "Replacement requires exact selection version, text and source window; cancellation owns latest task; raw selection is preserved.",
+      "models": {
+        "TaskOwnership": [
+          "NewestInstalledOwnsSlot"
+        ],
+        "AppWorkflow": [
+          "SelectionResultIsCurrent",
+          "SelectionReplaceIsAuthorized",
+          "ReplaceSelection",
+          "SearchSelection"
+        ]
+      },
+      "implementation": [
+        "src-tauri/src/commands/selection.rs",
+        "src-tauri/src/services/selection_service.rs",
+        "src/pages/SelectionOverlay.tsx"
+      ],
+      "evidence": [
+        "src-tauri/src/services/selection_service.rs#replacement_context_requires_the_exact_version_text_and_source_window",
+        "src/pages/__tests__/SelectionOverlay.test.tsx"
+      ],
+      "assumptions": "OS selection and paste operations are external; two context versions represent arbitrary text, not recognition correctness."
+    },
+    "clipboard": {
+      "obligation": "Paste restores clipboard only when clipboard still contains the text owned by that paste; assistant output is never auto-pasted.",
+      "models": {
+        "AppWorkflow": [
+          "ExternalClipboardIsPreserved",
+          "AssistantNeverPastes",
+          "PasteHasText"
+        ]
+      },
+      "implementation": [
+        "src-tauri/src/commands/clipboard.rs",
+        "src-tauri/src/services/audio_service/finalize.rs"
+      ],
+      "evidence": [
+        "src-tauri/src/commands/clipboard.rs",
+        "formal/lean/StateContracts.lean"
+      ],
+      "assumptions": "OS clipboard reads/writes and key injection may fail; success means the API acknowledged the operation, not that a foreign application consumed it."
+    },
+    "history": {
+      "obligation": "Persist only with consent; transactions are atomic; shared referenced/leased audio survives GC; reprocess retains captured source.",
+      "models": {
+        "HistoryRecords": [
+          "SaveAudioGate",
+          "ReferencedOrLeasedAudioRetained",
+          "GCFaultRetainsAudio",
+          "DeleteTransactionIsAtomic",
+          "ReprocessedRowsUseSnapshot",
+          "CleanupEventually"
+        ]
+      },
+      "implementation": [
+        "src-tauri/src/services/history_service.rs",
+        "src-tauri/src/commands/history.rs"
+      ],
+      "evidence": [
+        "src-tauri/src/services/history_service.rs",
+        "formal/evidence/history.md",
+        "src/pages/__tests__/HistoryPage.test.tsx"
+      ],
+      "assumptions": "SQLite transactions and successful filesystem deletion are trusted primitives; five rows/audio classes and one lease; DB errors retain audio conservatively."
+    },
+    "windows": {
+      "obligation": "Only current show/hide generations publish; interactive state requires a window; exit signals capture and reaps child.",
+      "models": {
+        "WindowLifecycle": [
+          "NoStaleShow",
+          "NoStaleHide",
+          "InteractiveRequiresWindow",
+          "ExitStopsCapture",
+          "ChildEventuallyReaped"
+        ]
+      },
+      "implementation": [
+        "src-tauri/src/commands/window.rs",
+        "src-tauri/src/services/selection_service.rs",
+        "src-tauri/src/lib.rs"
+      ],
+      "evidence": [
+        "src-tauri/src/commands/window.rs#stale_show_cannot_overtake_a_new_session",
+        "src/lib/selectionAssistantWindowContract.test.ts",
+        "src/lib/trayInteractionContract.test.ts"
+      ],
+      "assumptions": "Tauri/Windows window placement and pixel geometry are native outcomes; selection drag/resize is reviewed native delegation, not a pixel-layout proof."
+    },
+    "subtitles": {
+      "obligation": "Payloads belong to the current session; late interim cannot undo final; stable/tentative text and offsets must validate.",
+      "models": {
+        "AppWorkflow": [
+          "SubtitleMatchesSession",
+          "SubtitleFinalStaysFinal"
+        ],
+        "RequestProtocols": [
+          "NoInvalidStreamPublication"
+        ]
+      },
+      "implementation": [
+        "src/pages/SubtitleOverlay.tsx",
+        "src-tauri/src/services/funasr_service/native_stream.rs"
+      ],
+      "evidence": [
+        "src/pages/__tests__/SubtitleOverlay.test.tsx",
+        "src-tauri/src/services/funasr_service/native_stream_tests.rs"
+      ],
+      "assumptions": "Text itself is abstract; driver/ASR model accuracy is external; rendering animations are covered by UI tests, not formal timing proofs."
+    },
+    "hotkeys": {
+      "obligation": "Registration roles stay unique; backend follows classification; duplicate presses and stale stop owners cannot stop newer recording.",
+      "models": {
+        "HotkeyLifecycle": [
+          "RegisteredLabelsAreUnique",
+          "BackendMatchesClassification",
+          "OldReleaseCannotStopNewRecording",
+          "PendingStartsSettle"
+        ],
+        "HotkeyPendingStart": [
+          "ReleasedOrSupersededStartCannotBind",
+          "OldFailureCannotClearNewIntent"
+        ],
+        "HotkeyRegistrationEpoch": [
+          "NoStaleDispatchPress",
+          "NoStaleNativePress",
+          "QueuedEventsSettle"
+        ],
+        "HotkeyRegistrationFailure": [
+          "NoRetiredGatePublished",
+          "NoOrphanNativeRegistration",
+          "LifecycleFailureIsReported",
+          "SetupSettles",
+          "RetiredNativeIdsDrain"
+        ]
+      },
+      "implementation": [
+        "src-tauri/src/commands/hotkey.rs",
+        "src-tauri/src/commands/hotkey/dispatch.rs",
+        "src-tauri/src/commands/audio.rs",
+        "src-tauri/src/commands/hotkey/start_owner.rs"
+      ],
+      "evidence": [
+        "src-tauri/src/commands/hotkey.rs",
+        "formal/evidence/hotkey.md",
+        "src-tauri/src/commands/hotkey.rs#registration_ids_are_not_reused_for_the_same_hotkey",
+        "src-tauri/src/commands/hotkey.rs#mode_changes_replace_gates_even_without_backend_migration",
+        "src-tauri/src/commands/hotkey/start_owner.rs#release_before_async_start_rejects_late_bind"
+      ],
+      "assumptions": "OS key delivery/debounce clock are inputs; all three event kinds get separate configurations; bounded representative registration permutations are explicit."
+    },
+    "transport": {
+      "obligation": "Request IDs are required; cancelled replies are ignored; streams validate identity, offsets, prefix, terminal output and sample bounds.",
+      "models": {
+        "RequestProtocols": [
+          "NoReplyWithoutIdentity",
+          "NoInvalidStreamPublication",
+          "SamplesStayBounded",
+          "RequestsSettle"
+        ],
+        "LlmTransport": [
+          "NoEmptySuccess",
+          "FiniteCapabilityProbing",
+          "HeartbeatCannotExtendBudget",
+          "RequestsSettle"
+        ]
+      },
+      "implementation": [
+        "src-tauri/src/services/funasr_service.rs",
+        "src-tauri/src/services/funasr_service/native_stream.rs",
+        "src-tauri/src/services/llm_client.rs",
+        "src-tauri/resources/server_common.py"
+      ],
+      "evidence": [
+        "src-tauri/src/services/funasr_service.rs#request_identity_tests",
+        "src-tauri/src/services/funasr_service/native_stream_tests.rs",
+        "src-tauri/src/services/llm_reasoning_negotiation_tests.rs"
+      ],
+      "assumptions": "Current bundled servers echo request_id; older incompatible engines need updating. Clock/scheduler/network timeout fairness required; providers may fail."
+    },
+    "updater": {
+      "obligation": "Update versions compare by the actual numeric parser; release opening accepts HTTPS GitHub hosts only and reports errors.",
+      "models": {
+        "SettingsContracts": [
+          "OpenUrl",
+          "NoExecutableUrl"
+        ],
+        "AppWorkflow": [
+          "CheckUpdate",
+          "OpenRelease"
+        ]
+      },
+      "implementation": [
+        "src-tauri/src/commands/updater.rs",
+        "src/hooks/useSystemSettings.ts"
+      ],
+      "evidence": [
+        "src-tauri/src/commands/updater.rs#validation_tests",
+        "src/pages/__tests__/SettingsPageExportPath.test.tsx"
+      ],
+      "assumptions": "GitHub release metadata and parsed version components are input partitions; numeric comparison is not a SemVer compliance claim."
+    },
+    "ui-preferences": {
+      "obligation": "Theme follows system only in system mode; autostart reports success only after an authoritative confirmation.",
+      "models": {
+        "UiPreferences": [
+          "ThemeResolvesCorrectly",
+          "NoUnconfirmedAutostartSuccess",
+          "ConfirmedAutostartMatchesPlugin",
+          "ToggleEventuallySettles"
+        ]
+      },
+      "implementation": [
+        "src/hooks/useTheme.ts",
+        "src/hooks/useSystemSettings.ts",
+        "src/main.tsx"
+      ],
+      "evidence": [
+        "src/components/settings/__tests__/P0SettingsSections.test.tsx",
+        "src/pages/__tests__/SettingsPageExportPath.test.tsx",
+        "formal/lean/StateContracts.lean"
+      ],
+      "assumptions": "localStorage/media query/Tauri autostart are platform primitives; visuals/accessibility need UI tests. Failed initial autostart read does not establish a known value."
+    }
+  },
+  "runs": {
+    "AppProfileRules": [
+      "AppProfileRules.cfg"
+    ],
+    "AppWorkflow": [
+      "AppWorkflow.cfg",
+      "AppWorkflowSpeech.cfg",
+      "AppWorkflowCloudSpeech.cfg",
+      "AppWorkflowSelection.cfg",
+      "AppWorkflowManagement.cfg",
+      "AppWorkflowEngineSpeech.cfg",
+      "AppWorkflowAssistantWeb.cfg",
+      "AppWorkflowSubtitles.cfg",
+      "AppWorkflowHistory.cfg"
+    ],
+    "AsyncSettings": [
+      "AsyncSettings.cfg"
+    ],
+    "CapturePipeline": [
+      "CapturePipeline.cfg"
+    ],
+    "ContextRouting": [
+      "ContextRouting.cfg"
+    ],
+    "EngineDownload": [
+      "EngineDownload.cfg"
+    ],
+    "HistoryRecords": [
+      "HistoryRecords.cfg"
+    ],
+    "HotkeyLifecycle": [
+      "HotkeyLifecycle.cfg",
+      "HotkeyLifecycleTranslation.cfg",
+      "HotkeyLifecycleAssistant.cfg",
+      "HotkeyLifecycleRegistration.cfg"
+    ],
+    "LlmTransport": [
+      "LlmTransport.cfg"
+    ],
+    "MicrophoneMonitor": [
+      "MicrophoneMonitor.cfg"
+    ],
+    "ModelDirectoryMigration": [
+      "ModelDirectoryMigration.cfg"
+    ],
+    "OAuthLifecycle": [
+      "OAuthLifecycle.cfg"
+    ],
+    "Personalization": [
+      "Personalization.cfg"
+    ],
+    "ProfilePersistence": [
+      "ProfilePersistence.cfg"
+    ],
+    "RecordingLifecycle": [
+      "RecordingLifecycle.cfg"
+    ],
+    "RequestProtocols": [
+      "RequestProtocols.cfg"
+    ],
+    "RuntimeConfiguration": [
+      "RuntimeConfiguration.cfg"
+    ],
+    "SettingsContracts": [
+      "SettingsContracts.cfg"
+    ],
+    "TaskOwnership": [
+      "TaskOwnership.cfg"
+    ],
+    "UiPreferences": [
+      "UiPreferences.cfg"
+    ],
+    "WindowLifecycle": [
+      "WindowLifecycle.cfg"
+    ],
+    "ProviderRequests": [
+      "ProviderRequests.cfg"
+    ],
+    "HotkeyPendingStart": [
+      "HotkeyPendingStart.cfg"
+    ],
+    "OAuthStorage": [
+      "OAuthStorage.cfg"
+    ],
+    "HotkeyRegistrationEpoch": [
+      "HotkeyRegistrationEpoch.cfg"
+    ],
+    "HotkeyRegistrationFailure": [
+      "HotkeyRegistrationFailure.cfg"
+    ],
+    "WebSearchKeys": [
+      "WebSearchKeys.cfg"
+    ],
+    "ProviderAuthSnapshot": [
+      "ProviderAuthSnapshot.cfg"
+    ],
+    "DownloadUiLifecycle": [
+      "DownloadUiLifecycle.cfg"
+    ],
+    "EventSubscriptionLifecycle": [
+      "EventSubscriptionLifecycle.cfg"
+    ]
+  },
+  "actions": {
+    "RecordingLifecycle": ["Start", "CancelStarting"],
+    "AppWorkflow": ["StopRecording", "StartAssistantChat", "CancelAssistantChat", "ReplaceSelection", "SearchSelection", "CheckUpdate", "OpenRelease"],
+    "MicrophoneMonitor": ["Begin", "Stop"],
+    "EngineDownload": ["Cancel", "Exit"],
+    "SettingsContracts": ["KeyWrite", "Preference", "ProviderEdit", "RemoveProvider", "OpenUrl"]
+  },
+  "negative": [
+    {
+      "name": "download-ui-stale-completion",
+      "model": "DownloadUiLifecycle",
+      "config": "DownloadUiLifecycleStale.cfg",
+      "invariant": "OldRequestCannotPublish"
+    },
+    {
+      "name": "recording-disposed-subscription",
+      "model": "EventSubscriptionLifecycle",
+      "config": "EventSubscriptionLifecycleLegacy.cfg",
+      "invariant": "NoDisposedEventEffects"
+    },
+    {
+      "name": "web-key-write-interleaving",
+      "model": "WebSearchKeys",
+      "config": "WebSearchKeysLegacy.cfg",
+      "invariant": "QuiescentKeysAgree"
+    },
+    {
+      "name": "web-key-stale-load",
+      "model": "WebSearchKeys",
+      "config": "WebSearchKeysStaleLoad.cfg",
+      "invariant": "NoStaleReadPublication"
+    },
+    {
+      "name": "provider-live-auth-mode",
+      "model": "ProviderAuthSnapshot",
+      "config": "ProviderAuthSnapshotMode.cfg",
+      "invariant": "CapturedAuthModeIsUsed"
+    },
+    {
+      "name": "catalog-mixed-account",
+      "model": "ProviderAuthSnapshot",
+      "config": "ProviderAuthSnapshotAccount.cfg",
+      "invariant": "CatalogAndKeyShareSession"
+    },
+    {
+      "name": "download-ui-retry-after-cancel",
+      "model": "DownloadUiLifecycle",
+      "config": "DownloadUiLifecycleCancel.cfg",
+      "invariant": "NoRetryAfterCancellation"
+    },
+    {
+      "name": "disposed-ui-listener",
+      "model": "DownloadUiLifecycle",
+      "config": "DownloadUiLifecycleDisposal.cfg",
+      "invariant": "DisposedListenerCannotAct"
+    },
+    {
+      "name": "hotkey-native-orphan",
+      "model": "HotkeyRegistrationFailure",
+      "config": "HotkeyRegistrationFailureOrphanLegacy.cfg",
+      "invariant": "NoOrphanNativeRegistration"
+    },
+    {
+      "name": "hotkey-rollback-retired-gate",
+      "model": "HotkeyRegistrationFailure",
+      "config": "HotkeyRegistrationFailureRollbackLegacy.cfg",
+      "invariant": "NoRetiredGatePublished"
+    },
+    {
+      "name": "hotkey-lifecycle-error-ignored",
+      "model": "HotkeyRegistrationFailure",
+      "config": "HotkeyRegistrationFailureErrorLegacy.cfg",
+      "invariant": "LifecycleFailureIsReported"
+    },
+    {
+      "name": "hotkey-mode-reuses-gate",
+      "model": "HotkeyRegistrationEpoch",
+      "config": "HotkeyRegistrationEpochModeLegacy.cfg",
+      "invariant": "NoStaleDispatchPress"
+    },
+    {
+      "name": "hotkey-native-id-reused",
+      "model": "HotkeyRegistrationEpoch",
+      "config": "HotkeyRegistrationEpochIdLegacy.cfg",
+      "invariant": "NoStaleNativePress"
+    },
+    {
+      "name": "task-old-owner",
+      "model": "TaskOwnership",
+      "config": "TaskOwnershipLegacy.cfg",
+      "invariant": "NewestInstalledOwnsSlot"
+    },
+    {
+      "name": "profile-old-save",
+      "model": "ProfilePersistence",
+      "config": "ProfilePersistenceLegacy.cfg",
+      "invariant": "LatestPendingWhenQueued"
+    },
+    {
+      "name": "oauth-old-login",
+      "model": "OAuthLifecycle",
+      "config": "OAuthLifecycleLegacy.cfg",
+      "invariant": "LogoutWins"
+    },
+    {
+      "name": "reply-without-id",
+      "model": "RequestProtocols",
+      "config": "RequestProtocolsLegacy.cfg",
+      "invariant": "NoReplyWithoutIdentity"
+    },
+    {
+      "name": "keyring-failure",
+      "model": "SettingsContracts",
+      "config": "SettingsContractsLegacy.cfg",
+      "invariant": "CredentialFailureIsReported"
+    },
+    {
+      "name": "monitor-late-start",
+      "model": "MicrophoneMonitor",
+      "config": "MicrophoneMonitorLegacy.cfg",
+      "invariant": "OnlyCurrentIdleStartPublishes"
+    },
+    {
+      "name": "user-correction-review",
+      "model": "Personalization",
+      "replace": [
+        "k \\in invalid /\\ s.corrections[k] # \"User\"",
+        "k \\in invalid"
+      ],
+      "invariant": "UserRulesSurviveAutomaticChanges"
+    },
+    {
+      "name": "heartbeat-idle-budget",
+      "model": "LlmTransport",
+      "replace": [
+        "LET nextIdle == r.idle",
+        "LET nextIdle == 0"
+      ],
+      "invariant": "HeartbeatCannotExtendBudget"
+    },
+    {
+      "name": "empty-llm-success",
+      "model": "LlmTransport",
+      "replace": [
+        "success == ok /\\ r.content > 0",
+        "success == ok"
+      ],
+      "invariant": "NoEmptySuccess"
+    },
+    {
+      "name": "theme-system-override",
+      "model": "UiPreferences",
+      "replace": [
+        "IF u.theme = \"System\" THEN dark ELSE @",
+        "dark"
+      ],
+      "invariant": "ThemeResolvesCorrectly"
+    },
+    {
+      "name": "subtitle-final-regression",
+      "model": "AppWorkflow",
+      "config": "AppWorkflowSubtitleNegative.cfg",
+      "replace": [
+        "session = app.subtitleSession /\\ app.subtitle # \"Final\"",
+        "session = app.subtitleSession"
+      ],
+      "invariant": "SubtitleFinalStaysFinal"
+    },
+    {
+      "name": "provider-auth-interleaving",
+      "model": "ProviderRequests",
+      "config": "ProviderRequestsLegacy.cfg",
+      "invariant": "CredentialOnlyGoesToItsProvider"
+    },
+    {
+      "name": "hotkey-release-before-start",
+      "model": "HotkeyPendingStart",
+      "config": "HotkeyPendingStartLegacy.cfg",
+      "invariant": "ReleasedOrSupersededStartCannotBind"
+    },
+    {
+      "name": "oauth-corrupt-storage",
+      "model": "OAuthStorage",
+      "config": "OAuthStorageLegacy.cfg",
+      "invariant": "InvalidMetadataCannotRestoreRefreshToken"
+    },
+    {
+      "name": "migration-current-directory",
+      "model": "ModelDirectoryMigration",
+      "replace": [
+        "allowed == d.config = \"Destination\" /\\ d.runtime = \"Destination\"",
+        "allowed == TRUE"
+      ],
+      "invariant": "NoDeleteBeforeSafeCommit"
+    },
+    {
+      "name": "app-rule-priority",
+      "model": "AppProfileRules",
+      "replace": [
+        "!.selected = First",
+        "!.selected = IF a.matches[2] THEN 2 ELSE First"
+      ],
+      "invariant": "FirstMatchingRuleWins"
+    },
+    {
+      "name": "history-live-references",
+      "model": "HistoryRecords",
+      "replace": [
+        "GC(audio) ==\n  /\\ audio \\in state.gcCandidates\n  /\\ state.audioPresent[audio]\n  /\\ ~References(state, audio)",
+        "GC(audio) ==\n  /\\ audio \\in state.gcCandidates\n  /\\ state.audioPresent[audio]\n  /\\ TRUE"
+      ],
+      "invariant": "ReferencedOrLeasedAudioRetained"
+    },
+    {
+      "name": "runtime-key-provider",
+      "model": "RuntimeConfiguration",
+      "replace": [
+        "s.saveTarget = Slot(s.engine, s.region)\n      THEN",
+        "TRUE\n      THEN"
+      ],
+      "invariant": "ActiveKeyComesFromActiveSlot"
+    },
+    {
+      "name": "settings-unmount-publication",
+      "model": "AsyncSettings",
+      "replace": [
+        "Current(i) == s.mounted /\\ s.auth /\\ s.request[i].generation = s.generation\n  /\\ s.request[i].context = s.context",
+        "Current(i) == s.auth /\\ s.request[i].context = s.context"
+      ],
+      "invariant": "NoPostUnmountPublication"
+    },
+    {
+      "name": "recording-cancelled-start",
+      "model": "RecordingLifecycle",
+      "replace": [
+        "IF s = current /\\ slot = \"Starting\" /\\ s \\notin cancelled\n        THEN LET e == Event(s, revision + 1, \"Recording\")",
+        "IF s = current\n        THEN LET e == Event(s, revision + 1, \"Recording\")"
+      ],
+      "invariant": "CancelledNeverActive"
+    },
+    {
+      "name": "download-early-release",
+      "model": "EngineDownload",
+      "replace": [
+        "  /\\ cancelRequested' = cancelRequested \\cup {slot}\n  /\\ UNCHANGED <<nextId, slot, running, exited, configEpoch>>",
+        "  /\\ cancelRequested' = cancelRequested \\cup {slot}\n  /\\ slot' = 0\n  /\\ UNCHANGED <<nextId, running, exited, configEpoch>>"
+      ],
+      "invariant": "RunningOwnsSlot"
+    },
+    {
+      "name": "screen-consent",
+      "model": "ContextRouting",
+      "replace": [
+        "!.screenAllowed = Screen(Override(s.screenOverride, s.screen), s.screenExplicit, s.jevScreen)",
+        "!.screenAllowed = TRUE"
+      ],
+      "invariant": "DisabledScreenStaysOff"
+    },
+    {
+      "name": "window-show-generation",
+      "model": "WindowLifecycle",
+      "replace": [
+        "current == ~w.exiting /\\ w.recording /\\ i = w.session /\\ w.show[i].generation = w.generation",
+        "current == TRUE"
+      ],
+      "invariant": "NoStaleShow"
+    },
+    {
+      "name": "hotkey-old-stop-owner",
+      "model": "HotkeyLifecycle",
+      "replace": [
+        "applies == before = request.session",
+        "applies == before # 0"
+      ],
+      "invariant": "OldReleaseCannotStopNewRecording"
+    },
+    {
+      "name": "late-native-buffer-write",
+      "model": "CapturePipeline",
+      "config": "CapturePipelineNegative.cfg",
+      "replace": [
+        "LateNativePrime(worker) ==\n  /\\ worker \\in lateWorkers\n  /\\ worker \\notin latePrimed\n  /\\ latePrimed' = latePrimed \\cup {worker}\n  /\\ UNCHANGED <<\n       sessionCounter, session, capturePhase, sessionDeviceChoice,\n       nativeDisabled, nativeWorkerSession, nativeWorkerPhase, nativeOutcome,\n       nativeDevice, acceptedSession, handoffCount, priming, samples,\n        cpalPhase, cpalDevice, lateWorkers,\n       selectedDevice, monitorPhase, monitorDeviceChoice, monitorDevice,\n       monitorMeter\n     >>\n\n",
+        "LateNativePrime(worker) ==\n  /\\ worker \\in lateWorkers\n  /\\ worker \\notin latePrimed\n  /\\ latePrimed' = latePrimed \\cup {worker}\n  /\\ samples' = AppendSamples(samples, \"native\", 1)\n  /\\ UNCHANGED <<\n       sessionCounter, session, capturePhase, sessionDeviceChoice,\n       nativeDisabled, nativeWorkerSession, nativeWorkerPhase, nativeOutcome,\n       nativeDevice, acceptedSession, handoffCount, priming,\n        cpalPhase, cpalDevice, lateWorkers,\n       selectedDevice, monitorPhase, monitorDeviceChoice, monitorDevice,\n       monitorMeter\n     >>\n\n"
+      ],
+      "invariant": "NativeSamplesRequireAcceptedWorker"
+    }
+  ],
+  "command_implementation": {
+    "commands::funasr::start_funasr": "src-tauri/src/commands/funasr.rs#fn start_funasr(",
+    "commands::funasr::restart_funasr": "src-tauri/src/commands/funasr.rs#fn restart_funasr(",
+    "commands::funasr::get_engine": "src-tauri/src/commands/funasr.rs#fn get_engine(",
+    "commands::funasr::set_engine": "src-tauri/src/commands/funasr.rs#fn set_engine(",
+    "commands::funasr::check_funasr_status": "src-tauri/src/commands/funasr.rs#fn check_funasr_status(",
+    "commands::funasr::check_model_files": "src-tauri/src/commands/funasr.rs#fn check_model_files(",
+    "commands::funasr::set_online_asr_endpoint": "src-tauri/src/commands/funasr.rs#fn set_online_asr_endpoint(",
+    "commands::funasr::get_online_asr_endpoint": "src-tauri/src/commands/funasr.rs#fn get_online_asr_endpoint(",
+    "commands::funasr::get_alibaba_asr_config": "src-tauri/src/commands/funasr.rs#fn get_alibaba_asr_config(",
+    "commands::funasr::set_alibaba_asr_model": "src-tauri/src/commands/funasr.rs#fn set_alibaba_asr_model(",
+    "commands::funasr::set_r2t2_config": "src-tauri/src/commands/funasr.rs#fn set_r2t2_config(",
+    "commands::funasr::transcribe_audio": "src-tauri/src/commands/funasr.rs#fn transcribe_audio(",
+    "commands::funasr::download_models": "src-tauri/src/commands/funasr.rs#fn download_models(",
+    "commands::funasr::cancel_model_download": "src-tauri/src/commands/funasr.rs#fn cancel_model_download(",
+    "commands::funasr::set_online_asr_api_key": "src-tauri/src/commands/funasr.rs#fn set_online_asr_api_key(",
+    "commands::funasr::get_online_asr_api_key": "src-tauri/src/commands/funasr.rs#fn get_online_asr_api_key(",
+    "commands::funasr::list_alibaba_asr_models": "src-tauri/src/commands/funasr.rs#fn list_alibaba_asr_models(",
+    "commands::funasr::get_models_dir": "src-tauri/src/commands/funasr.rs#fn get_models_dir(",
+    "commands::funasr::set_models_dir": "src-tauri/src/commands/funasr.rs#fn set_models_dir(",
+    "commands::funasr::pick_folder": "src-tauri/src/commands/funasr.rs#fn pick_folder(",
+    "commands::clipboard::copy_to_clipboard": "src-tauri/src/commands/clipboard.rs#fn copy_to_clipboard(",
+    "commands::clipboard::paste_text": "src-tauri/src/commands/clipboard.rs#fn paste_text(",
+    "commands::codex_oauth::login_openai_codex_oauth": "src-tauri/src/commands/codex_oauth.rs#fn login_openai_codex_oauth(",
+    "commands::codex_oauth::start_openai_codex_oauth_device_code": "src-tauri/src/commands/codex_oauth.rs#fn start_openai_codex_oauth_device_code(",
+    "commands::codex_oauth::complete_openai_codex_oauth_device_code": "src-tauri/src/commands/codex_oauth.rs#fn complete_openai_codex_oauth_device_code(",
+    "commands::codex_oauth::logout_openai_codex_oauth": "src-tauri/src/commands/codex_oauth.rs#fn logout_openai_codex_oauth(",
+    "commands::codex_oauth::get_openai_codex_oauth_status": "src-tauri/src/commands/codex_oauth.rs#fn get_openai_codex_oauth_status(",
+    "commands::grok_build_oauth::login_grok_build_oauth": "src-tauri/src/commands/grok_build_oauth.rs#fn login_grok_build_oauth(",
+    "commands::grok_build_oauth::start_grok_build_oauth_device_code": "src-tauri/src/commands/grok_build_oauth.rs#fn start_grok_build_oauth_device_code(",
+    "commands::grok_build_oauth::complete_grok_build_oauth_device_code": "src-tauri/src/commands/grok_build_oauth.rs#fn complete_grok_build_oauth_device_code(",
+    "commands::grok_build_oauth::logout_grok_build_oauth": "src-tauri/src/commands/grok_build_oauth.rs#fn logout_grok_build_oauth(",
+    "commands::grok_build_oauth::get_grok_build_oauth_status": "src-tauri/src/commands/grok_build_oauth.rs#fn get_grok_build_oauth_status(",
+    "commands::window::hide_main_window": "src-tauri/src/commands/window.rs#fn hide_main_window(",
+    "commands::window::show_subtitle_window": "src-tauri/src/commands/window.rs#fn show_subtitle_window(",
+    "commands::window::hide_subtitle_window": "src-tauri/src/commands/window.rs#fn hide_subtitle_window(",
+    "commands::hotkey::register_custom_hotkey": "src-tauri/src/commands/hotkey.rs#fn register_custom_hotkey(",
+    "commands::hotkey::register_translation_hotkey": "src-tauri/src/commands/hotkey.rs#fn register_translation_hotkey(",
+    "commands::hotkey::register_assistant_hotkey": "src-tauri/src/commands/hotkey.rs#fn register_assistant_hotkey(",
+    "commands::hotkey::unregister_all_hotkeys": "src-tauri/src/commands/hotkey.rs#fn unregister_all_hotkeys(",
+    "commands::hotkey::set_recording_mode": "src-tauri/src/commands/hotkey.rs#fn set_recording_mode(",
+    "commands::hotkey::get_hotkey_diagnostic": "src-tauri/src/commands/hotkey.rs#fn get_hotkey_diagnostic(",
+    "commands::audio::start_recording": "src-tauri/src/commands/audio.rs#fn start_recording(",
+    "commands::audio::stop_recording": "src-tauri/src/commands/audio.rs#fn stop_recording(",
+    "commands::audio::get_recording_snapshot": "src-tauri/src/commands/audio.rs#fn get_recording_snapshot(",
+    "commands::audio::test_microphone": "src-tauri/src/commands/audio.rs#fn test_microphone(",
+    "commands::audio::list_input_devices": "src-tauri/src/commands/audio.rs#fn list_input_devices(",
+    "commands::audio::set_input_device": "src-tauri/src/commands/audio.rs#fn set_input_device(",
+    "commands::audio::start_microphone_level_monitor": "src-tauri/src/commands/audio.rs#fn start_microphone_level_monitor(",
+    "commands::audio::stop_microphone_level_monitor": "src-tauri/src/commands/audio.rs#fn stop_microphone_level_monitor(",
+    "commands::audio::set_input_method": "src-tauri/src/commands/audio.rs#fn set_input_method(",
+    "commands::audio::set_sound_enabled": "src-tauri/src/commands/audio.rs#fn set_sound_enabled(",
+    "commands::ai_polish::set_ai_polish_config": "src-tauri/src/commands/ai_polish.rs#fn set_ai_polish_config(",
+    "commands::ai_polish::get_ai_polish_api_key": "src-tauri/src/commands/ai_polish.rs#fn get_ai_polish_api_key(",
+    "commands::ai_polish::set_ai_polish_api_key": "src-tauri/src/commands/ai_polish.rs#fn set_ai_polish_api_key(",
+    "commands::ai_polish::set_assistant_api_key": "src-tauri/src/commands/ai_polish.rs#fn set_assistant_api_key(",
+    "commands::ai_polish::get_assistant_api_key": "src-tauri/src/commands/ai_polish.rs#fn get_assistant_api_key(",
+    "commands::ai_polish::set_ai_polish_screen_context_enabled": "src-tauri/src/commands/ai_polish.rs#fn set_ai_polish_screen_context_enabled(",
+    "commands::ai_polish::set_screen_context_enabled": "src-tauri/src/commands/ai_polish.rs#fn set_screen_context_enabled(",
+    "commands::ai_polish::list_ai_models": "src-tauri/src/commands/ai_polish.rs#fn list_ai_models(",
+    "commands::jev::set_jev_config": "src-tauri/src/commands/jev.rs#fn set_jev_config(",
+    "commands::jev::set_jev_provider": "src-tauri/src/commands/jev.rs#fn set_jev_provider(",
+    "commands::jev::set_polish_mode": "src-tauri/src/commands/jev.rs#fn set_polish_mode(",
+    "commands::jev::set_jev_features": "src-tauri/src/commands/jev.rs#fn set_jev_features(",
+    "commands::jev::set_screen_context_mode": "src-tauri/src/commands/jev.rs#fn set_screen_context_mode(",
+    "commands::jev::set_web_search_mode": "src-tauri/src/commands/jev.rs#fn set_web_search_mode(",
+    "commands::jev::get_jev_api_key": "src-tauri/src/commands/jev.rs#fn get_jev_api_key(",
+    "commands::jev::set_jev_api_key": "src-tauri/src/commands/jev.rs#fn set_jev_api_key(",
+    "commands::profile::get_user_profile": "src-tauri/src/commands/profile.rs#fn get_user_profile(",
+    "commands::profile::set_history_settings": "src-tauri/src/commands/profile.rs#fn set_history_settings(",
+    "commands::profile::set_app_profile_rules": "src-tauri/src/commands/profile.rs#fn set_app_profile_rules(",
+    "commands::profile::add_hot_word": "src-tauri/src/commands/profile.rs#fn add_hot_word(",
+    "commands::profile::remove_hot_word": "src-tauri/src/commands/profile.rs#fn remove_hot_word(",
+    "commands::profile::export_user_profile": "src-tauri/src/commands/profile.rs#fn export_user_profile(",
+    "commands::profile::import_user_profile": "src-tauri/src/commands/profile.rs#fn import_user_profile(",
+    "commands::profile::submit_user_correction": "src-tauri/src/commands/profile.rs#fn submit_user_correction(",
+    "commands::profile::validate_corrections": "src-tauri/src/commands/profile.rs#fn validate_corrections(",
+    "commands::profile::remove_correction": "src-tauri/src/commands/profile.rs#fn remove_correction(",
+    "commands::profile::set_llm_provider_config": "src-tauri/src/commands/profile.rs#fn set_llm_provider_config(",
+    "commands::profile::set_screen_vision_config": "src-tauri/src/commands/profile.rs#fn set_screen_vision_config(",
+    "commands::profile::add_custom_provider": "src-tauri/src/commands/profile.rs#fn add_custom_provider(",
+    "commands::profile::update_custom_provider": "src-tauri/src/commands/profile.rs#fn update_custom_provider(",
+    "commands::profile::remove_custom_provider": "src-tauri/src/commands/profile.rs#fn remove_custom_provider(",
+    "commands::profile::get_llm_reasoning_support": "src-tauri/src/commands/profile.rs#fn get_llm_reasoning_support(",
+    "commands::profile::get_screen_vision_api_key": "src-tauri/src/commands/profile.rs#fn get_screen_vision_api_key(",
+    "commands::profile::set_screen_vision_api_key": "src-tauri/src/commands/profile.rs#fn set_screen_vision_api_key(",
+    "commands::profile::set_translation_target": "src-tauri/src/commands/profile.rs#fn set_translation_target(",
+    "commands::profile::set_translation_hotkey": "src-tauri/src/commands/profile.rs#fn set_translation_hotkey(",
+    "commands::profile::set_custom_prompt": "src-tauri/src/commands/profile.rs#fn set_custom_prompt(",
+    "commands::profile::set_polish_structure_level": "src-tauri/src/commands/profile.rs#fn set_polish_structure_level(",
+    "commands::profile::set_openai_fast_mode": "src-tauri/src/commands/profile.rs#fn set_openai_fast_mode(",
+    "commands::profile::set_correction_validation_config": "src-tauri/src/commands/profile.rs#fn set_correction_validation_config(",
+    "commands::updater::check_app_update": "src-tauri/src/commands/updater.rs#fn check_app_update(",
+    "commands::updater::open_app_release_page": "src-tauri/src/commands/updater.rs#fn open_app_release_page(",
+    "commands::assistant::set_assistant_hotkey": "src-tauri/src/commands/assistant.rs#fn set_assistant_hotkey(",
+    "commands::assistant::set_assistant_system_prompt": "src-tauri/src/commands/assistant.rs#fn set_assistant_system_prompt(",
+    "commands::assistant::set_assistant_screen_context_enabled": "src-tauri/src/commands/assistant.rs#fn set_assistant_screen_context_enabled(",
+    "commands::assistant::set_web_search_config": "src-tauri/src/commands/assistant.rs#fn set_web_search_config(",
+    "commands::assistant::continue_assistant_conversation": "src-tauri/src/commands/assistant.rs#fn continue_assistant_conversation(",
+    "commands::assistant::cancel_assistant_conversation": "src-tauri/src/commands/assistant.rs#fn cancel_assistant_conversation(",
+    "commands::assistant::retry_assistant_request": "src-tauri/src/commands/assistant.rs#fn retry_assistant_request(",
+    "commands::assistant::open_assistant_source": "src-tauri/src/commands/assistant.rs#fn open_assistant_source(",
+    "commands::assistant::set_web_search_api_key": "src-tauri/src/commands/assistant.rs#fn set_web_search_api_key(",
+    "commands::assistant::get_web_search_api_key": "src-tauri/src/commands/assistant.rs#fn get_web_search_api_key(",
+    "commands::selection::set_selection_assistant_config": "src-tauri/src/commands/selection.rs#fn set_selection_assistant_config(",
+    "commands::selection::set_selection_api_key": "src-tauri/src/commands/selection.rs#fn set_selection_api_key(",
+    "commands::selection::get_selection_api_key": "src-tauri/src/commands/selection.rs#fn get_selection_api_key(",
+    "commands::selection::resize_selection_window": "src-tauri/src/commands/selection.rs#fn resize_selection_window(",
+    "commands::selection::hide_selection_assistant": "src-tauri/src/commands/selection.rs#fn hide_selection_assistant(",
+    "commands::selection::start_selection_window_drag": "src-tauri/src/commands/selection.rs#fn start_selection_window_drag(",
+    "commands::selection::get_selection_overlay_state": "src-tauri/src/commands/selection.rs#fn get_selection_overlay_state(",
+    "commands::selection::copy_selection": "src-tauri/src/commands/selection.rs#fn copy_selection(",
+    "commands::selection::replace_selection": "src-tauri/src/commands/selection.rs#fn replace_selection(",
+    "commands::selection::search_selection": "src-tauri/src/commands/selection.rs#fn search_selection(",
+    "commands::selection::run_selection_action": "src-tauri/src/commands/selection.rs#fn run_selection_action(",
+    "commands::selection::cancel_selection_action": "src-tauri/src/commands/selection.rs#fn cancel_selection_action(",
+    "commands::history::list_transcription_history": "src-tauri/src/commands/history.rs#fn list_transcription_history(",
+    "commands::history::get_transcription_history_stats": "src-tauri/src/commands/history.rs#fn get_transcription_history_stats(",
+    "commands::history::delete_transcription_history": "src-tauri/src/commands/history.rs#fn delete_transcription_history(",
+    "commands::history::export_transcription_history": "src-tauri/src/commands/history.rs#fn export_transcription_history(",
+    "commands::history::reprocess_transcription_history": "src-tauri/src/commands/history.rs#fn reprocess_transcription_history("
+  }
+}

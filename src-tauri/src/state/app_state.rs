@@ -10,6 +10,7 @@ use tokio::process::{Child, ChildStdin, ChildStdout};
 use tokio::sync::oneshot;
 use tokio::sync::Mutex;
 
+use super::oauth_session::OAuthSessionState;
 use super::user_profile::{LlmProviderConfig, UserProfile};
 use crate::services::codex_oauth_service::OpenaiCodexOauthSession;
 use crate::services::grok_build_oauth_service::GrokBuildOauthSession;
@@ -296,6 +297,7 @@ pub struct RecordingState {
     pub pending_paste: Arc<parking_lot::Mutex<Vec<String>>>,
     pub selected_input_device_name: Arc<parking_lot::Mutex<Option<String>>>,
     pub microphone_level_monitor: Arc<parking_lot::Mutex<Option<MicrophoneLevelMonitor>>>,
+    pub microphone_level_monitor_generation: AtomicU64,
     pub subtitle_show_gen: AtomicU64,
 }
 
@@ -310,6 +312,7 @@ impl Default for RecordingState {
             pending_paste: Default::default(),
             selected_input_device_name: Default::default(),
             microphone_level_monitor: Default::default(),
+            microphone_level_monitor_generation: AtomicU64::new(0),
             subtitle_show_gen: AtomicU64::new(0),
         }
     }
@@ -386,10 +389,11 @@ pub struct ProfileState {
     pub ai_polish_enabled: Arc<AtomicBool>,
     pub ai_polish_api_key: Arc<parking_lot::Mutex<String>>,
     pub assistant_api_key: Arc<parking_lot::Mutex<String>>,
-    pub openai_codex_oauth_session: Arc<parking_lot::Mutex<Option<OpenaiCodexOauthSession>>>,
-    pub grok_build_oauth_session: Arc<parking_lot::Mutex<Option<GrokBuildOauthSession>>>,
+    pub openai_codex_oauth_session: OAuthSessionState<OpenaiCodexOauthSession>,
+    pub grok_build_oauth_session: OAuthSessionState<GrokBuildOauthSession>,
     pub online_asr_api_key: Arc<parking_lot::Mutex<String>>,
     pub web_search_api_keys: Arc<parking_lot::Mutex<HashMap<String, String>>>,
+    web_search_key_operation: parking_lot::Mutex<()>,
     pub assistant_image_support_cache: Arc<parking_lot::Mutex<HashMap<String, bool>>>,
     pub ai_polish_stream_started_sessions: Arc<parking_lot::Mutex<HashSet<u64>>>,
 }
@@ -536,13 +540,6 @@ impl AppState {
         f(&self.profile.user_profile.lock())
     }
 
-    /// 修改 profile 并返回克隆（用于需要持久化的场景）
-    pub fn update_profile<R>(&self, f: impl FnOnce(&mut UserProfile) -> R) -> (R, UserProfile) {
-        let mut guard = self.profile.user_profile.lock();
-        let result = f(&mut guard);
-        (result, guard.clone())
-    }
-
     /// 修改 profile，不返回克隆（无需持久化时使用）
     pub fn update_profile_mut<R>(&self, f: impl FnOnce(&mut UserProfile) -> R) -> R {
         f(&mut self.profile.user_profile.lock())
@@ -556,16 +553,8 @@ impl AppState {
         self.with_profile(|p| p.llm_provider.clone())
     }
 
-    pub fn read_ai_polish_api_key(&self) -> String {
-        self.profile.ai_polish_api_key.lock().clone()
-    }
-
     pub fn set_ai_polish_api_key(&self, api_key: impl Into<String>) {
         *self.profile.ai_polish_api_key.lock() = api_key.into();
-    }
-
-    pub fn read_assistant_api_key(&self) -> String {
-        self.profile.assistant_api_key.lock().clone()
     }
 
     pub fn set_assistant_api_key(&self, api_key: impl Into<String>) {
@@ -573,19 +562,19 @@ impl AppState {
     }
 
     pub fn read_openai_codex_oauth_session(&self) -> Option<OpenaiCodexOauthSession> {
-        self.profile.openai_codex_oauth_session.lock().clone()
+        self.profile.openai_codex_oauth_session.read()
     }
 
-    pub fn set_openai_codex_oauth_session(&self, session: Option<OpenaiCodexOauthSession>) {
-        *self.profile.openai_codex_oauth_session.lock() = session;
+    pub fn openai_codex_oauth_state(&self) -> &OAuthSessionState<OpenaiCodexOauthSession> {
+        &self.profile.openai_codex_oauth_session
     }
 
     pub fn read_grok_build_oauth_session(&self) -> Option<GrokBuildOauthSession> {
-        self.profile.grok_build_oauth_session.lock().clone()
+        self.profile.grok_build_oauth_session.read()
     }
 
-    pub fn set_grok_build_oauth_session(&self, session: Option<GrokBuildOauthSession>) {
-        *self.profile.grok_build_oauth_session.lock() = session;
+    pub fn grok_build_oauth_state(&self) -> &OAuthSessionState<GrokBuildOauthSession> {
+        &self.profile.grok_build_oauth_session
     }
 
     pub fn read_online_asr_api_key(&self) -> String {
@@ -603,6 +592,11 @@ impl AppState {
             .get(provider)
             .cloned()
             .unwrap_or_default()
+    }
+
+    pub fn with_web_search_key_operation<R>(&self, operation: impl FnOnce() -> R) -> R {
+        let _operation = self.profile.web_search_key_operation.lock();
+        operation()
     }
 
     pub fn set_web_search_api_key(&self, provider: impl Into<String>, api_key: impl Into<String>) {

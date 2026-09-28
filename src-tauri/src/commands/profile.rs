@@ -74,11 +74,16 @@ async fn extract_corrections_via_llm(
     before: &str,
     after: &str,
 ) -> Vec<(String, String)> {
-    let api_key = match codex_oauth_service::resolve_api_key_for_provider(
+    let config = state.llm_provider_config();
+    let endpoint = llm_provider::endpoint_for_config(&config);
+    let manual_key = llm_provider::load_api_key_for_provider(app_handle, &endpoint.provider);
+    let api_key = match codex_oauth_service::resolve_api_key_for_provider_with_auth_mode(
         app_handle,
         state,
-        &state.active_llm_provider(),
-        &state.read_ai_polish_api_key(),
+        &endpoint.provider,
+        &manual_key,
+        config.openai_auth_mode,
+        config.xai_auth_mode,
     )
     .await
     {
@@ -91,9 +96,6 @@ async fn extract_corrections_via_llm(
     if api_key.is_empty() {
         return Vec::new();
     }
-
-    let config = state.llm_provider_config();
-    let endpoint = llm_provider::endpoint_for_config(&config);
 
     let prompt = if let Some(raw) = raw_original.filter(|value| !value.trim().is_empty()) {
         format!(
@@ -420,8 +422,7 @@ pub async fn set_screen_vision_api_key(
         return Err("视觉模型供应商不能为空".to_string());
     }
     let keyring_user = llm_provider::keyring_user_for_provider(provider);
-    llm_provider::save_or_delete_api_key(&app_handle, &keyring_user, api_key.trim());
-    Ok(())
+    llm_provider::save_or_delete_api_key(&app_handle, &keyring_user, api_key.trim())
 }
 
 #[tauri::command]
@@ -778,11 +779,11 @@ pub async fn import_user_profile(
 ) -> Result<(), String> {
     let imported: UserProfile =
         serde_json::from_str(&json_data).map_err(|e| format!("解析画像数据失败: {}", e))?;
-    let (_, profile) = state.update_profile(|profile| {
+    state.update_profile_mut(|profile| {
         *profile = imported;
         profile_service::normalize_profile(profile);
     });
-    profile_service::save_profile_async(&profile)
+    profile_service::save_profile_async(state.inner())
         .await
         .map_err(|e| format!("保存用户画像失败: {}", e))?;
     llm_provider::sync_runtime_api_key(&app_handle, state.inner());
@@ -836,7 +837,16 @@ pub async fn run_correction_validation(
     } else {
         llm_provider::endpoint_for_config(&config)
     };
-    let api_key = llm_provider::load_api_key_for_provider(app_handle, &endpoint.provider);
+    let manual_api_key = llm_provider::load_api_key_for_provider(app_handle, &endpoint.provider);
+    let api_key = codex_oauth_service::resolve_api_key_for_provider_with_auth_mode(
+        app_handle,
+        state,
+        &endpoint.provider,
+        &manual_api_key,
+        config.openai_auth_mode,
+        config.xai_auth_mode,
+    )
+    .await?;
     if api_key.is_empty() {
         return Err("未配置 API Key，无法审核纠错规则".into());
     }

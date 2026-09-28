@@ -63,10 +63,26 @@ fn peak_to_meter(peak: u32) -> u32 {
     ((peak.min(32767) as f32 / 32767.0) * 1000.0).round() as u32
 }
 
+fn monitor_start_is_current(
+    current_generation: u64,
+    requested_generation: u64,
+    recording_active: bool,
+) -> bool {
+    current_generation == requested_generation && !recording_active
+}
+
 // ---------- 麦克风测试 / 预览 ----------
 
 pub fn stop_microphone_level_monitor(state: &AppState) {
-    if let Some(mut m) = state.recording.microphone_level_monitor.lock().take() {
+    let old_monitor = {
+        let mut monitor = state.recording.microphone_level_monitor.lock();
+        state
+            .recording
+            .microphone_level_monitor_generation
+            .fetch_add(1, Ordering::AcqRel);
+        monitor.take()
+    };
+    if let Some(mut m) = old_monitor {
         m.stop_flag.store(true, Ordering::Relaxed);
         if let Some(h) = m.handle.take() {
             let _ = h.join();
@@ -81,6 +97,21 @@ pub fn start_microphone_level_monitor(
     use cpal::traits::StreamTrait;
 
     stop_microphone_level_monitor(state);
+
+    // Reserve and publish under the same lock order as recording startup. Stop
+    // invalidates reservations even when the worker has not published yet.
+    let requested_generation = {
+        let recording = state.recording.recording.lock();
+        let _monitor = state.recording.microphone_level_monitor.lock();
+        if recording.is_some() {
+            return Err(AppError::Audio("录音期间无法启动麦克风预览".into()));
+        }
+        state
+            .recording
+            .microphone_level_monitor_generation
+            .fetch_add(1, Ordering::AcqRel)
+            + 1
+    };
 
     let (device, device_name) =
         resolve_input_device(state.selected_input_device_name().as_deref())?;
@@ -169,7 +200,23 @@ pub fn start_microphone_level_monitor(
         Err(_) => return Err(AppError::Audio("麦克风预览线程未返回结果".into())),
     }
 
-    *state.recording.microphone_level_monitor.lock() = Some(MicrophoneLevelMonitor {
+    let recording = state.recording.recording.lock();
+    let mut monitor = state.recording.microphone_level_monitor.lock();
+    if !monitor_start_is_current(
+        state
+            .recording
+            .microphone_level_monitor_generation
+            .load(Ordering::Acquire),
+        requested_generation,
+        recording.is_some(),
+    ) {
+        drop(monitor);
+        drop(recording);
+        stop_flag.store(true, Ordering::Release);
+        let _ = handle.join();
+        return Err(AppError::Audio("麦克风预览启动请求已过期".into()));
+    }
+    *monitor = Some(MicrophoneLevelMonitor {
         stop_flag,
         handle: Some(handle),
     });
@@ -216,5 +263,17 @@ pub fn test_microphone_sync(selected_device_name: Option<String>) -> Result<Stri
         Ok(format!("麦克风正常 ({})", device_name))
     } else {
         Ok(format!("麦克风已连接但未检测到音频数据 ({})", device_name))
+    }
+}
+
+#[cfg(test)]
+mod lifecycle_tests {
+    use super::monitor_start_is_current;
+
+    #[test]
+    fn stop_and_new_recording_reject_late_monitor_start() {
+        assert!(!monitor_start_is_current(2, 1, false));
+        assert!(!monitor_start_is_current(1, 1, true));
+        assert!(monitor_start_is_current(1, 1, false));
     }
 }

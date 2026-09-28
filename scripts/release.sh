@@ -145,6 +145,7 @@ run_local_checks() {
     uv run --no-sync python -m compileall -q scripts src-tauri/resources
     uv run --no-sync python -m unittest discover -s src-tauri/resources -p "test_*.py"
     uv run --no-sync python scripts/test_build_engine_atomicity.py
+    uv run --no-sync python scripts/test_release_ci.py
 
     cargo fmt --manifest-path "$CARGO_TOML" --all -- --check
     cargo clippy --manifest-path "$CARGO_TOML" --all-targets --locked -- -D warnings
@@ -272,7 +273,7 @@ wait_for_ci() {
     [[ "$run_head" == "$candidate_sha" ]] || fail "CI run 的 headSha 与候选提交不一致"
     [[ "$run_conclusion" == "success" ]] || fail "CI 未成功: $run_conclusion"
 
-    for required_job in Frontend Python Rust; do
+    for required_job in Frontend Python Rust "Application formal contracts"; do
         job_conclusion="$(
             gh run view "$run_id" \
                 --json jobs \

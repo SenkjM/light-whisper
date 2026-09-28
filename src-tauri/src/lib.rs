@@ -153,18 +153,21 @@ pub fn run() {
                     else {
                         continue;
                     };
-                    if let Some(ws_key) = app_handle
-                        .keyring()
-                        .get_password("light-whisper", keyring_user)
-                        .ok()
-                        .flatten()
-                        .filter(|key| !key.is_empty())
-                    {
-                        let cache_key =
-                            commands::assistant::web_search_provider_cache_key(&search_provider);
-                        state.set_web_search_api_key(cache_key, ws_key);
-                        log::info!("已从密钥环加载联网搜索 API Key ({})", cache_key);
-                    }
+                    state.with_web_search_key_operation(|| {
+                        if let Some(ws_key) = app_handle
+                            .keyring()
+                            .get_password("light-whisper", keyring_user)
+                            .ok()
+                            .flatten()
+                            .filter(|key| !key.is_empty())
+                        {
+                            let cache_key = commands::assistant::web_search_provider_cache_key(
+                                &search_provider,
+                            );
+                            state.set_web_search_api_key(cache_key, ws_key);
+                            log::info!("已从密钥环加载联网搜索 API Key ({})", cache_key);
+                        }
+                    });
                 }
 
                 if services::codex_oauth_service::sync_runtime_session(&app_handle, state.inner())
@@ -447,24 +450,25 @@ fn spawn_profile_maintenance(app_handle: tauri::AppHandle) {
         loop {
             interval.tick().await;
 
-            let profile_to_save = {
+            let should_save_profile = {
                 let state = app_handle.state::<AppState>();
-                let (cleanup, profile) =
-                    state.update_profile(services::profile_service::cleanup_profile);
+                let cleanup = state.update_profile_mut(services::profile_service::cleanup_profile);
                 if cleanup.removed_hot_words > 0 || cleanup.removed_corrections > 0 {
                     log::info!(
                         "定期画像清理完成：热词移除 {} 条，纠错移除 {} 条",
                         cleanup.removed_hot_words,
                         cleanup.removed_corrections
                     );
-                    Some(profile)
+                    true
                 } else {
-                    None
+                    false
                 }
             };
 
-            if let Some(profile) = profile_to_save {
-                if let Err(err) = services::profile_service::save_profile_async(&profile).await {
+            if should_save_profile {
+                let state = app_handle.state::<AppState>();
+                if let Err(err) = services::profile_service::save_profile_async(state.inner()).await
+                {
                     log::warn!("定期热词清理后保存用户画像失败: {}", err);
                 }
             }

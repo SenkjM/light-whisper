@@ -33,20 +33,25 @@ pub async fn set_ai_polish_config(
     enabled: bool,
     api_key: String,
 ) -> Result<(), String> {
+    update_ai_polish_api_key(&app_handle, state.inner(), api_key)?;
     state
         .profile
         .ai_polish_enabled
         .store(enabled, Ordering::Release);
 
-    update_ai_polish_api_key(&app_handle, state.inner(), api_key);
     log::info!("AI polish enabled state updated: {}", enabled);
     Ok(())
 }
 
-fn update_ai_polish_api_key(app_handle: &tauri::AppHandle, state: &AppState, api_key: String) {
+fn update_ai_polish_api_key(
+    app_handle: &tauri::AppHandle,
+    state: &AppState,
+    api_key: String,
+) -> Result<(), String> {
     let provider = state.active_llm_provider();
     let keyring_user = llm_provider::keyring_user_for_provider(&provider);
 
+    llm_provider::save_or_delete_api_key(app_handle, &keyring_user, &api_key)?;
     state.set_ai_polish_api_key(api_key.clone());
 
     // 若助手与润色共享 provider，同步助手缓存
@@ -55,7 +60,7 @@ fn update_ai_polish_api_key(app_handle: &tauri::AppHandle, state: &AppState, api
         state.set_assistant_api_key(api_key.clone());
     }
 
-    llm_provider::save_or_delete_api_key(app_handle, &keyring_user, &api_key);
+    Ok(())
 }
 
 /// Saving a credential must not overwrite a concurrently selected processing mode.
@@ -65,8 +70,7 @@ pub async fn set_ai_polish_api_key(
     state: tauri::State<'_, AppState>,
     api_key: String,
 ) -> Result<(), String> {
-    update_ai_polish_api_key(&app_handle, state.inner(), api_key);
-    Ok(())
+    update_ai_polish_api_key(&app_handle, state.inner(), api_key)
 }
 
 #[tauri::command]
@@ -374,7 +378,7 @@ fn cached_codex_fallback(
 fn codex_models_auth_context(
     provider: &str,
     resolved_api_key: &str,
-    current_session_token: Option<codex_oauth_service::ChatgptBearerToken>,
+    resolved_session_token: Option<codex_oauth_service::ChatgptBearerToken>,
 ) -> (Option<codex_oauth_service::ChatgptBearerToken>, bool) {
     if provider != "openai" || !codex_oauth_service::is_oauth_origin_auth(resolved_api_key) {
         return (None, false);
@@ -384,7 +388,7 @@ fn codex_models_auth_context(
         codex_oauth_service::decode_chatgpt_bearer_token(resolved_api_key);
     let inference_uses_chatgpt_backend = token_from_resolved_key.is_some();
     (
-        current_session_token.or(token_from_resolved_key),
+        token_from_resolved_key.or(resolved_session_token),
         inference_uses_chatgpt_backend,
     )
 }
@@ -401,15 +405,17 @@ pub async fn list_ai_models(
     openai_auth_mode: Option<OpenaiAuthMode>,
     xai_auth_mode: Option<XaiAuthMode>,
 ) -> Result<AiModelListPayload, String> {
-    let api_key = codex_oauth_service::resolve_api_key_for_provider_with_auth_mode(
+    let config = state.llm_provider_config();
+    let auth = codex_oauth_service::resolve_provider_auth_with_auth_mode(
         &app_handle,
         state.inner(),
         &provider,
         &api_key,
-        openai_auth_mode,
-        xai_auth_mode,
+        openai_auth_mode.or(config.openai_auth_mode),
+        xai_auth_mode.or(config.xai_auth_mode),
     )
     .await?;
+    let api_key = auth.api_key;
     if api_key.is_empty() {
         if provider == "xai" {
             return Err("请先填写 API Key 或完成 Grok Build 登录".to_string());
@@ -417,13 +423,9 @@ pub async fn list_ai_models(
         return Err("请先填写 API Key 或完成 OpenAI Codex 登录".to_string());
     }
 
-    let (chatgpt_token, inference_uses_chatgpt_backend) = codex_models_auth_context(
-        &provider,
-        &api_key,
-        codex_oauth_service::current_chatgpt_bearer_token(state.inner()),
-    );
+    let (chatgpt_token, inference_uses_chatgpt_backend) =
+        codex_models_auth_context(&provider, &api_key, auth.chatgpt_token);
 
-    let config = state.llm_provider_config();
     let is_anthropic = config
         .custom_providers
         .iter()
@@ -683,6 +685,23 @@ mod tests {
     }
 
     #[test]
+    fn resolved_catalog_bearer_is_not_replaced_by_a_new_login() {
+        let account_a = codex_oauth_service::ChatgptBearerToken {
+            access_token: "account-a-token".into(),
+            account_id: Some("account-a".into()),
+        };
+        let account_b = codex_oauth_service::ChatgptBearerToken {
+            access_token: "account-b-token".into(),
+            account_id: Some("account-b".into()),
+        };
+        let key = codex_oauth_service::encode_chatgpt_bearer_token(&account_a).unwrap();
+        let (token, _) = codex_models_auth_context("openai", &key, Some(account_b));
+        let token = token.unwrap();
+        assert_eq!(token.access_token, account_a.access_token);
+        assert_eq!(token.account_id, account_a.account_id);
+    }
+
+    #[test]
     fn codex_models_url_identifies_the_calling_client() {
         assert_eq!(
             codex_models_source_url(),
@@ -809,9 +828,8 @@ pub async fn set_assistant_api_key(
     let provider = state.with_profile(|p| p.llm_provider.resolve_assistant_provider());
     let keyring_user = llm_provider::keyring_user_for_provider(&provider);
 
+    llm_provider::save_or_delete_api_key(&app_handle, &keyring_user, &api_key)?;
     state.set_assistant_api_key(api_key.clone());
-
-    llm_provider::save_or_delete_api_key(&app_handle, &keyring_user, &api_key);
 
     // 若与润色共享 provider，同步润色缓存
     let polish_provider = state.active_llm_provider();

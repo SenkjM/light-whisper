@@ -30,8 +30,7 @@ pub async fn logout_openai_codex_oauth(
     app_handle: tauri::AppHandle,
     state: tauri::State<'_, AppState>,
 ) -> Result<(), String> {
-    codex_oauth_service::logout(&app_handle, state.inner());
-    Ok(())
+    codex_oauth_service::logout(&app_handle, state.inner())
 }
 
 #[tauri::command]

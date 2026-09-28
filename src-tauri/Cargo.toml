@@ -54,6 +54,7 @@ tokio-stream = "0.1"
 
 # 系统密钥环（安全存储 API Key）
 tauri-plugin-keyring = "0.1"
+keyring = "3.6.3"
 
 # 错误处理
 thiserror = "2"

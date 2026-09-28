@@ -1480,18 +1480,56 @@ pub fn build_auth_headers(
 }
 
 /// 保存或删除 API Key：非空则写入密钥环，空则删除
-pub fn save_or_delete_api_key(app_handle: &tauri::AppHandle, keyring_user: &str, api_key: &str) {
+pub fn save_or_delete_api_key(
+    app_handle: &tauri::AppHandle,
+    keyring_user: &str,
+    api_key: &str,
+) -> Result<(), String> {
     if !api_key.is_empty() {
-        if let Err(e) = app_handle
-            .keyring()
-            .set_password(KEYRING_SERVICE, keyring_user, api_key)
-        {
-            log::warn!("保存 API Key 到密钥环失败: {e}");
-        }
+        keyring_write_result(app_handle.keyring().set_password(
+            KEYRING_SERVICE,
+            keyring_user,
+            api_key,
+        ))
     } else {
-        let _ = app_handle
-            .keyring()
-            .delete_password(KEYRING_SERVICE, keyring_user);
+        keyring_delete_result(
+            app_handle
+                .keyring()
+                .delete_password(KEYRING_SERVICE, keyring_user),
+        )
+    }
+}
+
+fn keyring_write_result(result: keyring::Result<()>) -> Result<(), String> {
+    result.map_err(|_| "无法保存 API Key 到密钥环".to_string())
+}
+
+pub(crate) fn keyring_delete_result(result: keyring::Result<()>) -> Result<(), String> {
+    match result {
+        Ok(()) | Err(keyring::Error::NoEntry) => Ok(()),
+        Err(_) => Err("无法从密钥环删除 API Key".to_string()),
+    }
+}
+
+#[cfg(test)]
+mod credential_persistence_tests {
+    use super::{keyring_delete_result, keyring_write_result};
+
+    #[test]
+    fn failed_key_write_is_reported_without_exposing_payload() {
+        let result = keyring_write_result(Err(keyring::Error::BadEncoding(
+            b"FAKE_TEST_VALUE".to_vec(),
+        )));
+        let error = result.expect_err("credential storage failure must reach the caller");
+        assert!(!error.contains("FAKE_TEST_VALUE"));
+        assert!(keyring_write_result(Ok(())).is_ok());
+    }
+
+    #[test]
+    fn missing_key_delete_is_idempotent_but_real_failures_are_reported() {
+        assert!(keyring_delete_result(Err(keyring::Error::NoEntry)).is_ok());
+        assert!(keyring_delete_result(Ok(())).is_ok());
+        assert!(keyring_delete_result(Err(keyring::Error::BadEncoding(vec![0xff]))).is_err());
     }
 }
 

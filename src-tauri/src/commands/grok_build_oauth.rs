@@ -31,8 +31,7 @@ pub async fn logout_grok_build_oauth(
     app_handle: tauri::AppHandle,
     state: tauri::State<'_, AppState>,
 ) -> Result<(), String> {
-    grok_build_oauth_service::logout(&app_handle, state.inner());
-    Ok(())
+    grok_build_oauth_service::logout(&app_handle, state.inner())
 }
 
 #[tauri::command]

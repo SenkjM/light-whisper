@@ -28,6 +28,29 @@ beforeEach(() => {
   api.setOnlineAsrEndpoint.mockResolvedValue({ region: "domestic", url: "https://new.example" });
 });
 describe("online ASR credential ownership", () => {
+  it("keeps a newer selected model when the initial config read arrives late", async () => {
+    const initial = deferred<{model: string; models: string[]}>();
+    api.getAlibabaAsrConfig.mockReturnValueOnce(initial.promise);
+    api.setAlibabaAsrModel.mockResolvedValue(undefined);
+    const { result } = await setup("alibaba-asr");
+    await act(async () => { await result.current.handleAlibabaAsrModelSelect("new-model"); });
+    await act(async () => { initial.resolve({model: "old-model", models: ["old-model"]}); });
+    expect(result.current.alibabaAsrModel).toBe("new-model");
+  });
+
+  it("ignores an older model catalog finishing after a newer refresh", async () => {
+    const { result } = await setup("alibaba-asr");
+    const old = deferred<{models: string[]; source: "live"}>();
+    api.listAlibabaAsrModels.mockReturnValueOnce(old.promise);
+    let pending!: Promise<void>;
+    act(() => { pending = result.current.refreshAlibabaModels(); });
+    api.listAlibabaAsrModels.mockResolvedValueOnce({models: ["new-model"], source: "live"});
+    await act(async () => { await result.current.refreshAlibabaModels(); });
+    await act(async () => { old.resolve({models: ["old-model"], source: "live"}); await pending; });
+    expect(result.current.alibabaAsrModels).toEqual(["new-model"]);
+    expect(result.current.alibabaAsrModelsLoading).toBe(false);
+  });
+
   it("clears the previous provider key and reports a failed read after switching", async () => {
     const { result } = await setup();
     api.getOnlineAsrApiKey.mockRejectedValueOnce(new Error("keyring unavailable"));

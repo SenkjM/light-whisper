@@ -61,7 +61,9 @@ function useTauriEvent<T>(event: string, handler: (payload: T) => void) {
     let unlisten: UnlistenFn | null = null;
     let disposed = false;
 
-    listen<T>(event, (e) => handler(e.payload))
+    listen<T>(event, (e) => {
+      if (!disposed) handler(e.payload);
+    })
       .then((fn) => {
         if (disposed) fn();
         else unlisten = fn;
