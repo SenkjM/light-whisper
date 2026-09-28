@@ -724,8 +724,10 @@
       "commands": [
         "uv run --no-sync python -m compileall -q scripts src-tauri/resources",
         "uv run --no-sync python -m unittest discover -s src-tauri/resources -p test_*.py",
-        "uv run --no-sync python scripts/test_build_engine_atomicity.py"
-      ]
+        "uv run --no-sync python scripts/test_build_engine_atomicity.py",
+        "uv run --no-sync python scripts/test_release_ci.py"
+      ],
+      "release_gate_tests": 5
     },
     "rustfmt": "passed",
     "clippy_warnings_denied": "passed",
