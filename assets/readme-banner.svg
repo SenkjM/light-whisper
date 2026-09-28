@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1100" height="340" viewBox="0 0 1100 340" fill="none" role="img" aria-labelledby="title description">
+  <title id="title">Light-Whisper</title>
+  <desc id="description">Voice to text, right where you work. A brand illustration using the app's warm copper icon, not an interface screenshot.</desc>
+  <defs>
+    <linearGradient id="copper" x1="750" y1="90" x2="930" y2="270" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#D0744E"/>
+      <stop offset="1" stop-color="#A44E2E"/>
+    </linearGradient>
+  </defs>
+  <rect width="1100" height="340" rx="20" fill="#F5F3EF"/>
+  <path d="M720 0H1080Q1100 0 1100 20V320Q1100 340 1080 340H720Z" fill="#EEE9E0"/>
+  <path d="M720 0V340" stroke="#E1DACE"/>
+  <circle cx="907" cy="170" r="142" stroke="#DDD4C5"/>
+  <circle cx="907" cy="170" r="116" stroke="#DDD4C5"/>
+  <rect x="817" y="80" width="180" height="180" rx="48" fill="url(#copper)"/>
+  <g transform="translate(804.14 67.14) scale(.401786)">
+    <circle cx="172" cy="256" r="22" fill="#FDFCFB"/>
+    <path d="M230 176C320 176 376 212 384 256C376 300 320 336 230 336" stroke="#FDFCFB" stroke-width="24" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M240 208C300 208 336 232 344 256C336 280 300 304 240 304" stroke="#FDFCFB" stroke-width="20" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M250 236C284 236 304 246 312 256C304 266 284 276 250 276" stroke="#FDFCFB" stroke-width="16" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+  <g font-family="Segoe UI, Helvetica, Arial, sans-serif">
+    <text x="54" y="64" font-size="20" font-weight="600" letter-spacing="-.4" fill="#AE5630">Light-Whisper</text>
+    <text x="51" y="144" font-size="54" font-weight="650" letter-spacing="-2" fill="#1A1A18">Voice to text.</text>
+    <text x="51" y="209" font-size="54" font-weight="650" letter-spacing="-2" fill="#1A1A18">Right where you work.</text>
+    <text x="54" y="287" font-size="14" font-weight="600" letter-spacing="1.6" fill="#5A5854">LOCAL + CLOUD</text>
+    <circle cx="209" cy="282" r="2" fill="#AE5630"/>
+    <text x="225" y="287" font-size="14" font-weight="600" letter-spacing="1.6" fill="#5A5854">WINDOWS</text>
+  </g>
+</svg>
