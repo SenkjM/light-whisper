@@ -50,9 +50,9 @@ Both local engines run on Windows without WSL. Models download separately and ar
 
 AI polish and the assistant can share a model or use separate providers and models. Presets include OpenAI, xAI, DeepSeek, Cerebras and SiliconFlow; custom providers support OpenAI-compatible and Anthropic formats. The app supports ChatGPT/Codex and Grok Build account login, subject to account access. The Codex model picker reads the authenticated upstream catalog and filters entries for the active inference route.
 
-AI polish, screen context and assistant web search each offer **Off / On / Auto**. Only Auto uses Jev to decide whether the work is needed. Configure TypeSafe (official), OpenRouter or Vercel under **Automatic decisions → Jev**. Missing credentials, timeouts or uncertain decisions fall back to the usual processing path; translation and explicit edits still run.
+AI polish, screen context and assistant web search each offer **Off / On / Auto**. Only Auto uses the selected decision model to decide whether the work is needed. Under **Settings → Decision model**, choose **JEV** through TypeSafe (official), OpenRouter or Vercel, or Liquid AI's **d1:free**. Missing credentials, timeouts or uncertain decisions fall back to the usual processing path; the decision model does not generate replacement text, and translation and explicit edits still run.
 
-Optional Jev checks review AI-learned correction rules and flag possible meaning changes after polishing. Meaning checks run in the background without delaying or replacing output. User-confirmed corrections are preserved.
+Optional decision-model checks review AI-learned correction rules and flag possible meaning changes after polishing. Meaning checks run in the background without delaying or replacing output. User-confirmed corrections are preserved.
 
 Search options include provider-native search where supported, keyless Bing snippets, Exa MCP with an optional API key, Tavily and Google grounding. Tavily and Google require keys. ChatGPT/Codex login uses Exa for web search. Services can rate-limit or require browser verification; the app reports search failures and can continue without web sources.
 
@@ -79,10 +79,10 @@ These checks cover application state and protocol contracts under [documented as
 |:--|:--|
 | **Local recognition** | Audio is processed on your PC. Initial model downloads require network access. |
 | **Cloud recognition** | Audio is sent to your chosen recognition provider. |
-| **AI polish, assistants & Jev** | Text and processing instructions are sent to the configured services when used. Enabled screenshot/selection context and search can also send images, selected text or queries. |
+| **AI polish, assistants & decision model** | Text and processing instructions are sent to the configured services when used. Enabled screenshot/selection context and search can also send images, selected text or queries. |
 | **History & audio saving** | Both are off by default and stored locally when enabled. Audio saving requires history to be enabled. |
 
-Jev keys are stored separately for each provider in the system credential store.
+Decision-model API keys are stored in separate system credential slots for each provider.
 
 ## For developers
 

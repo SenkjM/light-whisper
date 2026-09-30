@@ -412,6 +412,38 @@ async fn real_native_capture_streams_public_chinese_wav() -> TestResult {
 
 #[tokio::test]
 #[ignore = "requires explicit CUDA R2T2 integration environment"]
+async fn real_native_stop_before_caption_refresh_keeps_sentence_tail() -> TestResult {
+    let config = IntegrationEnv::from_process()?;
+    let mut server = RunningServer::start(&config).await?;
+    let audio = read_pcm16(&config.audio)?;
+    for (index, (sample_count, expected_tail)) in [(38_400, "自己带"), (92_160, "不让喝")]
+        .into_iter()
+        .enumerate()
+    {
+        assert!(audio.len() >= sample_count, "integration WAV is too short");
+        let (result, observation, emitted) = run_wav_capture(
+            server.state.clone(),
+            audio[..sample_count].to_vec(),
+            70_201 + index as u64,
+        )
+        .await?;
+        assert!(result.success);
+        assert!(
+            result.text.contains(expected_tail),
+            "transcript: {}",
+            result.text
+        );
+        assert_eq!(observation.lock().final_sample_count, Some(sample_count));
+        assert_eq!(emitted.lock().last().unwrap().sample_count, sample_count);
+        assert!(result
+            .text
+            .starts_with(&emitted.lock().last().unwrap().text));
+    }
+    server.stop().await
+}
+
+#[tokio::test]
+#[ignore = "requires explicit CUDA R2T2 integration environment"]
 async fn real_native_stream_cancel_restart_and_empty_finish_leave_server_usable() -> TestResult {
     let config = IntegrationEnv::from_process()?;
     let mut server = RunningServer::start(&config).await?;

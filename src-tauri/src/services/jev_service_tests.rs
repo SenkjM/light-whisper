@@ -266,6 +266,11 @@ fn assert_common_request_contract(request: &reqwest::Request) {
     }
 }
 
+fn liquid_provider() -> JevProvider {
+    serde_json::from_value::<JevProvider>(json!("liquid"))
+        .expect("persisted liquid provider must deserialize")
+}
+
 #[test]
 fn profile_jev_defaults_off_and_contains_no_provider_secrets() {
     let profile = UserProfile::default();
@@ -283,6 +288,7 @@ fn profile_jev_defaults_off_and_contains_no_provider_secrets() {
         "typesafe_api_key",
         "openrouter_api_key",
         "vercel_api_key",
+        "liquid_api_key",
     ] {
         assert!(
             jev.get(secret_name).is_none(),
@@ -377,6 +383,70 @@ fn build_request_matches_vercel_evaluation_model_contract() {
             .and_then(|value: &reqwest::header::HeaderValue| value.to_str().ok()),
         Some("0.0.1")
     );
+}
+
+#[test]
+fn build_request_matches_liquid_d1_contract() {
+    let provider = liquid_provider();
+    let request = jev_service::build_request(
+        &reqwest::Client::new(),
+        provider,
+        TEST_API_KEY,
+        ORIGINAL,
+        POLICY_CONTEXT,
+        None,
+    )
+    .expect("Liquid d1 request should build");
+
+    assert_eq!(
+        request.url().as_str(),
+        "https://api.liquid.ai/decisions/v1/systemone"
+    );
+    assert_common_request_contract(&request);
+    assert_eq!(request_body(&request)["model"], json!("d1:free"));
+    assert!(request
+        .headers()
+        .get(reqwest::header::AUTHORIZATION)
+        .expect("Liquid request should authenticate")
+        .is_sensitive());
+    assert_eq!(
+        serde_json::to_value(provider).expect("Liquid provider should serialize"),
+        json!("liquid")
+    );
+}
+
+#[test]
+fn liquid_request_keeps_a_unique_credential_slot_and_provider_path_on_override() {
+    let provider = liquid_provider();
+    let liquid_slot = jev_service::keyring_user_for_provider(provider);
+    assert_eq!(liquid_slot, "decision-liquid-api-key");
+    for existing_provider in [
+        JevProvider::TypeSafe,
+        JevProvider::OpenRouter,
+        JevProvider::Vercel,
+    ] {
+        assert_ne!(
+            liquid_slot,
+            jev_service::keyring_user_for_provider(existing_provider),
+            "Liquid credentials must use a separate keyring slot"
+        );
+    }
+
+    let request = jev_service::build_request(
+        &reqwest::Client::new(),
+        provider,
+        TEST_API_KEY,
+        ORIGINAL,
+        POLICY_CONTEXT,
+        Some("https://override.example/api"),
+    )
+    .expect("Liquid request with endpoint override should build");
+
+    assert_eq!(
+        request.url().as_str(),
+        "https://override.example/api/decisions/v1/systemone"
+    );
+    assert_eq!(request_body(&request)["model"], json!("d1:free"));
 }
 
 #[test]

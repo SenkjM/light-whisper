@@ -19,9 +19,10 @@ vi.mock("sonner", () => ({ toast: toastMock }));
 const labels: Record<string, string> = {
   "settings.jev": "Jev",
   "settings.jevEnabled": "Enable Jev gate",
-  "settings.jevProvider": "Jev provider",
-  "settings.jevApiKey": "Jev API key",
-  "settings.jevSaveFailed": "Jev settings save failed",
+  "settings.jevModel": "Decision model",
+  "settings.jevProvider": "Decision provider",
+  "settings.jevApiKey": "Decision API key",
+  "settings.jevSaveFailed": "Decision settings save failed",
   "settings.jevScreenRouting": "Use screen context only when needed",
   "settings.jevCorrectionReview": "Review learned corrections",
   "settings.jevSearchRouting": "Decide when to search",
@@ -51,7 +52,7 @@ vi.mock("react-i18next", () => ({
 
 import JevSettingsSection from "@/components/settings/JevSettingsSection";
 
-type JevProvider = "typesafe" | "openrouter" | "vercel";
+type JevProvider = "typesafe" | "openrouter" | "vercel" | "liquid";
 type JevProfile = UserProfile & {
   jev?: {
     enabled: boolean;
@@ -101,11 +102,15 @@ function getToggle() {
 }
 
 function getProviderSelect() {
-  return screen.getByRole("combobox", { name: /jev.*provider|provider.*jev/i });
+  return screen.getByRole("combobox", { name: /decision provider/i });
+}
+
+function getModelSelect() {
+  return screen.getByRole("combobox", { name: "Decision model" });
 }
 
 function getApiKeyInput() {
-  return screen.getByLabelText(/jev.*api|api.*key/i);
+  return screen.getByLabelText(/decision.*api|api.*key/i);
 }
 
 beforeEach(() => {
@@ -129,7 +134,7 @@ describe("JevSettingsSection", () => {
     const onSaved = renderSection({ ...baseProfile, jev: undefined });
 
     expect(getToggle()).toHaveAttribute("aria-checked", "false");
-    expect(screen.queryByRole("combobox", { name: /jev.*provider|provider.*jev/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("combobox", { name: "Decision provider" })).not.toBeInTheDocument();
 
     fireEvent.click(getToggle());
 
@@ -144,7 +149,105 @@ describe("JevSettingsSection", () => {
       "openrouter",
       "vercel",
     ]);
+    expect(getModelSelect()).toHaveValue("jev");
+    expect(Array.from((getModelSelect() as HTMLSelectElement).options).map((option) => option.value)).toEqual([
+      "jev",
+      "d1",
+    ]);
     expect(getApiKeyInput()).toHaveAttribute("type", "password");
+  });
+
+  it("switches to d1 with Liquid AI and loads its isolated credential without stale-key overwrite", async () => {
+    const oldOpenrouterKey = deferred<string>();
+    tauriMock.getJevApiKey.mockImplementation((provider: JevProvider) => (
+      provider === "openrouter" ? oldOpenrouterKey.promise : Promise.resolve("liquid-key")
+    ));
+    renderSection({
+      ...baseProfile,
+      jev: { enabled: true, provider: "openrouter" },
+    });
+
+    await waitFor(() => expect(tauriMock.getJevApiKey).toHaveBeenCalledWith("openrouter"));
+    fireEvent.change(getModelSelect(), { target: { value: "d1" } });
+
+    await waitFor(() => expect(tauriMock.setJevProvider).toHaveBeenCalledWith("liquid"));
+    expect(getModelSelect()).toHaveValue("d1");
+    expect(getProviderSelect()).toHaveValue("liquid");
+    expect(Array.from((getProviderSelect() as HTMLSelectElement).options).map((option) => option.value)).toEqual([
+      "liquid",
+    ]);
+    await waitFor(() => {
+      expect(tauriMock.getJevApiKey).toHaveBeenCalledWith("liquid");
+      expect(getApiKeyInput()).toHaveValue("liquid-key");
+    });
+
+    await act(async () => {
+      oldOpenrouterKey.resolve("stale-openrouter-key");
+      await oldOpenrouterKey.promise;
+    });
+    expect(getApiKeyInput()).toHaveValue("liquid-key");
+
+    fireEvent.change(getApiKeyInput(), { target: { value: "liquid-new-key" } });
+    await waitFor(() => {
+      expect(tauriMock.setJevApiKey).toHaveBeenCalledWith("liquid", "liquid-new-key");
+    });
+    expect(tauriMock.setJevApiKey).not.toHaveBeenCalledWith("openrouter", "liquid-new-key");
+    expect(tauriMock.setJevApiKey).not.toHaveBeenCalledWith("liquid", "stale-openrouter-key");
+  });
+
+  it("restores persisted Liquid d1 and returns to TypeSafe for the Jev model", async () => {
+    tauriMock.getJevApiKey.mockImplementation((provider: JevProvider) => Promise.resolve(
+      provider === "liquid" ? "liquid-key" : "typesafe-key",
+    ));
+    renderSection({
+      ...baseProfile,
+      jev: { enabled: true, provider: "liquid" },
+    });
+
+    await waitFor(() => expect(tauriMock.getJevApiKey).toHaveBeenCalledWith("liquid"));
+    expect(getModelSelect()).toHaveValue("d1");
+    expect(getProviderSelect()).toHaveValue("liquid");
+    expect(Array.from((getProviderSelect() as HTMLSelectElement).options).map((option) => option.value)).toEqual([
+      "liquid",
+    ]);
+    await waitFor(() => expect(getApiKeyInput()).toHaveValue("liquid-key"));
+
+    fireEvent.change(getModelSelect(), { target: { value: "jev" } });
+
+    await waitFor(() => expect(tauriMock.setJevProvider).toHaveBeenCalledWith("typesafe"));
+    expect(getModelSelect()).toHaveValue("jev");
+    expect(getProviderSelect()).toHaveValue("typesafe");
+    expect(Array.from((getProviderSelect() as HTMLSelectElement).options).map((option) => option.value)).toEqual([
+      "typesafe",
+      "openrouter",
+      "vercel",
+    ]);
+    await waitFor(() => expect(getApiKeyInput()).toHaveValue("typesafe-key"));
+  });
+
+  it("rolls back the model and provider when switching to Liquid fails", async () => {
+    const onSaved = vi.fn();
+    tauriMock.getJevApiKey.mockImplementation((provider: JevProvider) => Promise.resolve(
+      provider === "openrouter" ? "openrouter-key" : "",
+    ));
+    tauriMock.setJevProvider.mockRejectedValueOnce(new Error("settings unavailable"));
+    renderSection({
+      ...baseProfile,
+      jev: { enabled: true, provider: "openrouter" },
+    }, onSaved);
+
+    await waitFor(() => expect(getApiKeyInput()).toHaveValue("openrouter-key"));
+    fireEvent.change(getModelSelect(), { target: { value: "d1" } });
+
+    await waitFor(() => expect(toastMock.error).toHaveBeenCalledWith(expect.stringMatching(/decision|save/i)));
+    expect(getModelSelect()).toHaveValue("jev");
+    expect(getProviderSelect()).toHaveValue("openrouter");
+    expect(Array.from((getProviderSelect() as HTMLSelectElement).options).map((option) => option.value)).toEqual([
+      "typesafe",
+      "openrouter",
+      "vercel",
+    ]);
+    expect(onSaved).not.toHaveBeenCalled();
   });
 
   it("saves the selected provider and its key independently", async () => {
@@ -245,7 +348,7 @@ describe("JevSettingsSection", () => {
     fireEvent.click(getToggle());
 
     await waitFor(() => {
-      expect(toastMock.error).toHaveBeenCalledWith(expect.stringMatching(/jev|save/i));
+      expect(toastMock.error).toHaveBeenCalledWith(expect.stringMatching(/decision|save/i));
     });
     expect(onSaved).not.toHaveBeenCalled();
   });

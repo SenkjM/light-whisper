@@ -22,6 +22,7 @@ in [R2T2-MODEL-LICENSE.txt](../src-tauri/resources/R2T2-MODEL-LICENSE.txt).
 - On CUDA, startup previews can add 320 ms of zero-valued right context after 640 ms of real audio. There are at most three attempts, ending when normal decoding produces text. Padded results never enter commits, language state, continuation prompts or final output.
 - Language, topic hints and hotwords are fixed for each recording. They are separate from AI polish.
 - VAD retains its trailing audio window but skips inference while an active segment is too short to end. Native captions render directly, without running an unused character-reveal animation.
+- Stop flushes 320 ms of acoustic silence inside the native decoder before collecting the final result. This is inference input, with no timer or extra microphone recording. Paired CUDA checks recovered the missing Chinese tails “带” and “喝” and English sentence tails; 80/160 ms remained insufficient on the Chinese clips. Captured sample counts and the live-feed schedule are unchanged; ending a segment adds bounded decoder work. The opt-in Rust test `real_native_stop_before_caption_refresh_keeps_sentence_tail` covers immediate Stop through the actual server and checks sample accounting.
 
 ## Build and packaging
 

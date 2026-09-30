@@ -155,7 +155,7 @@ export interface WebSearchConfig {
 
 // API 协议格式
 export type ApiFormat = "openai_compat" | "anthropic";
-export type JevProvider = "typesafe" | "openrouter" | "vercel";
+export type JevProvider = "typesafe" | "openrouter" | "vercel" | "liquid";
 
 export interface JevConfig {
   enabled: boolean;

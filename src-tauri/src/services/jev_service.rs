@@ -20,6 +20,7 @@ impl JevProvider {
             Self::TypeSafe => "https://api.typesafe.ai/v1/systemone",
             Self::OpenRouter => "https://openrouter.ai/api/alpha/decisions",
             Self::Vercel => "https://ai-gateway.vercel.sh/v4/ai/evaluation-model",
+            Self::Liquid => "https://api.liquid.ai/decisions/v1/systemone",
         }
     }
 
@@ -28,6 +29,7 @@ impl JevProvider {
             Self::TypeSafe => Some("jev-1.13.0"),
             Self::OpenRouter => Some("typesafe/jev-1.13"),
             Self::Vercel => None,
+            Self::Liquid => Some("d1:free"),
         }
     }
 
@@ -36,6 +38,7 @@ impl JevProvider {
             Self::TypeSafe => "/v1/systemone",
             Self::OpenRouter => "/api/alpha/decisions",
             Self::Vercel => "/v4/ai/evaluation-model",
+            Self::Liquid => "/decisions/v1/systemone",
         }
     }
 }
@@ -45,6 +48,7 @@ pub fn keyring_user_for_provider(provider: JevProvider) -> &'static str {
         JevProvider::TypeSafe => "jev-typesafe-api-key",
         JevProvider::OpenRouter => "jev-openrouter-api-key",
         JevProvider::Vercel => "jev-vercel-api-key",
+        JevProvider::Liquid => "decision-liquid-api-key",
     }
 }
 
@@ -55,7 +59,7 @@ pub fn load_api_key_for_provider(
     app_handle
         .keyring()
         .get_password(KEYRING_SERVICE, keyring_user_for_provider(provider))
-        .map_err(|_| "无法读取 Jev API Key".to_string())
+        .map_err(|_| "无法读取决策模型 API Key".to_string())
         .map(|value| value.unwrap_or_default())
 }
 
@@ -69,12 +73,12 @@ pub fn save_or_delete_api_key(
         app_handle
             .keyring()
             .delete_password(KEYRING_SERVICE, keyring_user)
-            .map_err(|_| "无法删除 Jev API Key".to_string())
+            .map_err(|_| "无法删除决策模型 API Key".to_string())
     } else {
         app_handle
             .keyring()
             .set_password(KEYRING_SERVICE, keyring_user, api_key.trim())
-            .map_err(|_| "无法保存 Jev API Key".to_string())
+            .map_err(|_| "无法保存决策模型 API Key".to_string())
     }
 }
 

@@ -32,6 +32,36 @@
   gap: 10px;
 }
 
+.main-page .recording-zone {
+  border-bottom: 1px solid var(--color-border-subtle);
+}
+
+.main-page .status-text {
+  color: var(--color-text-secondary);
+  font-size: 13px;
+}
+
+.main-page .result-card {
+  box-shadow: none;
+}
+
+.main-page .result-card-header {
+  padding: 10px 14px;
+}
+
+.main-page .result-card-title {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: var(--tracking-body);
+  color: var(--color-text-secondary);
+}
+
+.main-page .result-card-body {
+  padding: 12px 14px;
+  font-size: 14px;
+  color: var(--color-text-primary);
+}
+
 /* Status hint text below the record button */
 .status-text {
   font-size: 12px;
@@ -1497,6 +1527,28 @@
 .jev-section-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
 .jev-section-heading h2 { margin: 0; }
 .jev-section-heading > span { color: var(--color-text-secondary); font-size: 11px; }
+
+.decision-model-connection {
+  padding-top: 16px;
+  border-top: 1px solid var(--color-border-subtle);
+}
+
+.decision-model-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.decision-model-fields .settings-column {
+  min-width: 0;
+  gap: 6px;
+}
+
+@media (max-width: 360px) {
+  .decision-model-fields {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
 
 .polish-audit-notice {
   margin-bottom: 12px;
