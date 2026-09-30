@@ -399,6 +399,37 @@ pub fn write_engine_config(engine: &str) -> Result<(), std::io::Error> {
     update_engine_json_field("engine", engine)
 }
 
+/// 用户未配置时关闭。0 表示不自动卸载 GPU 模型。
+pub const MAX_GPU_IDLE_SECONDS: u64 = 7 * 24 * 60 * 60;
+
+pub fn parse_gpu_idle_seconds(value: Option<&serde_json::Value>) -> u64 {
+    let Some(value) = value else {
+        return 0;
+    };
+    let seconds = match value {
+        serde_json::Value::Number(number) => number.as_u64().unwrap_or(0),
+        serde_json::Value::String(text) => text.trim().parse::<u64>().unwrap_or(0),
+        _ => 0,
+    };
+    seconds.min(MAX_GPU_IDLE_SECONDS)
+}
+
+pub fn read_gpu_idle_seconds() -> u64 {
+    parse_gpu_idle_seconds(read_engine_json().get("gpu_idle_seconds"))
+}
+
+pub fn write_gpu_idle_seconds(seconds: u64) -> Result<(), std::io::Error> {
+    let seconds = seconds.min(MAX_GPU_IDLE_SECONDS);
+    let mut obj = read_engine_json();
+    if !obj.is_object() {
+        obj = serde_json::json!({});
+    }
+    if let Some(map) = obj.as_object_mut() {
+        map.insert("gpu_idle_seconds".to_string(), serde_json::json!(seconds));
+    }
+    write_engine_json(&obj)
+}
+
 /// 读取用户自定义模型目录（None 表示使用默认 HF 缓存）
 pub fn read_models_dir() -> Option<String> {
     read_engine_json()
@@ -469,6 +500,22 @@ mod tests {
         }
         assert_eq!(super::configured_engine(None), "qwen3-asr-0.6b");
         assert_eq!(super::configured_engine(Some("invalid")), "qwen3-asr-0.6b");
+    }
+
+    #[test]
+    fn gpu_idle_seconds_default_off_and_reject_garbage() {
+        assert_eq!(super::parse_gpu_idle_seconds(None), 0);
+        assert_eq!(super::parse_gpu_idle_seconds(Some(&serde_json::json!(0))), 0);
+        assert_eq!(super::parse_gpu_idle_seconds(Some(&serde_json::json!(180))), 180);
+        assert_eq!(super::parse_gpu_idle_seconds(Some(&serde_json::json!(-5))), 0);
+        assert_eq!(super::parse_gpu_idle_seconds(Some(&serde_json::json!("nope"))), 0);
+        assert_eq!(super::parse_gpu_idle_seconds(Some(&serde_json::json!(true))), 0);
+        assert_eq!(
+            super::parse_gpu_idle_seconds(Some(
+                &serde_json::json!(super::MAX_GPU_IDLE_SECONDS + 10)
+            )),
+            super::MAX_GPU_IDLE_SECONDS
+        );
     }
 
     #[test]

@@ -52,10 +52,12 @@ ADD_DATA_FILES = [
     "FireRedVAD-LICENSE.txt",
     "download_models.py",
     "server_common.py",
+    "gpu_idle.py",
     "hf_cache_utils.py",
 ]
 
 HIDDEN_IMPORTS = [
+    "gpu_idle",
     "ctypes",
     "requests",
     "certifi",

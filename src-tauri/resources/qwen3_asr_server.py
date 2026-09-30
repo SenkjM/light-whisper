@@ -31,7 +31,11 @@ QWEN3_VAD_SAMPLE_RATE = 16_000
 
 
 class Qwen3ASRServer(BaseASRServer):
-    """Keep one GGUF model and one KV session resident across requests."""
+    """Keep one GGUF model and one KV session resident across requests.
+
+    Idle unload, when the user turns it on, closes both and the next
+    transcribe calls initialize() again. FireRedVAD stays loaded.
+    """
 
     def __init__(self, engine=None):
         engine = engine or os.environ.get("LIGHT_WHISPER_ASR_ENGINE", "qwen3-asr-0.6b")
@@ -96,6 +100,18 @@ class Qwen3ASRServer(BaseASRServer):
         return find_hf_snapshot_file(
             self.model_config["repo_id"], self.model_config["filename"]
         )
+
+    def _suspend_gpu_runtime(self):
+        """Unload the GGUF model and KV session. FireRedVAD stays on CPU."""
+        if not self.initialized:
+            return False
+        vad = self.vad_model
+        self._close_runtime()
+        self.initialized = False
+        self._gpu_suspended = True
+        self.vad_model = vad
+        self.logger.info("Qwen3-ASR 空闲超时，已卸载 GPU 模型；FireRedVAD 仍留在 CPU")
+        return True
 
     def _close_runtime(self):
         if self.session is not None:
@@ -192,6 +208,7 @@ class Qwen3ASRServer(BaseASRServer):
             self.vad_model = FireRedVad()
             self._warmup_inference()
             self.initialized = True
+            self._gpu_suspended = False
             self._last_load_error = None
             elapsed = time.perf_counter() - started
             return {
@@ -377,7 +394,7 @@ class Qwen3ASRServer(BaseASRServer):
         try:
             version = importlib.metadata.version("transcribe-cpp")
             model_loaded = self.model is not None and self.session is not None
-            return {
+            return self._with_gpu_suspend_flag({
                 "success": True,
                 "installed": True,
                 "initialized": self.initialized,
@@ -391,7 +408,7 @@ class Qwen3ASRServer(BaseASRServer):
                     "punc": True,
                 },
                 **self._get_gpu_device_info(),
-            }
+            })
         except importlib.metadata.PackageNotFoundError as exc:
             return {
                 "success": False,

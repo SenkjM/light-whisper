@@ -337,6 +337,8 @@ pub async fn start_server(app_handle: &tauri::AppHandle, state: &AppState) -> Re
 
     // 构建子进程命令
     let data_dir = paths::strip_win_prefix(paths::get_data_dir());
+    // 仅在用户开启时传入。0/缺省不设置环境变量，启动路径与以前相同。
+    let gpu_idle_at_spawn = paths::read_gpu_idle_seconds();
     let mut cmd = match &runtime {
         EngineRuntime::Bundled { exe_path } => {
             log::info!("使用打包引擎: {} (engine={})", exe_path, ticket.engine);
@@ -394,6 +396,10 @@ pub async fn start_server(app_handle: &tauri::AppHandle, state: &AppState) -> Re
                 }
             }
         });
+
+    if gpu_idle_at_spawn > 0 {
+        cmd.env("LIGHT_WHISPER_GPU_IDLE_SECONDS", gpu_idle_at_spawn.to_string());
+    }
 
     // Windows 上隐藏控制台窗口
     #[cfg(target_os = "windows")]
@@ -526,6 +532,14 @@ pub async fn start_server(app_handle: &tauri::AppHandle, state: &AppState) -> Re
     }
 
     if initialized {
+        let gpu_idle_now = paths::read_gpu_idle_seconds();
+        // 启动时的环境变量已经带上当时的值。只有中途改过才再发一条命令，
+        // 避免关闭状态下多一次往返。
+        if gpu_idle_now != gpu_idle_at_spawn {
+            if let Err(error) = push_gpu_idle_seconds(state, gpu_idle_now).await {
+                log::warn!("同步 GPU 空闲卸载设置失败: {error}");
+            }
+        }
         Ok(())
     } else {
         Err(AppError::Asr(error_message))
@@ -909,6 +923,33 @@ async fn try_send_exit_command(process: &mut FunasrProcess) -> Result<(), AppErr
         .map_err(|_| AppError::Asr("刷新退出命令超时".to_string()))?
         .map_err(|e| AppError::Asr(format!("刷新退出命令失败: {}", e)))?;
 
+    Ok(())
+}
+
+/// 把 GPU 空闲秒数发给正在运行的 Python 进程。进程不在时只保留配置。
+///
+/// 不修改 ready：卸载后的 status 仍由既有粘滞逻辑保持就绪。
+pub async fn push_gpu_idle_seconds(state: &AppState, seconds: u64) -> Result<(), AppError> {
+    let has_process = {
+        let guard = state.engine.funasr_process.lock().await;
+        guard.is_some()
+    };
+    if !has_process {
+        return Ok(());
+    }
+    let response = send_command_to_server(
+        state,
+        &ServerCommand::SetGpuIdle { seconds },
+        None,
+    )
+    .await?;
+    if response.success == Some(false) {
+        return Err(AppError::Asr(
+            response
+                .error
+                .unwrap_or_else(|| "设置 GPU 空闲卸载失败".to_string()),
+        ));
+    }
     Ok(())
 }
 
@@ -1344,6 +1385,12 @@ mod tests {
         assert_eq!(inline["sample_rate"], serde_json::json!(16_000));
         assert_eq!(inline["hot_words"], serde_json::json!(["light-whisper"]));
         assert!(inline.get("audio_path").is_none());
+
+        let idle = serde_json::to_value(ServerCommand::SetGpuIdle { seconds: 0 }).unwrap();
+        assert_eq!(idle["action"], serde_json::json!("set_gpu_idle"));
+        assert_eq!(idle["seconds"], serde_json::json!(0));
+        let idle = serde_json::to_value(ServerCommand::SetGpuIdle { seconds: 180 }).unwrap();
+        assert_eq!(idle["seconds"], serde_json::json!(180));
 
         let path = serde_json::to_value(ServerCommand::Transcribe {
             options: None,
