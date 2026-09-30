@@ -10,7 +10,7 @@ import tempfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-TLC_SHA256 = "ab4694601923fd5ac06452abbf847c366a5054a3d739552085edd6ed986c29ec"
+TLC_SHA256 = "e6683a256bab10d44f0e5c22063552e188b7d4a2e0aecd44e76f0b438046f3b5"
 
 
 def tla_code(source: str) -> str:
