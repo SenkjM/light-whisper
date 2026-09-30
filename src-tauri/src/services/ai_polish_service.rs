@@ -930,7 +930,7 @@ async fn evaluate_polish_expansion(
                 payload,
                 "route",
                 &["pass", "polish", "uncertain"],
-                0.90,
+                jev_service::POLISH_ROUTING_MIN_PROBABILITY,
             )
         })
     });
@@ -940,7 +940,7 @@ async fn evaluate_polish_expansion(
                 payload,
                 "screen",
                 &["needed", "unneeded", "uncertain"],
-                0.90,
+                jev_service::POLISH_ROUTING_MIN_PROBABILITY,
             )
         })
     });
@@ -960,8 +960,22 @@ async fn evaluate_polish_expansion(
         true
     };
 
+    let route = route.flatten();
+    let skip_polish = route.as_deref() == Some("pass") && screen_allows_skip;
+    let pass_probability = payload
+        .as_ref()
+        .and_then(|payload| payload.pointer("/answers/route/probabilities/pass"))
+        .and_then(Value::as_f64);
+    let unneeded_probability = payload
+        .as_ref()
+        .and_then(|payload| payload.pointer("/answers/screen/probabilities/unneeded"))
+        .and_then(Value::as_f64);
+    log::info!(
+        "Decision model routing: provider={:?}, route={:?}, pass_probability={:?}, screen={:?}, unneeded_probability={:?}, explicit_screen={}, skip_polish={}",
+        provider, route.as_deref(), pass_probability, screen_choice, unneeded_probability, explicit_screen, skip_polish
+    );
     Some(JevPolishDecision {
-        skip_polish: route.flatten().as_deref() == Some("pass") && screen_allows_skip,
+        skip_polish,
         screen_allowed,
     })
 }
@@ -1004,6 +1018,7 @@ pub async fn polish_text_with_overrides_detailed(
                 overrides.screen_context_enabled = Some(screen_allowed);
             }
             if decision.skip_polish {
+                log::info!("Decision model skipped AI polish (session {})", session_id);
                 return Ok(PolishOutcome::passthrough(text.to_string()));
             }
         }

@@ -20,6 +20,90 @@ const PASS_AND_SCREEN_NEEDED: &[u8] = br#"{"answers":{"route":{"type":"choice","
 const POLISH_AND_SCREEN_UNNEEDED: &[u8] = br#"{"answers":{"route":{"type":"choice","choice":"polish","probabilities":{"pass":0.04,"polish":0.95,"uncertain":0.01}},"screen":{"type":"choice","choice":"unneeded","probabilities":{"needed":0.04,"unneeded":0.95,"uncertain":0.01}}}}"#;
 const SCREEN_UNNEEDED: &[u8] = br#"{"answers":{"screen":{"type":"choice","choice":"unneeded","probabilities":{"needed":0.04,"unneeded":0.95,"uncertain":0.01}}}}"#;
 
+#[tokio::test]
+async fn auto_polish_accepts_eighty_percent_and_falls_back_below_either_threshold() {
+    for (pass, unneeded, should_skip) in [
+        (0.80, 0.80, true),
+        (0.85, 0.85, true),
+        (0.799, 0.95, false),
+        (0.95, 0.799, false),
+    ] {
+        let state = expansion_state(true, true);
+        let overrides = expansion_overrides(true, false);
+        let response = json!({"answers": {
+            "route": {"type": "choice", "choice": "pass", "probabilities": {
+                "pass": pass, "polish": 1.0 - pass, "uncertain": 0.0
+            }},
+            "screen": {"type": "choice", "choice": "unneeded", "probabilities": {
+                "needed": 1.0 - unneeded, "unneeded": unneeded, "uncertain": 0.0
+            }}
+        }});
+        let (endpoint, count, server) =
+            spawn_json_server("200 OK", serde_json::to_vec(&response).unwrap()).await;
+        let decision = evaluate_polish_expansion(
+            &state,
+            ORIGINAL,
+            &overrides,
+            JevProvider::TypeSafe,
+            TEST_API_KEY,
+            Some(endpoint.as_str()),
+        )
+        .await
+        .expect("automatic mode must yield a decision");
+        finish_json_server(server).await;
+        assert_eq!(
+            decision.skip_polish, should_skip,
+            "pass={pass}, unneeded={unneeded}"
+        );
+        assert_eq!(decision.screen_allowed, (unneeded >= 0.80).then_some(false));
+        assert_eq!(count.load(Ordering::SeqCst), 1);
+    }
+}
+
+#[tokio::test]
+async fn unavailable_vercel_or_liquid_keeps_polish_and_screen_without_retry() {
+    for (provider, status, path) in [
+        (
+            JevProvider::Vercel,
+            "403 Forbidden",
+            "/v4/ai/evaluation-model",
+        ),
+        (
+            JevProvider::Liquid,
+            "429 Too Many Requests",
+            "/decisions/v1/systemone",
+        ),
+    ] {
+        let state = expansion_state(true, true);
+        state.update_profile_mut(|profile| profile.jev.provider = provider);
+        let overrides = expansion_overrides(true, false);
+        let (endpoint, count, server) =
+            spawn_json_server(status, br#"{"error":{"type":"unavailable"}}"#).await;
+        let decision = evaluate_polish_expansion(
+            &state,
+            ORIGINAL,
+            &overrides,
+            provider,
+            TEST_API_KEY,
+            Some(endpoint.as_str()),
+        )
+        .await
+        .expect("automatic mode must retain a fallback decision");
+        let captured = finish_json_server(server).await;
+        assert!(
+            !decision.skip_polish,
+            "{provider:?} must not fabricate a pass"
+        );
+        assert_eq!(decision.screen_allowed, None);
+        assert_eq!(count.load(Ordering::SeqCst), 1);
+        assert_eq!(captured.path, path);
+        assert_eq!(question_ids(&captured.body), vec!["route", "screen"]);
+        if provider == JevProvider::Liquid {
+            assert_eq!(captured.body["model"], "d1:free");
+        }
+    }
+}
+
 struct CapturedRequest {
     method: String,
     path: String,
@@ -96,7 +180,7 @@ async fn read_request(stream: &mut tokio::net::TcpStream) -> CapturedRequest {
 
 async fn spawn_json_server(
     status: &str,
-    response: &'static [u8],
+    response: impl AsRef<[u8]>,
 ) -> (
     String,
     Arc<AtomicUsize>,
@@ -109,6 +193,7 @@ async fn spawn_json_server(
         .local_addr()
         .expect("local routing server should expose an address");
     let status = status.to_string();
+    let response = response.as_ref().to_vec();
     let request_count = Arc::new(AtomicUsize::new(0));
     let request_count_for_task = Arc::clone(&request_count);
 
@@ -128,7 +213,7 @@ async fn spawn_json_server(
             .await
             .expect("local routing server should write response headers");
         stream
-            .write_all(response)
+            .write_all(&response)
             .await
             .expect("local routing server should write response body");
         captured

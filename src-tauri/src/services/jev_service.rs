@@ -9,6 +9,8 @@ pub use crate::state::user_profile::JevProvider;
 use crate::services::llm_provider::KEYRING_SERVICE;
 
 const REQUEST_TIMEOUT: Duration = Duration::from_millis(1000);
+/// Minimum probability for auto-polish bypass and its automatic screen route.
+pub const POLISH_ROUTING_MIN_PROBABILITY: f64 = 0.80;
 // Jev returns a probability for each of the three route choices. The API may
 // round those probabilities to two decimals, so small sum drift is accepted;
 // materially malformed distributions fail closed to ordinary polishing.
@@ -231,7 +233,7 @@ pub fn parse_decision(response: &str) -> bool {
     let sum = pass + polish + uncertain;
     sum.is_finite()
         && (sum - 1.0).abs() <= PROBABILITY_SUM_TOLERANCE
-        && pass >= 0.90
+        && pass >= POLISH_ROUTING_MIN_PROBABILITY
         && pass >= polish
         && pass >= uncertain
 }
@@ -257,7 +259,7 @@ pub async fn evaluate(
     ) {
         Ok(request) => request,
         Err(_) => {
-            log::debug!(
+            log::warn!(
                 "Jev gate skipped: provider={:?}, reason=request_build, elapsed_ms={}",
                 provider,
                 started.elapsed().as_millis()
@@ -267,11 +269,11 @@ pub async fn evaluate(
     };
 
     let result = tokio::time::timeout(REQUEST_TIMEOUT, async {
-        let response = client.execute(request).await.map_err(|_| ())?;
+        let response = client.execute(request).await.map_err(|_| None)?;
         if !response.status().is_success() {
-            return Err(());
+            return Err(Some(response.status().as_u16()));
         }
-        let body = response.bytes().await.map_err(|_| ())?;
+        let body = response.bytes().await.map_err(|_| None)?;
         Ok(parse_decision(
             std::str::from_utf8(&body).unwrap_or_default(),
         ))
@@ -289,23 +291,24 @@ pub async fn evaluate(
             true
         }
         Ok(Ok(false)) => {
-            log::debug!(
+            log::info!(
                 "Jev gate decision: provider={:?}, reason=nonpass_or_invalid, elapsed_ms={}",
                 provider,
                 elapsed_ms
             );
             false
         }
-        Ok(Err(())) => {
-            log::debug!(
-                "Jev gate skipped: provider={:?}, reason=http_or_body_error, elapsed_ms={}",
+        Ok(Err(status)) => {
+            log::warn!(
+                "Jev gate skipped: provider={:?}, reason=http_or_body_error, status={:?}, elapsed_ms={}",
                 provider,
+                status,
                 elapsed_ms
             );
             false
         }
         Err(_) => {
-            log::debug!(
+            log::warn!(
                 "Jev gate skipped: provider={:?}, reason=timeout, elapsed_ms={}",
                 provider,
                 elapsed_ms

@@ -87,6 +87,19 @@ release gate requires this job to succeed for the exact candidate commit.
 `LIGHT_WHISPER_DATA_DIR` overrides the ASR data directory. Standalone Python
 servers use `%TEMP%\light_whisper_logs\` when it is unset.
 
+**Automatic decisions**: `app.log` records the selected decision provider,
+validated route/screen choices, probabilities and whether polishing was skipped.
+`Decision model fallback` records HTTP status, transport, malformed-response or
+timeout failures; these retain normal polishing and do not imply a `polish` decision.
+For example, Vercel's HTTP 403 can indicate unavailable model access, while Liquid's
+HTTP 429 can indicate temporary `d1:free` capacity limits. Decision logs omit transcript
+content, request bodies and credentials.
+
+Auto-polish bypass and its automatic screen route use an 80% minimum choice
+probability. A pass also requires a valid complete distribution and no explicit
+screen, translation or edit requirement. Correction-rule deletion and meaning
+audits keep their separate review thresholds.
+
 
 ## Repository map
 

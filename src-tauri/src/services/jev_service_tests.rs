@@ -450,13 +450,13 @@ fn liquid_request_keeps_a_unique_credential_slot_and_provider_path_on_override()
 }
 
 #[test]
-fn parse_decision_accepts_pass_at_the_ninety_percent_boundary() {
+fn parse_decision_accepts_pass_at_the_eighty_percent_boundary() {
     let response = json!({
         "answers": {
             "route": {
                 "type": "choice",
                 "choice": "pass",
-                "probabilities": {"pass": 0.90, "polish": 0.10, "uncertain": 0.0}
+                "probabilities": {"pass": 0.80, "polish": 0.20, "uncertain": 0.0}
             }
         }
     });
@@ -469,7 +469,7 @@ fn parse_decision_fails_conservatively_for_invalid_or_uncertain_results() {
     let responses = [
         json!({"answers":{"route":{"type":"choice","choice":"polish","probabilities":{"pass":0.99,"polish":0.01,"uncertain":0.0}}}}),
         json!({"answers":{"route":{"type":"choice","choice":"unknown","probabilities":{"pass":0.99,"polish":0.01,"uncertain":0.0}}}}),
-        json!({"answers":{"route":{"type":"choice","choice":"pass","probabilities":{"pass":0.899,"polish":0.101,"uncertain":0.0}}}}),
+        json!({"answers":{"route":{"type":"choice","choice":"pass","probabilities":{"pass":0.799,"polish":0.201,"uncertain":0.0}}}}),
         json!({"answers":{"route":{"type":"choice","choice":"pass","probabilities":{"pass":1.01,"polish":-0.01,"uncertain":0.0}}}}),
         json!({"answers":{"route":{"type":"choice","choice":"pass","probabilities":{"pass":0.95,"polish":0.04,"uncertain":0.50}}}}),
         json!({"answers":{"route":{"type":"choice","choice":"pass","probabilities":{"pass":0.99,"polish":0.01}}}}),
@@ -857,7 +857,7 @@ async fn evaluate_polish_gate_returns_none_for_low_confidence_and_http_errors() 
         (
             "low confidence",
             "200 OK",
-            br#"{"answers":{"route":{"type":"choice","choice":"pass","probabilities":{"pass":0.89,"polish":0.10,"uncertain":0.01}}}}"#,
+            br#"{"answers":{"route":{"type":"choice","choice":"pass","probabilities":{"pass":0.79,"polish":0.20,"uncertain":0.01}}}}"#,
         ),
         ("HTTP error", "503 Service Unavailable", br#"{"error":"busy"}"#),
     ];

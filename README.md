@@ -52,6 +52,8 @@ AI polish and the assistant can share a model or use separate providers and mode
 
 AI polish, screen context and assistant web search each offer **Off / On / Auto**. Only Auto uses the selected decision model to decide whether the work is needed. Under **Settings → Decision model**, choose **JEV** through TypeSafe (official), OpenRouter or Vercel, or Liquid AI's **d1:free**. Missing credentials, timeouts or uncertain decisions fall back to the usual processing path; the decision model does not generate replacement text, and translation and explicit edits still run.
 
+Auto polish skips processing at an 80% pass probability. When automatic screen context is enabled, an 80% `unneeded` screen decision is also required. Service errors fall back to normal polishing and are recorded in `app.log`.
+
 Optional decision-model checks review AI-learned correction rules and flag possible meaning changes after polishing. Meaning checks run in the background without delaying or replacing output. User-confirmed corrections are preserved.
 
 Search options include provider-native search where supported, keyless Bing snippets, Exa MCP with an optional API key, Tavily and Google grounding. Tavily and Google require keys. ChatGPT/Codex login uses Exa for web search. Services can rate-limit or require browser verification; the app reports search failures and can continue without web sources.
