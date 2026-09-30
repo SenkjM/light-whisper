@@ -640,7 +640,6 @@ mod tests {
     #[test]
     fn chatgpt_backend_responses_gpt6_maps_public_reasoning_modes_without_chat_fields() {
         let mut endpoint = openai_endpoint("https://api.openai.com/v1/responses");
-        endpoint.model = "gpt-6-astra".to_string();
         let api_key = chatgpt_codex_api_key();
         let expected = [
             (LlmReasoningMode::Off, "low"),
@@ -649,7 +648,11 @@ mod tests {
             (LlmReasoningMode::Deep, "xhigh"),
         ];
 
-        for (mode, effort) in expected {
+        for (model, mode, effort) in ["gpt-6-astra", "gpt-6-sol", "gpt-6.1-sol"]
+            .into_iter()
+            .flat_map(|model| expected.map(|(mode, effort)| (model, mode, effort)))
+        {
+            endpoint.model = model.to_string();
             let body = build_llm_body(
                 &endpoint,
                 "system",

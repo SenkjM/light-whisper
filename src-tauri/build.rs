@@ -39,6 +39,15 @@ fn main() {
     let manifest_dir = PathBuf::from(
         env::var("CARGO_MANIFEST_DIR").expect("CARGO_MANIFEST_DIR should be set by Cargo"),
     );
+    if env::var("CARGO_CFG_TARGET_OS").as_deref() == Ok("windows")
+        && env::var("PROFILE").as_deref() == Ok("debug")
+    {
+        // Library test harnesses need the same Common Controls v6 manifest.
+        println!("cargo:rustc-link-arg=/MANIFEST:EMBED");
+        println!("cargo:rustc-link-arg=/MANIFESTDEPENDENCY:type='win32' name='Microsoft.Windows.Common-Controls' version='6.0.0.0' processorArchitecture='*' publicKeyToken='6595b64144ccf1df' language='*'");
+        // The application binary already receives its manifest from tauri_build.
+        println!("cargo:rustc-link-arg-bin=light-whisper=/MANIFEST:NO");
+    }
     let allow_placeholder = env::var("PROFILE").map_or(true, |profile| profile != "release");
     let engine_archive = select_engine_archive(&manifest_dir, allow_placeholder)
         .unwrap_or_else(|message| panic!("{message}"));

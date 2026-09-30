@@ -107,4 +107,32 @@ describe("useModelStatus funasr-status listener ownership", () => {
     expect(mocks.start).not.toHaveBeenCalled();
     expect(hook.result.current.stage).toBe(stageBeforeUnmount);
   });
+
+  it("restarts a disconnected engine after it was already ready", async () => {
+    let handler:
+      | ((event: { payload: { status: string; message?: string } }) => void)
+      | undefined;
+    mocks.listen.mockImplementation((event: string, callback: typeof handler) => {
+      if (event === "funasr-status") handler = callback;
+      return Promise.resolve(vi.fn());
+    });
+    const hook = renderHook(() => useModelStatus());
+    await flushMicrotasks();
+    expect(hook.result.current.stage).toBe("ready");
+    expect(mocks.start).not.toHaveBeenCalled();
+
+    mocks.check.mockResolvedValue({ running: false, ready: false, models_present: true });
+    await act(async () => {
+      handler?.({ payload: { status: "crashed", message: "engine pipe disconnected" } });
+    });
+    await flushMicrotasks();
+    expect(mocks.start).toHaveBeenCalledOnce();
+    expect(hook.result.current.stage).toBe("loading");
+
+    await act(async () => {
+      handler?.({ payload: { status: "ready" } });
+    });
+    expect(hook.result.current.stage).toBe("ready");
+    hook.unmount();
+  });
 });
