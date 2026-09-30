@@ -3,7 +3,6 @@ import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { getGpuIdleSeconds, setGpuIdleSeconds } from "@/api/tauri";
 import {
-  GPU_IDLE_MAX_SECONDS,
   GPU_IDLE_OFF_SECONDS,
   GPU_IDLE_SUGGESTED_SECONDS,
   normalizeGpuIdleSeconds,
@@ -57,32 +56,26 @@ export default function GpuIdleUnloadControl() {
   return (
     <div className="settings-inline-panel" style={{ marginTop: 8 }}>
       <div className="settings-column" style={{ gap: 6 }}>
-        <span className="settings-option-desc">{t("settings.gpuIdleTitle")}</span>
-        <span className="settings-option-desc">{t("settings.gpuIdleDesc")}</span>
-        <div className="settings-row" style={{ gap: 6 }}>
+        <div className="settings-row" style={{ gap: 8, alignItems: "center" }}>
+          <div className="settings-column" style={{ gap: 2, flex: 1 }}>
+            <span className="permission-label">{t("settings.gpuIdleTitle")}</span>
+            <span className="settings-hint" style={{ margin: 0 }}>{t("settings.gpuIdleDesc")}</span>
+          </div>
           <button
-            type="button"
-            className={`theme-btn${!enabled ? " active" : ""}`}
-            aria-pressed={!enabled}
+            role="switch"
+            aria-checked={enabled}
+            aria-label={t("settings.gpuIdleTitle")}
             disabled={saving}
             onClick={() => {
-              if (!enabled) return;
-              void persist(GPU_IDLE_OFF_SECONDS);
+              void persist(enabled ? GPU_IDLE_OFF_SECONDS : GPU_IDLE_SUGGESTED_SECONDS);
+            }}
+            className="toggle-switch"
+            style={{
+              background: enabled ? "var(--color-accent)" : "var(--color-bg-tertiary)",
+              flexShrink: 0,
             }}
           >
-            {t("settings.gpuIdleOff")}
-          </button>
-          <button
-            type="button"
-            className={`theme-btn${enabled ? " active" : ""}`}
-            aria-pressed={enabled}
-            disabled={saving}
-            onClick={() => {
-              if (enabled) return;
-              void persist(GPU_IDLE_SUGGESTED_SECONDS);
-            }}
-          >
-            {t("settings.gpuIdleOn")}
+            <div className="toggle-knob" style={{ transform: enabled ? "translateX(20px)" : "translateX(0)" }} />
           </button>
         </div>
         {enabled && (
@@ -90,11 +83,10 @@ export default function GpuIdleUnloadControl() {
             <span className="settings-option-desc">{t("settings.gpuIdleSeconds")}</span>
             <input
               className="settings-input"
-              type="number"
-              min={0}
-              max={GPU_IDLE_MAX_SECONDS}
-              step={1}
+              type="text"
               inputMode="numeric"
+              autoComplete="off"
+              spellCheck={false}
               aria-label={t("settings.gpuIdleSeconds")}
               value={draft}
               disabled={saving}
@@ -109,10 +101,6 @@ export default function GpuIdleUnloadControl() {
             />
           </label>
         )}
-        <span className="settings-option-desc">{t("settings.gpuIdleApplyHint")}</span>
-        <span className="settings-option-desc">{t("settings.gpuReloadHeading")}</span>
-        <span className="settings-option-desc">{t("settings.gpuReloadR2t2")}</span>
-        <span className="settings-option-desc">{t("settings.gpuReloadQwen")}</span>
       </div>
     </div>
   );

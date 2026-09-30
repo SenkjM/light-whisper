@@ -14,18 +14,12 @@ describe("gpu idle setting", () => {
     expect(GPU_IDLE_SUGGESTED_SECONDS).toBe(180);
   });
 
-  it("shows an honest reload estimate for both local models", () => {
+  it("keeps the settings copy short and does not mention reload times", () => {
     for (const copy of [zh.settings, en.settings]) {
-      expect(copy.gpuReloadR2t2).toContain("4.8");
-      expect(copy.gpuReloadR2t2).toContain("5.5");
-      expect(copy.gpuReloadR2t2).toContain("0.19");
-      expect(copy.gpuReloadR2t2).toContain("RTX 4070 SUPER");
-      expect(copy.gpuReloadR2t2).toContain("docs/r2t2-native.md");
-      expect(copy.gpuReloadQwen).toMatch(/850/);
-      expect(copy.gpuReloadQwen.toLowerCase()).toContain("32k");
-      expect(copy.gpuReloadQwen.toLowerCase()).toContain("f16");
-      expect(copy.gpuReloadQwen.toLowerCase()).toMatch(/unknown|未知/);
       expect(copy.gpuIdleDesc.toLowerCase()).toMatch(/off by default|默认关闭/);
+      const shown = `${copy.gpuIdleTitle}\n${copy.gpuIdleDesc}\n${copy.gpuIdleSeconds}`.toLowerCase();
+      expect(shown).not.toMatch(/4\.8|5\.5|0\.19|冷启动|预热|warmup|qwen3-asr|r2t2/);
+      expect(copy.gpuIdleDesc.split(/\n/).length).toBeLessThanOrEqual(2);
     }
   });
 });

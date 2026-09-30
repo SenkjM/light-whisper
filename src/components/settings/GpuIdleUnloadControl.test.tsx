@@ -28,23 +28,26 @@ describe("GpuIdleUnloadControl", () => {
     api.setGpuIdleSeconds.mockImplementation(async (seconds: number) => seconds);
   });
 
-  it("starts off and shows both reload estimates", async () => {
+  it("starts off with the shared settings switch and no reload estimates", async () => {
     render(<GpuIdleUnloadControl />);
-    const off = await screen.findByRole("button", { name: zh.settings.gpuIdleOff });
-    expect(off).toHaveAttribute("aria-pressed", "true");
-    expect(screen.getByRole("button", { name: zh.settings.gpuIdleOn })).toHaveAttribute("aria-pressed", "false");
-    expect(screen.getByText(zh.settings.gpuReloadR2t2)).toBeInTheDocument();
-    expect(screen.getByText(zh.settings.gpuReloadQwen)).toBeInTheDocument();
+    const toggle = await screen.findByRole("switch", { name: zh.settings.gpuIdleTitle });
+    expect(toggle).toHaveAttribute("aria-checked", "false");
+    expect(toggle).toHaveClass("toggle-switch");
+    expect(screen.getByText(zh.settings.gpuIdleDesc)).toBeInTheDocument();
+    expect(screen.queryByRole("spinbutton")).not.toBeInTheDocument();
     expect(screen.queryByLabelText(zh.settings.gpuIdleSeconds)).not.toBeInTheDocument();
+    expect(screen.queryByText(/冷启动|预热|4\.8|5\.5|RTX 4070/)).not.toBeInTheDocument();
   });
 
-  it("turns on at the suggested 180 seconds and can be switched back off", async () => {
+  it("turns on at the suggested 180 seconds with a plain text field and can be switched back off", async () => {
     render(<GpuIdleUnloadControl />);
-    fireEvent.click(await screen.findByRole("button", { name: zh.settings.gpuIdleOn }));
+    fireEvent.click(await screen.findByRole("switch", { name: zh.settings.gpuIdleTitle }));
     await waitFor(() => expect(api.setGpuIdleSeconds).toHaveBeenCalledWith(180));
     const input = await screen.findByLabelText(zh.settings.gpuIdleSeconds);
-    expect(input).toHaveValue(180);
-    fireEvent.click(screen.getByRole("button", { name: zh.settings.gpuIdleOff }));
+    expect(input).toHaveAttribute("type", "text");
+    expect(input).toHaveValue("180");
+    expect(screen.queryByRole("spinbutton")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("switch", { name: zh.settings.gpuIdleTitle }));
     await waitFor(() => expect(api.setGpuIdleSeconds).toHaveBeenLastCalledWith(0));
     await waitFor(() => expect(screen.queryByLabelText(zh.settings.gpuIdleSeconds)).not.toBeInTheDocument());
   });
