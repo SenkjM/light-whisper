@@ -38,7 +38,9 @@ pnpm tauri build
 The NSIS installer is written to `src-tauri/target/release/bundle/nsis/`.
 `pnpm tauri build` rejects a missing, empty, or non-XZ engine archive instead of
 producing an installer without local ASR. Reuse a verified archive only if its
-Python code, native libraries and dependencies are unchanged.
+Python code, native libraries and dependencies are unchanged. Distribution builds
+compare the bundled Python sources with the checkout and reject stale archives;
+rebuild the engine when this check fails.
 
 Optional local-model prefetch:
 
@@ -61,6 +63,7 @@ uv run --no-sync python -m compileall -q scripts src-tauri/resources
 uv run --no-sync python -m unittest discover -s src-tauri/resources -p "test_*.py"
 uv run --no-sync python scripts/test_build_engine_atomicity.py
 uv run --no-sync python scripts/test_release_ci.py
+uv run --no-sync python scripts/test_ci_fail_fast.py
 cargo fmt --manifest-path src-tauri/Cargo.toml --all -- --check
 cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets --locked -- -D warnings
 cargo test --manifest-path src-tauri/Cargo.toml --all-targets --locked -- --skip services::qwen_hotword_service::tests::hotword_correction_p95_stays_below_one_millisecond
@@ -71,6 +74,8 @@ CI measures the skipped timing-sensitive hotword benchmark separately as advisor
 CI also runs the [TLA+ and Lean contracts](../formal/README.md), including verifier
 regressions and intentional counterexamples, and uploads the proof logs. The
 release gate requires this job to succeed for the exact candidate commit.
+Multi-command PowerShell steps stop on any native command failure. Rust caches
+use OS, compiler, lockfile and source hashes; cache hits still run every check.
 
 ## Troubleshooting
 

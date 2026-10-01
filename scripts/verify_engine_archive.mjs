@@ -1,4 +1,5 @@
 import { open, stat } from "node:fs/promises";
+import { spawnSync } from "node:child_process";
 import { pathToFileURL } from "node:url";
 
 const XZ_MAGIC = Buffer.from([0xfd, 0x37, 0x7a, 0x58, 0x5a, 0x00]);
@@ -33,6 +34,15 @@ export async function verifyEngineArchive(
     }
   } finally {
     await handle.close();
+  }
+
+  const verified = spawnSync(
+    "uv",
+    ["run", "--locked", "python", "scripts/build_engine.py", "--verify-archive", archivePath],
+    { encoding: "utf8", windowsHide: true },
+  );
+  if (verified.error || verified.status !== 0) {
+    throw new Error(verified.error?.message || verified.stderr?.trim() || "Engine source verification failed");
   }
 
   return metadata.size;

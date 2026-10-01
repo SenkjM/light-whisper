@@ -104,7 +104,7 @@ describe("release workflow contract", () => {
     );
   });
 
-  it("rejects missing, empty and non-XZ-header engine archives before packaging", () => {
+  it("rejects missing, empty, non-XZ and truncated engine archives before packaging", () => {
     const directory = mkdtempSync(join(tmpdir(), "light-whisper-engine-check-"));
     const archive = join(directory, "engine.tar.xz");
     const verify = () =>
@@ -127,7 +127,7 @@ describe("release workflow contract", () => {
         archive,
         Buffer.from([0xfd, 0x37, 0x7a, 0x58, 0x5a, 0x00]),
       );
-      expect(verify().status).toBe(0);
+      expect(verify().status).not.toBe(0);
     } finally {
       rmSync(directory, { recursive: true, force: true });
     }

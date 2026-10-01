@@ -17,6 +17,8 @@ const tauriMock = vi.hoisted(() => ({
   getAlibabaAsrConfig: vi.fn(),
   getAssistantApiKey: vi.fn(),
   getEngine: vi.fn(),
+  getGpuIdleSeconds: vi.fn(),
+  setGpuIdleSeconds: vi.fn(),
   getLlmReasoningSupport: vi.fn(),
   getModelsDir: vi.fn(),
   getOnlineAsrApiKey: vi.fn(),
@@ -244,6 +246,7 @@ function resetMocks(profile: UserProfile = baseProfile) {
     url: "https://dashscope-intl.aliyuncs.com",
   });
   tauriMock.getEngine.mockResolvedValue("qwen3-asr-0.6b");
+  tauriMock.getGpuIdleSeconds.mockResolvedValue(0);
   tauriMock.getLlmReasoningSupport.mockResolvedValue({
     strategy: null,
     summary: "reasoning unavailable",

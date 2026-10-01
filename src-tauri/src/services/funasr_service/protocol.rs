@@ -60,6 +60,10 @@ pub enum ServerCommand {
     },
     /// 查询服务器状态
     Status,
+    /// 更新 GPU 空闲卸载秒数。0 表示关闭，不重启进程。
+    SetGpuIdle {
+        seconds: u64,
+    },
     /// 退出服务器
     Exit,
 }

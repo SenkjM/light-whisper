@@ -570,6 +570,45 @@ class R2T2ASRServerAdapterTests(unittest.TestCase):
         self.assertEqual(len(RecordingOfflineSegmented.instances), 1)
         self.assertEqual(RecordingOfflineSegmented.instances[0].reset_calls, 1)
 
+    def test_idle_unload_drops_native_pointers_unless_stream_is_active(self):
+        from gpu_idle import status_keeps_process_ready
+
+        busy = self._server_shell(FakeStreamRuntime())
+        busy.handle_stream_command(
+            {"action": "stream_start", "session_id": 1, "language": "en"}
+        )
+        self.assertTrue(busy._stream_is_active())
+        self.assertFalse(busy._suspend_gpu_runtime())
+        self.assertTrue(busy.initialized)
+        self.assertIsNotNone(busy.native)
+        self.assertIsNotNone(busy.stream)
+        self.assertIsNotNone(busy.segmented)
+
+        server = self._server_shell(FakeStreamRuntime())
+        vad = server.vad_model
+        self.assertTrue(server._suspend_gpu_runtime())
+        self.assertIsNone(server.native)
+        self.assertIsNone(server.segmented)
+        self.assertIsNone(server.stream)
+        self.assertIs(server.vad_model, vad)
+        self.assertFalse(server.initialized)
+        self.assertTrue(server._gpu_suspended)
+        status = server.check_status()
+        self.assertTrue(status["success"])
+        self.assertFalse(status["model_loaded"])
+        self.assertFalse(status["initialized"])
+        self.assertTrue(status["gpu_suspended"])
+        self.assertTrue(status["models"]["vad"])
+        self.assertFalse(status["models"]["asr"])
+        self.assertTrue(status_keeps_process_ready(True, status))
+
+        with mock.patch.object(
+            server, "initialize", return_value={"success": False, "error": "reload"}
+        ) as initialize:
+            result = server.transcribe_audio(None)
+        initialize.assert_called_once()
+        self.assertEqual(result["error"], "reload")
+
 
 if __name__ == "__main__":
     unittest.main()

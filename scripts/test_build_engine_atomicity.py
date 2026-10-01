@@ -1,6 +1,8 @@
 import importlib.util
 import hashlib
+import io
 import json
+import tarfile
 import tempfile
 import types
 import unittest
@@ -20,6 +22,70 @@ def load_build_engine_module():
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module
+
+
+class EngineArchiveSourceTests(unittest.TestCase):
+    def setUp(self):
+        temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(temporary.cleanup)
+        self.root = Path(temporary.name)
+        self.archive = self.root / "engine.tar.xz"
+        self.module = load_build_engine_module()
+        self.module.RESOURCES_DIR = self.root
+        self.module.ADD_DATA_FILES = ["engine.py", "server_common.py", "gpu_idle.py"]
+        self.sources = {name: f"# {name}\nVALUE = 180\n".encode() for name in self.module.ADD_DATA_FILES}
+        for name, source in self.sources.items():
+            (self.root / name).write_bytes(source)
+
+    def package(self, sources):
+        with tarfile.open(self.archive, "w:xz") as archive:
+            for name, source in sources.items():
+                member = tarfile.TarInfo(f"_internal/{name}")
+                member.size = len(source)
+                archive.addfile(member, io.BytesIO(source))
+
+    def test_current_sources_pass_even_across_checkout_line_endings(self):
+        self.package({name: source.replace(b"\n", b"\r\n") for name, source in self.sources.items()})
+        self.module.verify_archive_sources(self.archive)
+
+    def test_old_gpu_idle_dispatch_is_rejected(self):
+        self.package({**self.sources, "server_common.py": b"# legacy dispatcher\nVALUE = 180\n"})
+        with self.assertRaisesRegex(RuntimeError, "Stale bundled source: _internal/server_common.py"):
+            self.module.verify_archive_sources(self.archive)
+
+    def test_changed_checkout_requires_a_rebuilt_engine(self):
+        self.package(self.sources)
+        (self.root / "gpu_idle.py").write_bytes(b"VALUE = 0\n")
+        with self.assertRaisesRegex(RuntimeError, "bundled source: _internal/gpu_idle.py"):
+            self.module.verify_archive_sources(self.archive)
+
+    def test_missing_idle_module_is_rejected(self):
+        self.package({name: source for name, source in self.sources.items() if name != "gpu_idle.py"})
+        with self.assertRaisesRegex(RuntimeError, "Missing bundled sources: _internal/gpu_idle.py"):
+            self.module.verify_archive_sources(self.archive)
+
+    def test_xz_header_without_an_archive_is_rejected(self):
+        self.archive.write_bytes(b"\xfd7zXZ\x00")
+        with self.assertRaises((tarfile.TarError, EOFError)):
+            self.module.verify_archive_sources(self.archive)
+
+    def test_source_symlink_is_rejected(self):
+        with tarfile.open(self.archive, "w:xz") as archive:
+            member = tarfile.TarInfo("_internal/gpu_idle.py")
+            member.type = tarfile.SYMTYPE
+            member.linkname = "../../outside.py"
+            archive.addfile(member)
+        with self.assertRaisesRegex(RuntimeError, "Invalid bundled source: _internal/gpu_idle.py"):
+            self.module.verify_archive_sources(self.archive)
+
+    def test_duplicate_source_cannot_override_a_verified_file(self):
+        with tarfile.open(self.archive, "w:xz") as archive:
+            for source in (self.sources["gpu_idle.py"], b"VALUE = 0\n"):
+                member = tarfile.TarInfo("_internal/gpu_idle.py")
+                member.size = len(source)
+                archive.addfile(member, io.BytesIO(source))
+        with self.assertRaisesRegex(RuntimeError, "Invalid bundled source: _internal/gpu_idle.py"):
+            self.module.verify_archive_sources(self.archive)
 
 
 class BuildEngineArchiveAtomicityTests(unittest.TestCase):

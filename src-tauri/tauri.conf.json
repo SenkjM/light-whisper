@@ -85,6 +85,7 @@
       "resources/download_models.py": "resources/download_models.py",
       "resources/hf_cache_utils.py": "resources/hf_cache_utils.py",
       "resources/server_common.py": "resources/server_common.py",
+      "resources/gpu_idle.py": "resources/gpu_idle.py",
       "resources/engine.tar.xz": "resources/engine.tar.xz",
       "../LICENSE": "LICENSE.txt",
       "../NOTICE": "NOTICE.txt",

@@ -26,7 +26,11 @@ logger = setup_rotating_logger(__name__, "r2t2_asr_server.log", "R2T2服务器")
 
 
 class R2T2ASRServer(BaseASRServer):
-    """Keep the native model resident for streaming and bounded offline work."""
+    """Keep the native model resident for streaming and bounded offline work.
+
+    Idle unload, when enabled, frees the native model only while no stream
+    is active. The next transcribe or stream_start calls initialize().
+    """
 
     def __init__(self):
         super().__init__(engine="confucius4-r2t2", logger=logger)
@@ -100,6 +104,28 @@ class R2T2ASRServer(BaseASRServer):
 
         self._verified_model_path = str(candidate)
         return str(candidate)
+
+    def _gpu_idle_stream_active(self):
+        return self._stream_is_active()
+
+    def _suspend_gpu_runtime(self):
+        """Free the native model. Caller must hold the command lock.
+
+        An active stream blocks unload; FireRedVAD stays on CPU.
+        """
+        if not getattr(self, "initialized", False):
+            return False
+        if self._stream_is_active():
+            return False
+        vad = getattr(self, "vad_model", None)
+        self._close_runtime()
+        self.segmented = None
+        self.stream = None
+        self.initialized = False
+        self._gpu_suspended = True
+        self.vad_model = vad
+        self.logger.info("R2T2 空闲超时，已卸载 GPU 模型；FireRedVAD 仍留在 CPU")
+        return True
 
     def _close_runtime(self):
         runtime = getattr(self, "native", None)
@@ -193,6 +219,7 @@ class R2T2ASRServer(BaseASRServer):
                 )
                 self.stream = R2T2StreamSession(self.segmented)
             self.initialized = True
+            self._gpu_suspended = False
             self._last_load_error = None
             return {
                 "success": True,
@@ -485,7 +512,7 @@ class R2T2ASRServer(BaseASRServer):
         native_loaded = getattr(self, "native", None) is not None
         vad_loaded = getattr(self, "vad_model", None) is not None
         initialized = bool(getattr(self, "initialized", False))
-        return {
+        return self._with_gpu_suspend_flag({
             "success": True,
             "installed": native_loaded,
             "initialized": initialized,
@@ -496,7 +523,7 @@ class R2T2ASRServer(BaseASRServer):
             "native_streaming": initialized and native_loaded and getattr(self, "stream", None) is not None,
             "inline_audio": initialized and native_loaded,
             "models": {"asr": native_loaded, "vad": vad_loaded},
-        }
+        })
 
     def get_performance_stats(self):
         count = getattr(self, "transcription_count", 0)

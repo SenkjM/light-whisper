@@ -39,6 +39,7 @@ QWEN3_CUDA_PROVIDER_URL = (
 
 # 同级 Python 脚本，打包到 _internal/
 ADD_DATA_FILES = [
+    "engine.py",
     "qwen3_asr_server.py",
     "r2t2_asr_server.py",
     "r2t2_native.py",
@@ -52,10 +53,12 @@ ADD_DATA_FILES = [
     "FireRedVAD-LICENSE.txt",
     "download_models.py",
     "server_common.py",
+    "gpu_idle.py",
     "hf_cache_utils.py",
 ]
 
 HIDDEN_IMPORTS = [
+    "gpu_idle",
     "ctypes",
     "requests",
     "certifi",
@@ -405,6 +408,31 @@ def validate_r2t2_runtime():
     return root
 
 
+def verify_archive_sources(archive: Path) -> None:
+    """Reject stale bundled Python code before building an installer."""
+    expected = {
+        f"_internal/{name}": (RESOURCES_DIR / name).read_bytes().replace(b"\r\n", b"\n")
+        for name in ADD_DATA_FILES if name.endswith(".py")
+    }
+    seen = set()
+    with tarfile.open(archive, mode="r|xz") as packaged:
+        for member in packaged:
+            name = member.name.removeprefix("./")
+            if name not in expected:
+                continue
+            source = expected[name]
+            # CRLF can at most double the size of the normalized LF source.
+            if name in seen or not member.isfile() or member.size > len(source) * 2:
+                raise RuntimeError(f"Invalid bundled source: {name}; rebuild the engine")
+            seen.add(name)
+            with packaged.extractfile(member) as stream:
+                if stream.read().replace(b"\r\n", b"\n") != source:
+                    raise RuntimeError(f"Stale bundled source: {name}; rebuild the engine")
+    missing = expected.keys() - seen
+    if missing:
+        raise RuntimeError(f"Missing bundled sources: {', '.join(sorted(missing))}; rebuild the engine")
+
+
 def main():
     if not ENTRY_SCRIPT.exists():
         print(f"错误: 入口脚本不存在: {ENTRY_SCRIPT}", file=sys.stderr)
@@ -518,4 +546,15 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    import argparse
+
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--verify-archive", type=Path)
+    args = parser.parse_args()
+    if args.verify_archive is not None:
+        try:
+            verify_archive_sources(args.verify_archive)
+        except (OSError, RuntimeError, tarfile.TarError, EOFError) as error:
+            parser.exit(1, f"{error}\nRun: uv run --locked python scripts/build_engine.py\n")
+    else:
+        main()

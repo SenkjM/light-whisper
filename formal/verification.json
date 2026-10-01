@@ -439,6 +439,12 @@
     ],
     "commands::history::reprocess_transcription_history": [
       "history"
+    ],
+    "commands::funasr::get_gpu_idle_seconds": [
+      "gpu-idle"
+    ],
+    "commands::funasr::set_gpu_idle_seconds": [
+      "gpu-idle"
     ]
   },
   "events": {
@@ -551,16 +557,21 @@
     "react.navigation-and-settings-persistence": [
       "ui-preferences",
       "preferences"
+    ],
+    "timer.gpu-idle-unload-and-command-lock": [
+      "gpu-idle"
     ]
   },
   "protocols": {
     "python-jsonl.qwen3-asr": [
       "transport",
-      "engine"
+      "engine",
+      "gpu-idle"
     ],
     "python-jsonl.r2t2": [
       "transport",
-      "engine"
+      "engine",
+      "gpu-idle"
     ],
     "http.glm-asr": [
       "transport",
@@ -1227,6 +1238,44 @@
         "formal/lean/StateContracts.lean"
       ],
       "assumptions": "localStorage/media query/Tauri autostart are platform primitives; visuals/accessibility need UI tests. Failed initial autostart read does not establish a known value."
+    },
+    "gpu-idle": {
+      "obligation": "Enabling at startup or runtime starts an idle window; no unload during commands or native streams; readiness survives suspension; successful next commands reload; stale initial settings reads cannot overwrite edits.",
+      "models": {
+        "GpuIdleLifecycle": [
+          "EnabledHasIdleWindow",
+          "ActiveRuntimeLoaded",
+          "SafeUnload",
+          "ReadySurvivesIdle",
+          "IdleEventuallyUnloads",
+          "CommandsSettle"
+        ],
+        "GpuIdleSettings": [
+          "DisplayMatchesLastSave",
+          "SavesSettle"
+        ],
+        "AppWorkflow": [
+          "GpuUnloadIsSafe",
+          "GpuSuspensionKeepsReady",
+          "GpuStreamHasRuntime"
+        ]
+      },
+      "implementation": [
+        "src-tauri/resources/server_common.py#_gpu_idle_tick",
+        "src-tauri/resources/qwen3_asr_server.py#_suspend_gpu_runtime",
+        "src-tauri/resources/r2t2_asr_server.py#_suspend_gpu_runtime",
+        "src-tauri/src/services/funasr_service.rs#push_gpu_idle_seconds",
+        "src/components/settings/GpuIdleUnloadControl.tsx"
+      ],
+      "evidence": [
+        "src-tauri/resources/test_gpu_idle.py#test_positive_env_starts_idle_window_after_startup",
+        "src-tauri/resources/test_gpu_idle.py#test_enabling_after_use_starts_a_fresh_idle_window",
+        "src-tauri/resources/test_qwen3_asr_server.py#test_idle_unload_closes_runtime_and_keeps_vad",
+        "src-tauri/resources/test_r2t2_asr_server.py#test_idle_unload_drops_native_pointers_unless_stream_is_active",
+        "src/components/settings/GpuIdleUnloadControl.test.tsx",
+        "formal/lean/StateContracts.lean#gpuMayUnload"
+      ],
+      "assumptions": "Monotonic time and weakly fair timer/command completion; finite clocks in TLC and unbounded Nat policy in Lean. Native load/free success is an input, not a driver proof. AppWorkflow GpuIdle represents R2T2 recording as an active stream. Input focus/click ordering is checked by real user-event regression tests; linguistic accuracy is outside proof."
     }
   },
   "runs": {
@@ -1242,7 +1291,8 @@
       "AppWorkflowEngineSpeech.cfg",
       "AppWorkflowAssistantWeb.cfg",
       "AppWorkflowSubtitles.cfg",
-      "AppWorkflowHistory.cfg"
+      "AppWorkflowHistory.cfg",
+      "AppWorkflowGpuIdle.cfg"
     ],
     "AsyncSettings": [
       "AsyncSettings.cfg"
@@ -1330,14 +1380,63 @@
     ],
     "EventSubscriptionLifecycle": [
       "EventSubscriptionLifecycle.cfg"
+    ],
+    "GpuIdleLifecycle": [
+      "GpuIdleLifecycle.cfg",
+      "GpuIdleStartup.cfg"
+    ],
+    "GpuIdleSettings": [
+      "GpuIdleSettings.cfg"
     ]
   },
   "actions": {
-    "RecordingLifecycle": ["Start", "CancelStarting"],
-    "AppWorkflow": ["StopRecording", "StartAssistantChat", "CancelAssistantChat", "ReplaceSelection", "SearchSelection", "CheckUpdate", "OpenRelease"],
-    "MicrophoneMonitor": ["Begin", "Stop"],
-    "EngineDownload": ["Cancel", "Exit"],
-    "SettingsContracts": ["KeyWrite", "Preference", "ProviderEdit", "RemoveProvider", "OpenUrl"]
+    "RecordingLifecycle": [
+      "Start",
+      "CancelStarting"
+    ],
+    "AppWorkflow": [
+      "StopRecording",
+      "StartAssistantChat",
+      "CancelAssistantChat",
+      "ReplaceSelection",
+      "SearchSelection",
+      "CheckUpdate",
+      "OpenRelease",
+      "EnableGpuIdle",
+      "DisableGpuIdle",
+      "TickGpuIdle",
+      "UnloadGpuIdle"
+    ],
+    "MicrophoneMonitor": [
+      "Begin",
+      "Stop"
+    ],
+    "EngineDownload": [
+      "Cancel",
+      "Exit"
+    ],
+    "SettingsContracts": [
+      "KeyWrite",
+      "Preference",
+      "ProviderEdit",
+      "RemoveProvider",
+      "OpenUrl"
+    ],
+    "GpuIdleLifecycle": [
+      "Enable",
+      "Disable",
+      "BeginCommand",
+      "StartStream",
+      "FinishCommand",
+      "FinishStream",
+      "Tick",
+      "Unload"
+    ],
+    "GpuIdleSettings": [
+      "BeginSave",
+      "FinishSave",
+      "FinishRead"
+    ]
   },
   "negative": [
     {
@@ -1617,6 +1716,43 @@
         "LateNativePrime(worker) ==\n  /\\ worker \\in lateWorkers\n  /\\ worker \\notin latePrimed\n  /\\ latePrimed' = latePrimed \\cup {worker}\n  /\\ samples' = AppendSamples(samples, \"native\", 1)\n  /\\ UNCHANGED <<\n       sessionCounter, session, capturePhase, sessionDeviceChoice,\n       nativeDisabled, nativeWorkerSession, nativeWorkerPhase, nativeOutcome,\n       nativeDevice, acceptedSession, handoffCount, priming,\n        cpalPhase, cpalDevice, lateWorkers,\n       selectedDevice, monitorPhase, monitorDeviceChoice, monitorDevice,\n       monitorMeter\n     >>\n\n"
       ],
       "invariant": "NativeSamplesRequireAcceptedWorker"
+    },
+    {
+      "name": "gpu-idle-startup-window",
+      "model": "GpuIdleLifecycle",
+      "config": "GpuIdleStartup.cfg",
+      "replace": [
+        "window |-> StartupEnabled",
+        "window |-> FALSE"
+      ],
+      "invariant": "EnabledHasIdleWindow"
+    },
+    {
+      "name": "gpu-idle-enable-window",
+      "model": "GpuIdleLifecycle",
+      "replace": [
+        "!.window = TRUE",
+        "!.window = FALSE"
+      ],
+      "invariant": "EnabledHasIdleWindow"
+    },
+    {
+      "name": "gpu-idle-unload-busy",
+      "model": "GpuIdleLifecycle",
+      "replace": [
+        "CanUnload == s.enabled /\\ s.loaded /\\ ~s.busy /\\ ~s.stream /\\ s.age = Timeout",
+        "CanUnload == s.enabled /\\ s.loaded /\\ s.age = Timeout"
+      ],
+      "invariant": "ActiveRuntimeLoaded"
+    },
+    {
+      "name": "gpu-idle-read-overwrites-save",
+      "model": "GpuIdleSettings",
+      "replace": [
+        "IF ~s.edited THEN 0 ELSE @",
+        "0"
+      ],
+      "invariant": "DisplayMatchesLastSave"
     }
   ],
   "command_implementation": {
@@ -1739,6 +1875,8 @@
     "commands::history::get_transcription_history_stats": "src-tauri/src/commands/history.rs#fn get_transcription_history_stats(",
     "commands::history::delete_transcription_history": "src-tauri/src/commands/history.rs#fn delete_transcription_history(",
     "commands::history::export_transcription_history": "src-tauri/src/commands/history.rs#fn export_transcription_history(",
-    "commands::history::reprocess_transcription_history": "src-tauri/src/commands/history.rs#fn reprocess_transcription_history("
+    "commands::history::reprocess_transcription_history": "src-tauri/src/commands/history.rs#fn reprocess_transcription_history(",
+    "commands::funasr::get_gpu_idle_seconds": "src-tauri/src/commands/funasr.rs#fn get_gpu_idle_seconds(",
+    "commands::funasr::set_gpu_idle_seconds": "src-tauri/src/commands/funasr.rs#fn set_gpu_idle_seconds("
   }
 }
