@@ -12,6 +12,7 @@ import struct
 import sys
 import tempfile
 import threading
+import time
 from typing import Optional, Tuple
 from logging.handlers import RotatingFileHandler
 
@@ -223,6 +224,13 @@ class BaseASRServer:
         self.total_audio_duration = 0.0
         self.device = self._detect_device()
         self.stdout_suppressor = StdoutSuppressor()
+        # 0 = 关闭。未开启时不启动计时器，命令路径与以前相同。
+        self._gpu_idle_seconds = 0
+        self._gpu_idle_lock = threading.Lock()
+        self._gpu_idle_stop = None
+        self._gpu_idle_thread = None
+        self._last_activity_at = None
+        self._gpu_suspended = False
 
         signal.signal(signal.SIGTERM, self._signal_handler)
         signal.signal(signal.SIGINT, self._signal_handler)
@@ -339,6 +347,145 @@ class BaseASRServer:
             "error": f"不支持流式命令: {command.get('action')}",
         }
 
+
+    def _with_gpu_suspend_flag(self, payload):
+        """Add gpu_suspended only while the model is actually unloaded."""
+        if not isinstance(payload, dict) or not getattr(self, "_gpu_suspended", False):
+            return payload
+        if payload.get("gpu_suspended") is True:
+            return payload
+        updated = dict(payload)
+        updated["gpu_suspended"] = True
+        return updated
+
+    def _gpu_idle_stream_active(self) -> bool:
+        return False
+
+    def _suspend_gpu_runtime(self) -> bool:
+        """Release the resident GPU model. Subclasses own the close API."""
+        return False
+
+    def _adopt_gpu_idle_from_env(self) -> None:
+        from gpu_idle import GPU_IDLE_ENV, parse_gpu_idle_seconds
+
+        if GPU_IDLE_ENV not in os.environ:
+            return
+        seconds = parse_gpu_idle_seconds(os.environ.get(GPU_IDLE_ENV))
+        if seconds <= 0:
+            return
+        self._gpu_idle_seconds = seconds
+        self._last_activity_at = time.monotonic()
+        self._ensure_gpu_idle_thread()
+        self.logger.info("GPU 空闲卸载已启用，超时 %s 秒", seconds)
+
+    def _handle_set_gpu_idle(self, command) -> dict:
+        from gpu_idle import parse_gpu_idle_seconds
+
+        if not isinstance(command, dict) or "seconds" not in command:
+            return {"success": False, "error": "缺少 seconds"}
+        seconds = parse_gpu_idle_seconds(command.get("seconds"))
+        with self._gpu_idle_lock:
+            if seconds > 0 and self._gpu_idle_seconds <= 0:
+                self._last_activity_at = time.monotonic()
+            self._gpu_idle_seconds = seconds
+            if seconds <= 0:
+                self._last_activity_at = None
+        if seconds > 0:
+            self._ensure_gpu_idle_thread()
+        else:
+            self._stop_gpu_idle_thread()
+        self.logger.info("GPU 空闲卸载设置已更新: %s 秒（0 表示关闭）", seconds)
+        return {
+            "success": True,
+            "gpu_idle_seconds": seconds,
+            "enabled": seconds > 0,
+        }
+
+    def _ensure_gpu_idle_thread(self) -> None:
+        thread = self._gpu_idle_thread
+        if thread is not None and thread.is_alive():
+            return
+        stop = threading.Event()
+        self._gpu_idle_stop = stop
+        thread = threading.Thread(
+            target=self._gpu_idle_loop,
+            args=(stop,),
+            name="gpu-idle-unload",
+            daemon=True,
+        )
+        self._gpu_idle_thread = thread
+        thread.start()
+
+    def _stop_gpu_idle_thread(self) -> None:
+        stop = self._gpu_idle_stop
+        thread = self._gpu_idle_thread
+        if stop is not None:
+            stop.set()
+        if (
+            thread is not None
+            and thread.is_alive()
+            and thread is not threading.current_thread()
+        ):
+            thread.join(timeout=2.0)
+        if thread is None or not thread.is_alive():
+            self._gpu_idle_thread = None
+            self._gpu_idle_stop = None
+
+    def _gpu_idle_loop(self, stop: threading.Event) -> None:
+        while not stop.wait(0.5):
+            try:
+                self._gpu_idle_tick()
+            except Exception:
+                self.logger.warning("GPU 空闲卸载检查失败", exc_info=True)
+
+    def _gpu_idle_tick(self, now: float | None = None) -> bool:
+        from gpu_idle import gpu_idle_should_unload
+
+        if not self._gpu_idle_lock.acquire(blocking=False):
+            return False
+        try:
+            idle_seconds = self._gpu_idle_seconds
+            if idle_seconds <= 0:
+                return False
+            if now is None:
+                now = time.monotonic()
+            if not gpu_idle_should_unload(
+                now=now,
+                last_activity=self._last_activity_at,
+                idle_seconds=idle_seconds,
+                stream_active=self._gpu_idle_stream_active(),
+            ):
+                return False
+            return bool(self._suspend_gpu_runtime())
+        finally:
+            self._gpu_idle_lock.release()
+
+    def _execute_action(self, command, action):
+        if action == "transcribe":
+            return self.transcribe_audio(
+                command.get("audio_path"),
+                command.get("options", {}),
+                hot_words=command.get("hot_words"),
+                audio_base64=command.get("audio_base64"),
+                audio_format=command.get("audio_format"),
+                sample_rate=command.get("sample_rate"),
+            )
+        if action == "status":
+            return self._with_gpu_suspend_flag(self.check_status())
+        if action == "stats":
+            return {"success": True, "stats": self.get_performance_stats()}
+        if action == "cleanup":
+            self._cleanup_memory()
+            return {"success": True, "message": "内存清理完成"}
+        if action in (
+            "stream_start",
+            "stream_feed",
+            "stream_finish",
+            "stream_cancel",
+        ):
+            return self.handle_stream_command(command)
+        return {"success": False, "error": f"未知命令: {action}"}
+
     # ------------------------------------------------------------------
     # Command dispatch loop
     # ------------------------------------------------------------------
@@ -369,6 +516,8 @@ class BaseASRServer:
         print(json.dumps(init_result, ensure_ascii=False))
         sys.stdout.flush()
 
+        self._adopt_gpu_idle_from_env()
+
         while self.running:
             request_id = None
             try:
@@ -397,38 +546,35 @@ class BaseASRServer:
                         request_id = rid
 
                 action = command.get("action")
-                if action == "transcribe":
-                    result = self.transcribe_audio(
-                        command.get("audio_path"),
-                        command.get("options", {}),
-                        hot_words=command.get("hot_words"),
-                        audio_base64=command.get("audio_base64"),
-                        audio_format=command.get("audio_format"),
-                        sample_rate=command.get("sample_rate"),
-                    )
-                elif action == "status":
-                    result = self.check_status()
-                elif action == "stats":
-                    result = {"success": True, "stats": self.get_performance_stats()}
-                elif action == "cleanup":
-                    self._cleanup_memory()
-                    result = {"success": True, "message": "内存清理完成"}
-                elif action in (
-                    "stream_start",
-                    "stream_feed",
-                    "stream_finish",
-                    "stream_cancel",
-                ):
-                    result = self.handle_stream_command(command)
-                elif action == "exit":
+                if action == "exit":
+                    if self._gpu_idle_thread is not None:
+                        self._stop_gpu_idle_thread()
                     result = {"success": True, "message": "服务器退出"}
                     if request_id is not None and isinstance(result, dict):
                         result["request_id"] = request_id
                     print(json.dumps(result, ensure_ascii=False))
                     sys.stdout.flush()
                     break
+                elif action == "set_gpu_idle":
+                    result = self._handle_set_gpu_idle(command)
+                elif self._gpu_idle_seconds > 0 and action in (
+                    "transcribe",
+                    "stream_start",
+                    "stream_feed",
+                    "stream_finish",
+                    "stream_cancel",
+                    "status",
+                    "stats",
+                    "cleanup",
+                ):
+                    from gpu_idle import GPU_IDLE_ACTIVITY_ACTIONS
+
+                    with self._gpu_idle_lock:
+                        result = self._execute_action(command, action)
+                        if action in GPU_IDLE_ACTIVITY_ACTIONS:
+                            self._last_activity_at = time.monotonic()
                 else:
-                    result = {"success": False, "error": f"未知命令: {action}"}
+                    result = self._execute_action(command, action)
 
                 if request_id is not None and isinstance(result, dict):
                     result["request_id"] = request_id

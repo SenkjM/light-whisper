@@ -70,6 +70,7 @@ import HistorySettingsSection from "@/components/settings/HistorySettingsSection
 import PolishStructureControl from "@/components/settings/PolishStructureControl";
 import ProcessingModeControl from "@/components/settings/ProcessingModeControl";
 import JevSettingsSection from "@/components/settings/JevSettingsSection";
+import GpuIdleUnloadControl from "@/components/settings/GpuIdleUnloadControl";
 import R2T2SettingsSection from "@/components/settings/R2T2SettingsSection";
 import { PADDING, INPUT_METHOD_KEY, DEFAULT_HOTKEY, AI_POLISH_ENABLED_KEY, SOUND_ENABLED_KEY, RECORDING_MODE_KEY } from "@/lib/constants";
 import { formatAsrEngineDescription, getAsrEngineCapability } from "@/lib/asrEngineCapabilities";
@@ -2243,6 +2244,7 @@ export default function SettingsPage({
                 </div>
               );
             })()}
+            <GpuIdleUnloadControl />
             {engine === "confucius4-r2t2" && profile && (
               <R2T2SettingsSection profile={profile} onSaved={() => { void refreshProfile(); }} />
             )}

@@ -10,7 +10,7 @@ import tempfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-TLC_SHA256 = "e6683a256bab10d44f0e5c22063552e188b7d4a2e0aecd44e76f0b438046f3b5"
+TLC_SHA256 = "936a262061c914694dfd669a543be24573c45d5aa0ff20a8b96b23d01e050e88"
 
 
 def tla_code(source: str) -> str:
@@ -115,10 +115,10 @@ def tlc(jar: Path, model: str, config: Path, source: Path, directory: Path,
         expected_violation: str | None = None) -> dict:
     directory.mkdir(parents=True, exist_ok=True)
     result = subprocess.run([
-        "java", "-XX:+UseParallelGC", "-jar", str(jar), "-noGenerateSpecTE", "-workers", "2",
+        "java", "-XX:+UseParallelGC", "-jar", str(jar), "-workers", "2",
         "-coverage", "1",
         "-metadir", str(directory / "states"), "-config", str(config), str(source),
-    ], cwd=ROOT, text=True, encoding="utf-8", errors="replace", capture_output=True, timeout=480)
+    ], cwd=source.parent, text=True, encoding="utf-8", errors="replace", capture_output=True, timeout=480)
     (directory / "tlc.log").write_text(result.stdout + result.stderr, encoding="utf-8")
     if expected_violation:
         if result.returncode != 12 or f"Invariant {expected_violation} is violated" not in result.stdout:
@@ -244,6 +244,10 @@ def main() -> int:
                     raise ValueError(f"mutation target changed: {case['name']}")
                 source = Path(temporary) / f"{model}.tla"
                 source.write_text(content.replace(original, replacement), encoding="utf-8")
+                # TLC 1.7.4 resolves configs beside the module, including mutations.
+                local_config = Path(temporary) / config.name
+                local_config.write_bytes(config.read_bytes())
+                config = local_config
             results.append(tlc(jar, model, config, source, logs / f"negative-{case['name']}", case["invariant"]))
     summary = "negative-summary.json" if args.negative_only else "summary.json"
     (logs / summary).write_text(json.dumps(results, indent=2) + "\n", encoding="utf-8")

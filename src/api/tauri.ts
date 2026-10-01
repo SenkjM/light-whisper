@@ -122,6 +122,12 @@ export function setEngine(engine: string): Promise<string> {
   return invokeCommand<string>("set_engine", { engine });
 }
 
+export const getGpuIdleSeconds = createNoArgCommand<number>("get_gpu_idle_seconds");
+
+export function setGpuIdleSeconds(seconds: number): Promise<number> {
+  return invokeCommand<number>("set_gpu_idle_seconds", { seconds });
+}
+
 export function copyToClipboard(text: string): Promise<string> {
   return invokeCommand<string>("copy_to_clipboard", { text });
 }

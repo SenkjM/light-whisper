@@ -227,4 +227,30 @@ theorem earlierRulesDoNotMatch (xs : List Bool) (i j : Nat)
           have before' : j < k := by omega
           simpa using ih k j hp before'
 
+def gpuMayUnload (timeout age : Nat) (busy streaming : Bool) : Bool :=
+  decide (0 < timeout ∧ timeout ≤ age) && !busy && !streaming
+
+theorem busyGpuNeverUnloads (timeout age : Nat) (streaming : Bool) :
+    gpuMayUnload timeout age true streaming = false := by
+  simp [gpuMayUnload]
+
+theorem streamingGpuNeverUnloads (timeout age : Nat) (busy : Bool) :
+    gpuMayUnload timeout age busy true = false := by
+  simp [gpuMayUnload]
+
+theorem disabledGpuNeverUnloads (age : Nat) (busy streaming : Bool) :
+    gpuMayUnload 0 age busy streaming = false := by
+  simp [gpuMayUnload]
+
+theorem idleWindowWaitsForTimeout (timeout age : Nat) (h : age < timeout) :
+    gpuMayUnload timeout age false false = false := by
+  simp [gpuMayUnload, Nat.not_le.mpr h]
+
+def applyGpuIdleRead (edited : Bool) (current snapshot : Nat) : Nat :=
+  if edited then current else snapshot
+
+theorem editedGpuIdleReadIsInert (current snapshot : Nat) :
+    applyGpuIdleRead true current snapshot = current := by
+  simp [applyGpuIdleRead]
+
 end LightWhisper

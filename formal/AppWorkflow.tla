@@ -3,7 +3,7 @@ EXTENDS Naturals
 
 CONSTANT Workload
 ASSUME Workload \in {"Speech", "CloudSpeech", "Selection", "Management",
-                    "Mixed", "EngineSpeech", "AssistantWeb", "Subtitles", "History"}
+                    "Mixed", "EngineSpeech", "AssistantWeb", "Subtitles", "History", "GpuIdle"}
 
 Modes == {"Dictation", "Translation", "Edit", "Assistant"}
 PolishModes == {"Off", "On", "Auto"}
@@ -11,7 +11,7 @@ SelectionActions == {"Translate", "Explain", "Optimize"}
 Windows == {"Unknown", "A", "B"}
 
 AllowSpeech == Workload \in {"Speech", "CloudSpeech", "Mixed", "EngineSpeech",
-                            "AssistantWeb", "Subtitles"}
+                            "AssistantWeb", "Subtitles", "GpuIdle"}
 AllowSelection == Workload \in {"Selection", "Mixed"}
 AllowSettings == Workload \in {"Speech", "CloudSpeech", "Management", "Mixed",
                               "EngineSpeech", "AssistantWeb"}
@@ -73,6 +73,8 @@ Init == app = [
   updateCheck |-> "Unchecked",
   subtitle |-> "Idle", subtitleSession |-> 0, subtitleFinalSeen |-> FALSE,
   staleSubtitleIgnored |-> FALSE
+  , gpuEnabled |-> FALSE, gpuLoaded |-> FALSE, gpuAge |-> 0,
+  gpuSuspended |-> FALSE, gpuUnsafeUnload |-> FALSE
 ]
 
 \* Settings and credentials are user actions. The profile component model
@@ -126,7 +128,7 @@ SetAsrCredential ==
 
 StartDownload ==
   /\ Workload \in {"Speech", "Management", "Mixed", "EngineSpeech",
-                  "Subtitles"}
+                  "Subtitles", "GpuIdle"}
   /\ app.engine = "Local"
   /\ app.runtime = "Missing"
   /\ app.download = "Idle"
@@ -140,7 +142,8 @@ CancelDownload ==
 DownloadSuccess ==
   /\ app.download = "Running"
   /\ app' = [app EXCEPT
-       !.download = "Done", !.localInstalled = TRUE, !.runtime = "Ready"]
+       !.download = "Done", !.localInstalled = TRUE, !.runtime = "Ready",
+       !.gpuLoaded = Workload = "GpuIdle"]
 
 DownloadExit ==
   /\ app.download \in {"Running", "Cancelling"}
@@ -157,7 +160,7 @@ MoveForeground(w) ==
 StartRecording(mode) ==
   /\ AllowSpeech
   /\ mode \in Modes
-  /\ (Workload \notin {"Mixed", "EngineSpeech", "Subtitles"}
+  /\ (Workload \notin {"Mixed", "EngineSpeech", "Subtitles", "GpuIdle"}
       \/ mode = "Dictation")
   /\ (Workload # "AssistantWeb" \/ mode = "Assistant")
   /\ app.runtime = "Ready"
@@ -168,7 +171,9 @@ StartRecording(mode) ==
 
 CaptureReady ==
   /\ app.rec = "Starting"
-  /\ app' = [app EXCEPT !.rec = "Recording"]
+  /\ app' = [app EXCEPT !.rec = "Recording",
+       !.gpuLoaded = IF Workload = "GpuIdle" THEN TRUE ELSE @,
+       !.gpuSuspended = FALSE]
 
 CancelStarting ==
   /\ app.rec = "Starting"
@@ -184,17 +189,17 @@ StopRecording ==
 
 AsrText ==
   /\ app.rec = "Asr"
-  /\ app' = [app EXCEPT !.rec = "PostAsr", !.asr = "Text"]
+  /\ app' = [app EXCEPT !.rec = "PostAsr", !.asr = "Text", !.gpuAge = 0]
 
 AsrFailure ==
   /\ app.rec = "Asr"
   /\ app' = [app EXCEPT !.rec = "Failed", !.asr = "Error",
-       !.result = "Error"]
+       !.result = "Error", !.gpuAge = 0]
 
 NoSpeech ==
   /\ app.rec = "Asr"
   /\ app' = [app EXCEPT !.rec = "Failed", !.asr = "Empty",
-       !.result = "Error"]
+       !.result = "Error", !.gpuAge = 0]
 
 \* Auto polish can either skip or run after the Jev decision. Explicit
 \* translation, edit, and assistant requests always enter their LLM path.
@@ -439,6 +444,22 @@ OpenRelease ==
   /\ app.updateCheck = "Available"
   /\ app' = [app EXCEPT !.updateCheck = "Opened"]
 
+EnableGpuIdle ==
+  /\ Workload = "GpuIdle" /\ ~app.gpuEnabled
+  /\ app' = [app EXCEPT !.gpuEnabled = TRUE, !.gpuAge = 0]
+DisableGpuIdle ==
+  /\ Workload = "GpuIdle" /\ app.gpuEnabled
+  /\ app' = [app EXCEPT !.gpuEnabled = FALSE, !.gpuAge = 0]
+TickGpuIdle ==
+  /\ Workload = "GpuIdle" /\ app.gpuEnabled /\ app.gpuLoaded /\ app.gpuAge < 2
+  /\ app.rec \notin {"Starting", "Recording", "Asr"}
+  /\ app' = [app EXCEPT !.gpuAge = @ + 1]
+UnloadGpuIdle ==
+  /\ Workload = "GpuIdle" /\ app.gpuEnabled /\ app.gpuLoaded /\ app.gpuAge = 2
+  /\ app.rec \notin {"Starting", "Recording", "Asr"}
+  /\ app' = [app EXCEPT !.gpuLoaded = FALSE, !.gpuSuspended = TRUE,
+       !.gpuUnsafeUnload = app.rec \in {"Starting", "Recording", "Asr"}]
+
 Next ==
   \/ \E policy \in Policies: Configure(policy)
   \/ SaveSettings \/ SetLlmCredential \/ RequestEngineSwitch
@@ -468,6 +489,7 @@ Next ==
   \/ FinalSubtitle
   \/ \E status \in {"Current", "Available", "Error"}: CheckUpdate(status)
   \/ OpenRelease
+  \/ EnableGpuIdle \/ DisableGpuIdle \/ TickGpuIdle \/ UnloadGpuIdle
 
 Spec == Init /\ [][Next]_app
 
@@ -505,6 +527,7 @@ TypeOK ==
   /\ app.settingsVersion \in 0..1
   /\ app.savedVersion \in 0..1
   /\ app.updateCheck \in {"Unchecked", "Current", "Available", "Error", "Opened"}
+  /\ app.gpuAge \in 0..2
 
 HistoryConsent == ~app.historyStored \/ app.historyAllowed
 AudioConsent == ~app.audioStored \/ app.audioAllowed
@@ -539,6 +562,10 @@ RejectedSwitchKeepsConfig ==
 SuccessfulSwitchHasRequest ==
   app.engineSwitches = 0 \/ app.engineRequest = "Done"
 
+GpuUnloadIsSafe == ~app.gpuUnsafeUnload
+GpuSuspensionKeepsReady == ~app.gpuSuspended \/ app.runtime = "Ready"
+GpuStreamHasRuntime == Workload # "GpuIdle" \/ app.rec # "Recording" \/ app.gpuLoaded
+
 Safety ==
   /\ HistoryConsent /\ AudioConsent /\ ScreenConsent
   /\ ScreenStaysOnCapturedWindow /\ DownloadPinsConfig
@@ -549,4 +576,5 @@ Safety ==
   /\ AudioLeaseKeepsFile /\ StoredAudioKeepsFile /\ ReprocessNeedsLease
   /\ SubtitleMatchesSession /\ SubtitleFinalStaysFinal
   /\ RejectedSwitchKeepsConfig /\ SuccessfulSwitchHasRequest
+  /\ GpuUnloadIsSafe /\ GpuSuspensionKeepsReady /\ GpuStreamHasRuntime
 =============================================================================

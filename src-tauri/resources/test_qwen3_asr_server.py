@@ -204,6 +204,48 @@ class Qwen3ASRServerTests(unittest.TestCase):
         self.assertEqual(result["speech_duration"], 0.8)
         self.assertTrue(server.check_status()["models"]["vad"])
 
+    def test_idle_unload_closes_runtime_and_keeps_vad(self):
+        from gpu_idle import status_keeps_process_ready
+
+        with mock.patch.object(
+            qwen3_asr_server.Qwen3ASRServer, "_detect_device", return_value="cuda"
+        ):
+            server = qwen3_asr_server.Qwen3ASRServer(engine="qwen3-asr-0.6b")
+        model = mock.Mock()
+        session = mock.Mock()
+        vad = object()
+        server.model = model
+        server.session = session
+        server.vad_model = vad
+        server.initialized = True
+
+        self.assertTrue(server._suspend_gpu_runtime())
+        model.close.assert_called_once()
+        session.close.assert_called_once()
+        self.assertIsNone(server.model)
+        self.assertIsNone(server.session)
+        self.assertIs(server.vad_model, vad)
+        self.assertFalse(server.initialized)
+        self.assertTrue(server._gpu_suspended)
+        self.assertFalse(server._suspend_gpu_runtime())
+
+        with mock.patch("qwen3_asr_server.importlib.metadata.version", return_value="9"):
+            status = server.check_status()
+        self.assertTrue(status["success"])
+        self.assertFalse(status["model_loaded"])
+        self.assertFalse(status["initialized"])
+        self.assertTrue(status["models"]["vad"])
+        self.assertFalse(status["models"]["asr"])
+        self.assertTrue(status["gpu_suspended"])
+        self.assertTrue(status_keeps_process_ready(True, status))
+
+        with (
+            mock.patch.object(server, "initialize", return_value={"success": False, "error": "reload"}) as initialize,
+        ):
+            result = server.transcribe_audio("clip.wav")
+        initialize.assert_called_once()
+        self.assertEqual(result["error"], "reload")
+
 
 if __name__ == "__main__":
     unittest.main()

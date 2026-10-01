@@ -1,124 +1,136 @@
 {
   "schema": 1,
-  "verified_utc": "2026-09-28T09:42:43Z",
-  "baseline_commit": "d29cd45db8876bd7bcfa915ae642af3b0fcc4bbe",
-  "pull_request": "https://github.com/sypsyp97/light-whisper/pull/9",
-  "scope": "Whole-application owned state and protocol contracts with reviewed source/test correspondence; not compiler refinement or native dependency proof.",
+  "verified_utc": "2026-10-01T15:44:58.950889+00:00",
+  "baseline_commit": "83e113f714f2ad02abb93f9227d0a479d0ae4c55",
+  "pull_request": "https://github.com/sypsyp97/light-whisper/pull/10",
+  "pr_head_reviewed": "004087d25c7bd3d790cd51c6abe5fd7ebbfb77da",
+  "scope": "Application state/protocol contracts and GPU idle-unload implementation regressions; not compiler refinement or native dependency proof.",
   "inventory": {
-    "commands": 120,
+    "commands": 122,
     "event_families": 16,
-    "lifecycle_entries": 15,
+    "lifecycle_entries": 16,
     "protocol_families": 11,
-    "contract_families": 25
+    "contract_families": 26
   },
   "tools": {
-    "tlc_version": "1.8.0",
-    "tlc_sha256": "ab4694601923fd5ac06452abbf847c366a5054a3d739552085edd6ed986c29ec",
+    "tlc_version": "1.7.4",
+    "tlc_sha256": "936a262061c914694dfd669a543be24573c45d5aa0ff20a8b96b23d01e050e88",
+    "local_java": "Temurin 1.8.0_462; CI uses Java 21",
     "lean_version": "4.34.1",
-    "lean_archive_sha256": "47bf4bbd78f70c2e9670598ab7124d92b6efb7330ff33e5fbb4030f6fd72e4e4"
+    "lean_archive_platform": "windows",
+    "lean_archive_sha256": "667394ecf6708a228221eb4919c0bdb419966b7408bcf3089a9096a6f4ae62c9",
+    "actionlint_version": "1.7.12"
   },
   "formal": {
     "status": "passed",
-    "model_count": 30,
-    "positive_configurations": 41,
-    "negative_controls": 38,
-    "integrated_actions_reached": 57,
-    "integrated_workloads": 9,
+    "model_count": 32,
+    "positive_configurations": 45,
+    "negative_controls": 42,
+    "integrated_actions_reached": 61,
+    "integrated_workloads": 10,
     "results": [
       {
         "model": "AppProfileRules",
         "config": "AppProfileRules.cfg",
         "distinct": 432,
-        "source_sha256": "de822ff42c44789a4a8650c666149f12e2d4e5125b6424648db94dbe0ac79511",
-        "config_sha256": "fdf8d44b90c26403022eec1b044e32767564b5cadf7b1881b067d1b1704d4454",
+        "source_sha256": "b4ec5a66e17cc6dd856898bc0168eda55db368a6d4a0f536f066caacb5505277",
+        "config_sha256": "7dc001044f26817cb12f5f518c9d1509a6d404384f306787123cb2afc5ccf4a2",
         "expected_violation": null
       },
       {
         "model": "AppWorkflow",
         "config": "AppWorkflow.cfg",
         "distinct": 429286,
-        "source_sha256": "7eadf758725a8b8fd1072f9bb5bb9d07ffdfb274f86e0dbeea8dac2ccd5af35a",
-        "config_sha256": "ee6edd44b216452b22af3df030ae278a3b41af7f1257245df5748d21c08d1312",
+        "source_sha256": "dfc3587ec85c85eaf6e09cc39547ec369edeb368bb502396c0c5ee4d6aa08e46",
+        "config_sha256": "2f71bd1cbb34cac49a6b1724fbda90d2de31f57319ec0c614e1438e756394715",
         "expected_violation": null
       },
       {
         "model": "AppWorkflow",
         "config": "AppWorkflowSpeech.cfg",
         "distinct": 25883,
-        "source_sha256": "7eadf758725a8b8fd1072f9bb5bb9d07ffdfb274f86e0dbeea8dac2ccd5af35a",
-        "config_sha256": "a3371bc12fbf1b00ac4a34ff448b11444c26bd98e68d8e4f3500c40fcf1f8cf4",
+        "source_sha256": "dfc3587ec85c85eaf6e09cc39547ec369edeb368bb502396c0c5ee4d6aa08e46",
+        "config_sha256": "79997e180c901b73a8c1c9ed2a5badb9af55cd7bcdae6c307206fd1b5fccb85a",
         "expected_violation": null
       },
       {
         "model": "AppWorkflow",
         "config": "AppWorkflowCloudSpeech.cfg",
         "distinct": 25751,
-        "source_sha256": "7eadf758725a8b8fd1072f9bb5bb9d07ffdfb274f86e0dbeea8dac2ccd5af35a",
-        "config_sha256": "2f5bf08f4ede904b387b403fce879a5b1c2344ca0acd93a53cbd2e8452a79e53",
+        "source_sha256": "dfc3587ec85c85eaf6e09cc39547ec369edeb368bb502396c0c5ee4d6aa08e46",
+        "config_sha256": "13d9c7b3d105eae9c321526f26ece39f104cfb82cd671d9e6550e668267c7293",
         "expected_violation": null
       },
       {
         "model": "AppWorkflow",
         "config": "AppWorkflowSelection.cfg",
         "distinct": 2430,
-        "source_sha256": "7eadf758725a8b8fd1072f9bb5bb9d07ffdfb274f86e0dbeea8dac2ccd5af35a",
-        "config_sha256": "b4dffd8c07ba1ee7a1efb5f6c8b86eb96752193867192a6ed8abcb38611388b7",
+        "source_sha256": "dfc3587ec85c85eaf6e09cc39547ec369edeb368bb502396c0c5ee4d6aa08e46",
+        "config_sha256": "3b2b810aa25bf857d3117ac5f3731e77b858631ee5d3deca5edd1470f3d925f1",
         "expected_violation": null
       },
       {
         "model": "AppWorkflow",
         "config": "AppWorkflowManagement.cfg",
         "distinct": 1760,
-        "source_sha256": "7eadf758725a8b8fd1072f9bb5bb9d07ffdfb274f86e0dbeea8dac2ccd5af35a",
-        "config_sha256": "b64c1f48c87b7a9ca9b49e7a0e9bd6835db64d66c82f60a6d84965d39a537815",
+        "source_sha256": "dfc3587ec85c85eaf6e09cc39547ec369edeb368bb502396c0c5ee4d6aa08e46",
+        "config_sha256": "0b67be661e75e3224b92637a159c4d297fab090993695533be9888c2865e242f",
         "expected_violation": null
       },
       {
         "model": "AppWorkflow",
         "config": "AppWorkflowEngineSpeech.cfg",
         "distinct": 33100,
-        "source_sha256": "7eadf758725a8b8fd1072f9bb5bb9d07ffdfb274f86e0dbeea8dac2ccd5af35a",
-        "config_sha256": "d8714e791de6a7e6af89a89e7af11def4ecc8d70a76b6f44d4467d1288318013",
+        "source_sha256": "dfc3587ec85c85eaf6e09cc39547ec369edeb368bb502396c0c5ee4d6aa08e46",
+        "config_sha256": "f27888370d270c292d0e73cfd519a40598a4c2c6c5c71094c907e819f60c87e6",
         "expected_violation": null
       },
       {
         "model": "AppWorkflow",
         "config": "AppWorkflowAssistantWeb.cfg",
         "distinct": 1019,
-        "source_sha256": "7eadf758725a8b8fd1072f9bb5bb9d07ffdfb274f86e0dbeea8dac2ccd5af35a",
-        "config_sha256": "f9409a850e755869213b71905d0213e002a79d9b05d5c0ff3cf0157fa264eff0",
+        "source_sha256": "dfc3587ec85c85eaf6e09cc39547ec369edeb368bb502396c0c5ee4d6aa08e46",
+        "config_sha256": "12ac645cac1846d2e99b4325bbe240ff9db7d814fb5e582197c62cd155540f39",
         "expected_violation": null
       },
       {
         "model": "AppWorkflow",
         "config": "AppWorkflowSubtitles.cfg",
         "distinct": 174,
-        "source_sha256": "7eadf758725a8b8fd1072f9bb5bb9d07ffdfb274f86e0dbeea8dac2ccd5af35a",
-        "config_sha256": "47eb960fabb9de12b65e2a9e0bab77a8977ac4bf565fe9b26c0db927d33a1534",
+        "source_sha256": "dfc3587ec85c85eaf6e09cc39547ec369edeb368bb502396c0c5ee4d6aa08e46",
+        "config_sha256": "13598bc9532a8f7cd6a4b3a60c301d3651990c1e5c31533f796f15a7690413b3",
         "expected_violation": null
       },
       {
         "model": "AppWorkflow",
         "config": "AppWorkflowHistory.cfg",
         "distinct": 72,
-        "source_sha256": "7eadf758725a8b8fd1072f9bb5bb9d07ffdfb274f86e0dbeea8dac2ccd5af35a",
-        "config_sha256": "388f3be4ba676f3f9b1979e09611bd35f3ae06fbabe343ab5c15c91e8f7d6489",
+        "source_sha256": "dfc3587ec85c85eaf6e09cc39547ec369edeb368bb502396c0c5ee4d6aa08e46",
+        "config_sha256": "4e58444d12e13b147f915557fbaea325c384017a5a1443ff635ad3254b80078d",
+        "expected_violation": null
+      },
+      {
+        "model": "AppWorkflow",
+        "config": "AppWorkflowGpuIdle.cfg",
+        "distinct": 224,
+        "source_sha256": "dfc3587ec85c85eaf6e09cc39547ec369edeb368bb502396c0c5ee4d6aa08e46",
+        "config_sha256": "c1540e19c6679e675980cc0eb2c99434d00d04118d39bc91391eefa86b8ca7ef",
         "expected_violation": null
       },
       {
         "model": "AsyncSettings",
         "config": "AsyncSettings.cfg",
         "distinct": 296,
-        "source_sha256": "90430f7f80fa3ff12286dfefa14865759a9b492cd3167b7d524d4ff007369c6e",
-        "config_sha256": "bd825d5ef79a1d0b3885bf3c97240d81eb60d27e0692e06d46956db335623949",
+        "source_sha256": "7d4cc2c15dbf0e1c106607f8a684b3633d3dbbc7843f776b765f356408ecf77e",
+        "config_sha256": "c9106515b95d446f1f93117bb14fe82bbfcfb90cc8cc74f4550c8636d314f6b1",
         "expected_violation": null
       },
       {
         "model": "CapturePipeline",
         "config": "CapturePipeline.cfg",
         "distinct": 14490,
-        "source_sha256": "fc1019cb14ed5e27c9e2d01e1c6e0e1c515a5331a7436cab88a34b7e3d43bf23",
-        "config_sha256": "e6e5226a1d2f5716bfd4b1fd8ddcee845920499b3a158b9751cbbf3dc23bc25b",
+        "source_sha256": "4da726cfdffe90fcdbd18d90965bccf45f863b825a80c06d69ad98bc25c0154c",
+        "config_sha256": "61ddf47be65630c5a6bc28550ef099efce21ef5123e672effe3a9ee14e14cc94",
         "expected_violation": null
       },
       {
@@ -126,23 +138,23 @@
         "config": "ContextRouting.cfg",
         "distinct": 4269240,
         "source_sha256": "4d4be013c6a2b06c7ffb82aef827695582156fc3dcf45ca347a1f9659754078f",
-        "config_sha256": "56738851b465abf93d2d6bba89f1d13b7d7131c81948dc2bbc7af113623f53b6",
+        "config_sha256": "80bde90dc0bc03c6701e948d2d5506970ed5fd8d50d6f3caa9f542266a7e33f8",
         "expected_violation": null
       },
       {
         "model": "EngineDownload",
         "config": "EngineDownload.cfg",
         "distinct": 57,
-        "source_sha256": "6abdc6985fe3c795b103cf3f86819ba2c8342b3cc09992256aafd44c3d150cc3",
-        "config_sha256": "c56902da87e65a81c7a15a4e32314696238c3f2a415701771df600a79428875e",
+        "source_sha256": "13ae68ef95462947a3966a56eb242cf08e82f53aee41cb41aae7690080ef679d",
+        "config_sha256": "6d06f13769e54bfd444ed675a16559c879680f388cd329941b1fff0daddfe139",
         "expected_violation": null
       },
       {
         "model": "HistoryRecords",
         "config": "HistoryRecords.cfg",
         "distinct": 414760,
-        "source_sha256": "afdef1a1453c9664f4cb33d1433d1cbdf43244af5b51123cf2e9754196136064",
-        "config_sha256": "a6a5194766080e94615136ae7c8ddc947e66ef026430110e7365d286e47a8b61",
+        "source_sha256": "831e35b1cbf9f9430a499cabe103cb874fbfa5875d8bef2fb1b97ef38daf1590",
+        "config_sha256": "1965c6700548c295e9ba4d8b2e69eb1ca48b14baf17f4472fa2b88f5417e89b9",
         "expected_violation": null
       },
       {
@@ -150,7 +162,7 @@
         "config": "HotkeyLifecycle.cfg",
         "distinct": 318882,
         "source_sha256": "d6a4478fc1d711c8e8e76987df80d60bc668444e1979c9ba6c1004a54bb41dd8",
-        "config_sha256": "cc7fee4b02264292d746718e05fe779d56995856bb5b8eb9987f0aaf2d89abdd",
+        "config_sha256": "9ca8284cab8596e5a62e1a6f20c688cb1f61bfcb9c17e1dad5619a2c2277ed05",
         "expected_violation": null
       },
       {
@@ -181,96 +193,96 @@
         "model": "LlmTransport",
         "config": "LlmTransport.cfg",
         "distinct": 1344,
-        "source_sha256": "30d5aa22394a5529ffbadd244c86665ed148595d4cc729a46123548ed0bd6953",
-        "config_sha256": "6a646ede02c402dac7a9bab639776d1ab8ed1eb12040a372a327d0d79b32f5cf",
+        "source_sha256": "dfac5590f934c11af5d7a4857b89fa93f561f9772f14ef680ea7a3711dee761e",
+        "config_sha256": "15a1701edb61c5d3d4a07165973f5b4b7bfd9bb71a5c9ba8df337c12b3b5c235",
         "expected_violation": null
       },
       {
         "model": "MicrophoneMonitor",
         "config": "MicrophoneMonitor.cfg",
         "distinct": 314,
-        "source_sha256": "14ff3c11ac1e0483ae9720b3757a12937adb977ab5d7d9ef6c76c6947c2afdfc",
-        "config_sha256": "14266c375ab088f7b9c60971d5a64b6dfd151baa8e1b60fd8aad622f7795a656",
+        "source_sha256": "8d740c083bd5658db9e1fb2e65c5e1b72bcccfeb5d5f488b0514bcc9aeb2252f",
+        "config_sha256": "b6f390031dbf3396a9cb74ad029a7077199f4c717f4e628b71de15e7cbae7279",
         "expected_violation": null
       },
       {
         "model": "ModelDirectoryMigration",
         "config": "ModelDirectoryMigration.cfg",
         "distinct": 11,
-        "source_sha256": "27aba3347d6126be94f01c92699f4bacff5929d80aaa27c44a7a2c053a8c5dd4",
-        "config_sha256": "326708a9df238105c65956f544c7a063a23bd441ad84bb27cec15f0b3ef4e487",
+        "source_sha256": "187047f6382a27e9dc5f2c3e08e8525877c5867ee9f8403e02a5d45a7cde32b7",
+        "config_sha256": "e05fe4031fbfcf4dd7f03e1fb8acf32a6195d5ae33ab6965f91723f6152c509f",
         "expected_violation": null
       },
       {
         "model": "OAuthLifecycle",
         "config": "OAuthLifecycle.cfg",
         "distinct": 25630,
-        "source_sha256": "f646fbcc1297e3d1d3a9c820112a1e64f72f640f107ef392b268cc64a55452fa",
-        "config_sha256": "37fa6bdbdbd42f78f264ad43f8dd9fec348b28513894fca374767815b98287d0",
+        "source_sha256": "b1a576825af737bee465cfe275635eafbe57596d903cfafcfaf09904f1e63a26",
+        "config_sha256": "e2dbb0d9e3b32dca81e23531db231b5d255ac3b5c84ce879c86c0355dfff2384",
         "expected_violation": null
       },
       {
         "model": "Personalization",
         "config": "Personalization.cfg",
         "distinct": 49169,
-        "source_sha256": "1022ca358800957a0ceca10174a727279f77873838022a27c85264701dfbd182",
-        "config_sha256": "b24615297895486c5d3ae0dec874ea1aefa55322ae875b9c9888e0cd5386eb3a",
+        "source_sha256": "c5816125c8b6aa3a00fcf6472540eb1df72d55fbc77df5c7c6037cd7f868d0c0",
+        "config_sha256": "3c1bdf7ec039de6941283d79c0edf2dff859e168d22d56f665ec27d00b1f9048",
         "expected_violation": null
       },
       {
         "model": "ProfilePersistence",
         "config": "ProfilePersistence.cfg",
         "distinct": 8,
-        "source_sha256": "5d36f1d594d92da65ef267f984ff5a1266119235f403f51605882e2e7280c38a",
-        "config_sha256": "2bfd1dd0c9f5f1e2bb83488263ed58afdfd864e6c7f4f5fd508b7ff0340c1633",
+        "source_sha256": "99822d72209a8b633067d3d14da13b238ec7d0026d1ddb222ec0a3b42d47ff4b",
+        "config_sha256": "df7495d97c41456c50751eab381047e5f785b6c0cc772242ece9659749931553",
         "expected_violation": null
       },
       {
         "model": "RecordingLifecycle",
         "config": "RecordingLifecycle.cfg",
         "distinct": 3539,
-        "source_sha256": "c6f323a5f422c507131c1953a75ea6928310af495d068aa4e492865feaa373c5",
-        "config_sha256": "a14a89237179004678da5ac7d6e37ec4358eae0ba1f50486211fb3bb083cec56",
+        "source_sha256": "1e38444f4a3c4f2d39dcecd1f3bc7d209690523d60b37840afb25641f4b30c6f",
+        "config_sha256": "89ea4f3dadacf747905447a9532a9dbdcac5ad926b4ddab58e5f5fb3ccea37bb",
         "expected_violation": null
       },
       {
         "model": "RequestProtocols",
         "config": "RequestProtocols.cfg",
         "distinct": 117,
-        "source_sha256": "4924987c7efe89bac2a29987c5e6cb0b5f59512987e26ab0df472cde4b8d1c51",
-        "config_sha256": "6fac61b7f7f9cb0472a2d070d36e6f9ab55636e334a482ee3717e440af43c7d5",
+        "source_sha256": "ada510646f56016676b1c9aa4d0ea572f9e3e73f6d60309aac4c6f15d45db2c7",
+        "config_sha256": "5bdabc2268a2ec81836647c5ea6658c8ff57b223cdd7a3ada5e3736a3a6488bc",
         "expected_violation": null
       },
       {
         "model": "RuntimeConfiguration",
         "config": "RuntimeConfiguration.cfg",
         "distinct": 685000,
-        "source_sha256": "71063cfc403dec8c98b867cbd42bbf2cccabc07342766236f1ce3a9307776127",
-        "config_sha256": "86affb384afb3253808c2aea66888c3b7332fce0de3f6321ba6f49842fdf3e7e",
+        "source_sha256": "72320ca7456f789acd999576463820ea493caab24374624c5b4f47e976edae25",
+        "config_sha256": "9c6460c87c03bf343d15ec7ace59cedc676510b89ae187d77d32bf5ad9a4793f",
         "expected_violation": null
       },
       {
         "model": "SettingsContracts",
         "config": "SettingsContracts.cfg",
         "distinct": 19856,
-        "source_sha256": "bfade09b7fe477a4db021f47a036b206978c70717da26065463af7b8b2eae152",
-        "config_sha256": "bc6e1205f8fe20cec559e4e41df969a6b6cc87f521df19e5d6ad219d503b993a",
+        "source_sha256": "eac4af6690e81e6f28b985ad05fd598bce4cd35e74a374bcd42c8c5d13cd0c6e",
+        "config_sha256": "5d8a72807bdba635e7e5193c409367c0ed57da610e58dad9709a4dd6fda510f7",
         "expected_violation": null
       },
       {
         "model": "TaskOwnership",
         "config": "TaskOwnership.cfg",
         "distinct": 5,
-        "source_sha256": "96ab52b3c1c02e0e4e25e567a22de97b8960f697a65cf553cbfc7d4d27fc57cc",
-        "config_sha256": "e73af5f16663edc03b41d5622b305b1733e4a77a98466c612fd10329e315ec52",
+        "source_sha256": "b00d856224954a1141545b3e5b88aea11d6f28d1b47c77ae2997aeb0e43068e4",
+        "config_sha256": "1ffed09159f753a6098ae5a328c28c341586f43e794276c3527d0b12a184b459",
         "expected_violation": null
       },
       {
         "model": "UiPreferences",
         "config": "UiPreferences.cfg",
         "distinct": 360,
-        "source_sha256": "4ddb8925e2700c8d8331a5978f2952eacf9452b7a9e8b2104ae1ce737f460d6d",
-        "config_sha256": "7d2e99d20519d42a082b9d490176b65e353e4a6c277e1ba9c400e9aa4aa9c719",
+        "source_sha256": "eec0a7c1cafba9162611d032f1d7b069801391327532b385e1bbf82231848c12",
+        "config_sha256": "8b25eee2cbaed4de4e338a0ec00e0b8059217d9e4dd1abdd4ad4fb2be9010f66",
         "expected_violation": null
       },
       {
@@ -278,270 +290,294 @@
         "config": "WindowLifecycle.cfg",
         "distinct": 12764,
         "source_sha256": "33d6d243f205e15a5fa6bab9bbfc40ed5029b2fbbd2f7c82e55ddfb8ddd521d1",
-        "config_sha256": "157d3cf732a3cfd38a43bcfd5d75f278f3d7d48f5c0286ccc25809371000ae67",
+        "config_sha256": "a51d64bfc4d8844961a8e127a41142f0ca85ece56e5d80abbc5c8adf2f0f0fda",
         "expected_violation": null
       },
       {
         "model": "ProviderRequests",
         "config": "ProviderRequests.cfg",
         "distinct": 18,
-        "source_sha256": "7a6840ef05c59263876c66c382ed782d7ec6ce33ab03355d42adb2cde842d98e",
-        "config_sha256": "79a0a897b8ac1432b990ebb5bbd09a7b03a2559887802999506e05a7d4c964d3",
+        "source_sha256": "2ed418fbe4a089763d98dd722e9d4a875c58be65dbf28a564746b0bdeb4791a5",
+        "config_sha256": "f85b39b9ba622ac0032e82d453cdf4f78e97fff01ae64a0dc7fbf4e42585cba6",
         "expected_violation": null
       },
       {
         "model": "HotkeyPendingStart",
         "config": "HotkeyPendingStart.cfg",
         "distinct": 25,
-        "source_sha256": "a9defda1aeefffb07c39c6bec6ea28613007af1be8d8b51fee48a9a676f022a5",
-        "config_sha256": "99238ca4294a936a6dde66d11750e454aa9e5f31ad0efa60c99fca2662a11cbf",
+        "source_sha256": "d01695703c8fa01e1d04b2bdb2197367df9f040481306b7dcf9bead38541a0f1",
+        "config_sha256": "408e4f7eb4d43aae2492f2e8eab4288bc6f0e906377ac156d75901a3835c90d4",
         "expected_violation": null
       },
       {
         "model": "OAuthStorage",
         "config": "OAuthStorage.cfg",
         "distinct": 56,
-        "source_sha256": "2d68c84f4a1e03d9da4f94a4e30760fa38f4839117b2edee0723ac5dd6fc0e3f",
-        "config_sha256": "0fa6799e9e707165ae6200c8093f032f7e5ac82294011268c7cf9d0fc78de987",
+        "source_sha256": "fa8ff26b8857fe99c8dd0029a901f9f1d94812cc2396220391d819d58aee127d",
+        "config_sha256": "a6940a77691fe14d149ae9a57062cc8124d074876c5927c80be918035053c246",
         "expected_violation": null
       },
       {
         "model": "HotkeyRegistrationEpoch",
         "config": "HotkeyRegistrationEpoch.cfg",
         "distinct": 118,
-        "source_sha256": "759b1b506d8468d00298a7cebda3546dd630f8b04b2e02963db8cdaf4e5e6ec1",
-        "config_sha256": "d55d6a9db536b084a4783dd3c57c6191897fdd6d50769a2bc578907537bb197b",
+        "source_sha256": "e9e987521fa01ea46032eb81142c7bba2759a79bf9ae6ac487f175b3ee0f696b",
+        "config_sha256": "263490b18b8b3c6c1c3930575ec6ecb0a3b06086244a10dc516dec3d28fd9e16",
         "expected_violation": null
       },
       {
         "model": "HotkeyRegistrationFailure",
         "config": "HotkeyRegistrationFailure.cfg",
         "distinct": 12,
-        "source_sha256": "ea88ea722e5ce8ce10c0ce717414a1776f2d1e3dee5e10e97670ac5c00b9df6a",
-        "config_sha256": "92eb56b03ebbe9200d6319af89b310c8bd014dda0a61c1703709b27eb0c894b8",
+        "source_sha256": "153dc87e52632db391909c9b013671bebfc969ba77ad1d946d59580336818553",
+        "config_sha256": "671fd7a677a742d00f09ba60be3959833a6971dbc9248528b106f1b391c9b3e4",
         "expected_violation": null
       },
       {
         "model": "WebSearchKeys",
         "config": "WebSearchKeys.cfg",
         "distinct": 303,
-        "source_sha256": "088941821c0cc6d62fa4974943e14d4d05a5d407496a1936b55d954786edc09d",
-        "config_sha256": "399d4e0f5420cf292d03f69f1d6530ac1490770c8093927eb494b33ffef8b965",
+        "source_sha256": "14379c7e43ae6c1e3d64c3402271773fdb3d6701b54873d60641f1395f0dca48",
+        "config_sha256": "1d6a8603f6a9e101672b48d1514722d5c705265d6e1f4b5565d7af0048c31bf2",
         "expected_violation": null
       },
       {
         "model": "ProviderAuthSnapshot",
         "config": "ProviderAuthSnapshot.cfg",
         "distinct": 91,
-        "source_sha256": "03d2f9d5c73de6a5c1193022ed9def1fb6defea32b725e0077c562c060d2afb4",
-        "config_sha256": "7bc3e2bf10bb03ee2c6a67afef09d668f9682c958808522da6f060bfa3f23261",
+        "source_sha256": "53249a293306dc30fd94f0894614a6b41b0fe4baf1b3723865d4e571344f0bb1",
+        "config_sha256": "b4475edf7f76b304af1a56e8a6389e18749b77499871168b54a7737b0d11568e",
         "expected_violation": null
       },
       {
         "model": "DownloadUiLifecycle",
         "config": "DownloadUiLifecycle.cfg",
         "distinct": 1699,
-        "source_sha256": "9998cef16b8c9a7563df8d97d2702294b9c3e2872206c03637bffdef7752eb42",
-        "config_sha256": "1b75890d661a2bc1c8b61b1e62e9d806f75428035daf9fd009e6030a7318d97a",
+        "source_sha256": "5e867796ce2ba2cb7f692bfff6b28a23c6267f43af85f48aeb3c0acea55e1a64",
+        "config_sha256": "4bf66570b4c1e8813a5fc4b69b3dc28ea2ad2b4ede51258e012b5855f49425b6",
         "expected_violation": null
       },
       {
         "model": "EventSubscriptionLifecycle",
         "config": "EventSubscriptionLifecycle.cfg",
         "distinct": 187,
-        "source_sha256": "8e844daaf3854aeb198b4c3fa5225d37a2a40d7d44a003307dc827ad36544d98",
-        "config_sha256": "9fd1c809cec28cb7bbc0d2369f6e0f1256c36add71f08de1cac02b9b501b9d03",
+        "source_sha256": "b069a228071b140c14a2434a7e1f544a584f59f5cc679dd94df915634ed3a3c5",
+        "config_sha256": "9e14b9a99972bb0cabefe7c0bbc4da6104ae12d0a61566c2cc0bde0741e6cde7",
+        "expected_violation": null
+      },
+      {
+        "model": "GpuIdleLifecycle",
+        "config": "GpuIdleLifecycle.cfg",
+        "distinct": 17,
+        "source_sha256": "0011fd896b6bcc540dcae3b67afbb46ab4dd4a288a4d95fe9648bb3adc96d7bf",
+        "config_sha256": "c79cd4f980b0f629ecdb390c7ba7945403f00e969256cc2795c9eb5e8c131b56",
+        "expected_violation": null
+      },
+      {
+        "model": "GpuIdleLifecycle",
+        "config": "GpuIdleStartup.cfg",
+        "distinct": 17,
+        "source_sha256": "0011fd896b6bcc540dcae3b67afbb46ab4dd4a288a4d95fe9648bb3adc96d7bf",
+        "config_sha256": "8ba957c9bba45db2cbd9e04a2b1e12155e4e20ac71db5f2cd26318e234c479d0",
+        "expected_violation": null
+      },
+      {
+        "model": "GpuIdleSettings",
+        "config": "GpuIdleSettings.cfg",
+        "distinct": 54,
+        "source_sha256": "d826d7c25939b354ab238ece665e317c3c3001815a2325aeb8581d95b1b1e859",
+        "config_sha256": "b9a2322d10b4ebf904046ecd7dabf1a2750ca5da3cb94f9d360149ec751d095f",
         "expected_violation": null
       },
       {
         "model": "DownloadUiLifecycle",
         "config": "DownloadUiLifecycleStale.cfg",
-        "distinct": 71,
-        "source_sha256": "9998cef16b8c9a7563df8d97d2702294b9c3e2872206c03637bffdef7752eb42",
-        "config_sha256": "68e60c63d9b752701c0cc732a49372e6c6d9a8a3b6403c214950a1a5e8799204",
+        "distinct": 67,
+        "source_sha256": "5e867796ce2ba2cb7f692bfff6b28a23c6267f43af85f48aeb3c0acea55e1a64",
+        "config_sha256": "25e5d8432a4857280063786e5198a054b053e4c64793cb02f944734e5c40426c",
         "expected_violation": "OldRequestCannotPublish"
       },
       {
         "model": "EventSubscriptionLifecycle",
         "config": "EventSubscriptionLifecycleLegacy.cfg",
-        "distinct": 20,
-        "source_sha256": "8e844daaf3854aeb198b4c3fa5225d37a2a40d7d44a003307dc827ad36544d98",
-        "config_sha256": "8772b1995711f1cf9fc22957c0cf0b791cc7f3407dcae235d6cdfd79017b7a9e",
+        "distinct": 22,
+        "source_sha256": "b069a228071b140c14a2434a7e1f544a584f59f5cc679dd94df915634ed3a3c5",
+        "config_sha256": "c8314c000a8dc60165ef28426d13ac04da619fbdfd44d7afe945d704f07b7481",
         "expected_violation": "NoDisposedEventEffects"
       },
       {
         "model": "WebSearchKeys",
         "config": "WebSearchKeysLegacy.cfg",
-        "distinct": 814,
-        "source_sha256": "088941821c0cc6d62fa4974943e14d4d05a5d407496a1936b55d954786edc09d",
-        "config_sha256": "406606d3371a3354ae4d12073cb1940266a7b2c821c188a0ca4a0d74f07a79e7",
+        "distinct": 823,
+        "source_sha256": "14379c7e43ae6c1e3d64c3402271773fdb3d6701b54873d60641f1395f0dca48",
+        "config_sha256": "8e4e8ecfa66b4569b6693ff623c7332358c04b31ba47dab781cbf5a59e9db875",
         "expected_violation": "QuiescentKeysAgree"
       },
       {
         "model": "WebSearchKeys",
         "config": "WebSearchKeysStaleLoad.cfg",
-        "distinct": 525,
-        "source_sha256": "088941821c0cc6d62fa4974943e14d4d05a5d407496a1936b55d954786edc09d",
-        "config_sha256": "e839c06e8cfbeb451887513e45e4e61b4a5a674a9c27b30758d1289a821d6938",
+        "distinct": 628,
+        "source_sha256": "14379c7e43ae6c1e3d64c3402271773fdb3d6701b54873d60641f1395f0dca48",
+        "config_sha256": "29b5181efa3d46db51a9a39bcbff8c3a23e3d3cee0b8729441a1b65bd610a2f3",
         "expected_violation": "NoStaleReadPublication"
       },
       {
         "model": "ProviderAuthSnapshot",
         "config": "ProviderAuthSnapshotMode.cfg",
-        "distinct": 51,
-        "source_sha256": "03d2f9d5c73de6a5c1193022ed9def1fb6defea32b725e0077c562c060d2afb4",
-        "config_sha256": "152960d9c7d7e7a99512dac3ff89334523d71ad850ef687f185ef72bbe434f01",
+        "distinct": 48,
+        "source_sha256": "53249a293306dc30fd94f0894614a6b41b0fe4baf1b3723865d4e571344f0bb1",
+        "config_sha256": "a59dd2b90911af45b01ffc520ab0043f9da90476264e8fdc161a15ac1a499abc",
         "expected_violation": "CapturedAuthModeIsUsed"
       },
       {
         "model": "ProviderAuthSnapshot",
         "config": "ProviderAuthSnapshotAccount.cfg",
-        "distinct": 73,
-        "source_sha256": "03d2f9d5c73de6a5c1193022ed9def1fb6defea32b725e0077c562c060d2afb4",
-        "config_sha256": "1a5941986bd7749049a3dacb5759229381b2759e36a0ea2aeaf81f98a385cdff",
+        "distinct": 66,
+        "source_sha256": "53249a293306dc30fd94f0894614a6b41b0fe4baf1b3723865d4e571344f0bb1",
+        "config_sha256": "b3ba8b3ac86b38295337a0b7aaa1f85951059af48704ba3221a008191eb352c6",
         "expected_violation": "CatalogAndKeyShareSession"
       },
       {
         "model": "DownloadUiLifecycle",
         "config": "DownloadUiLifecycleCancel.cfg",
         "distinct": 17,
-        "source_sha256": "9998cef16b8c9a7563df8d97d2702294b9c3e2872206c03637bffdef7752eb42",
-        "config_sha256": "8b95c8271b8552d2e95833579493d0e9a2d260f8bfef60d03834a672ae177bf3",
+        "source_sha256": "5e867796ce2ba2cb7f692bfff6b28a23c6267f43af85f48aeb3c0acea55e1a64",
+        "config_sha256": "90a450801803890c7a432690d231d0132f159ee2ee7b5b1865fe30042c39eaa4",
         "expected_violation": "NoRetryAfterCancellation"
       },
       {
         "model": "DownloadUiLifecycle",
         "config": "DownloadUiLifecycleDisposal.cfg",
         "distinct": 55,
-        "source_sha256": "9998cef16b8c9a7563df8d97d2702294b9c3e2872206c03637bffdef7752eb42",
-        "config_sha256": "e53374f051371250f0ddaf890c3864d611772503121393188466bc282cdba77d",
+        "source_sha256": "5e867796ce2ba2cb7f692bfff6b28a23c6267f43af85f48aeb3c0acea55e1a64",
+        "config_sha256": "db16576d86f6d11b14273d35959284075eacaa902e8a853abfafb07bf856a32f",
         "expected_violation": "DisposedListenerCannotAct"
       },
       {
         "model": "HotkeyRegistrationFailure",
         "config": "HotkeyRegistrationFailureOrphanLegacy.cfg",
         "distinct": 5,
-        "source_sha256": "ea88ea722e5ce8ce10c0ce717414a1776f2d1e3dee5e10e97670ac5c00b9df6a",
-        "config_sha256": "72f899a519b43538b9cff4d6e65f3ceec9046124a905ccc028a53ad7ae3b23d6",
+        "source_sha256": "153dc87e52632db391909c9b013671bebfc969ba77ad1d946d59580336818553",
+        "config_sha256": "25cac83d12ae0ad742b232fc4a687e9ff2d19719c20bc00d21f0cad170e91c36",
         "expected_violation": "NoOrphanNativeRegistration"
       },
       {
         "model": "HotkeyRegistrationFailure",
         "config": "HotkeyRegistrationFailureRollbackLegacy.cfg",
         "distinct": 5,
-        "source_sha256": "ea88ea722e5ce8ce10c0ce717414a1776f2d1e3dee5e10e97670ac5c00b9df6a",
-        "config_sha256": "e1af47d6cfb2d0d44f57686442da7134c93ee5815cc4c9f788f51e624f301b89",
+        "source_sha256": "153dc87e52632db391909c9b013671bebfc969ba77ad1d946d59580336818553",
+        "config_sha256": "970aea2d4b33d8bd239c2b0b830d3f569e97c0064bae8562c69d224cf23b62e2",
         "expected_violation": "NoRetiredGatePublished"
       },
       {
         "model": "HotkeyRegistrationFailure",
         "config": "HotkeyRegistrationFailureErrorLegacy.cfg",
         "distinct": 4,
-        "source_sha256": "ea88ea722e5ce8ce10c0ce717414a1776f2d1e3dee5e10e97670ac5c00b9df6a",
-        "config_sha256": "a502c17750a46d8a936d90137cb008dfdb595c187182a90e17b81c2ce940f20f",
+        "source_sha256": "153dc87e52632db391909c9b013671bebfc969ba77ad1d946d59580336818553",
+        "config_sha256": "185fa4f15d2d006f6556df3e22279fbbb1293e8bf0eeb5f3a671e6f6acff2f89",
         "expected_violation": "LifecycleFailureIsReported"
       },
       {
         "model": "HotkeyRegistrationEpoch",
         "config": "HotkeyRegistrationEpochModeLegacy.cfg",
-        "distinct": 60,
-        "source_sha256": "759b1b506d8468d00298a7cebda3546dd630f8b04b2e02963db8cdaf4e5e6ec1",
-        "config_sha256": "723b86e3c4a18dbd728f9e238e803f2e51cac30ce4a3db4846aad3419a488fd0",
+        "distinct": 65,
+        "source_sha256": "e9e987521fa01ea46032eb81142c7bba2759a79bf9ae6ac487f175b3ee0f696b",
+        "config_sha256": "526fecd5b677c66be357ef4ceb0dc6633adcab0b0c964f7e7618c70938ec1294",
         "expected_violation": "NoStaleDispatchPress"
       },
       {
         "model": "HotkeyRegistrationEpoch",
         "config": "HotkeyRegistrationEpochIdLegacy.cfg",
-        "distinct": 76,
-        "source_sha256": "759b1b506d8468d00298a7cebda3546dd630f8b04b2e02963db8cdaf4e5e6ec1",
-        "config_sha256": "965e0f22a8c2a8bb5dcc8f2669bdcfba70fd78843a59da4b4e532190911fdddb",
+        "distinct": 80,
+        "source_sha256": "e9e987521fa01ea46032eb81142c7bba2759a79bf9ae6ac487f175b3ee0f696b",
+        "config_sha256": "532f6b23b36b32e78d72fba770dafb340c2b22092286d688299c21593ac3262a",
         "expected_violation": "NoStaleNativePress"
       },
       {
         "model": "TaskOwnership",
         "config": "TaskOwnershipLegacy.cfg",
         "distinct": 11,
-        "source_sha256": "96ab52b3c1c02e0e4e25e567a22de97b8960f697a65cf553cbfc7d4d27fc57cc",
-        "config_sha256": "8243114259dba1e3e28ebb876bc915af8473ea6f045907b0e810bc6e76244c25",
+        "source_sha256": "b00d856224954a1141545b3e5b88aea11d6f28d1b47c77ae2997aeb0e43068e4",
+        "config_sha256": "612bce8091aa8d39ec4f0bbd2ef17aa0a380d6aa4de91328e3e3d4f53f531a0d",
         "expected_violation": "NewestInstalledOwnsSlot"
       },
       {
         "model": "ProfilePersistence",
         "config": "ProfilePersistenceLegacy.cfg",
-        "distinct": 25,
-        "source_sha256": "5d36f1d594d92da65ef267f984ff5a1266119235f403f51605882e2e7280c38a",
-        "config_sha256": "5f2aea3ef1dd6274a05e29320d69d174274ae77c934e0470d91b0ceef0c06a90",
+        "distinct": 26,
+        "source_sha256": "99822d72209a8b633067d3d14da13b238ec7d0026d1ddb222ec0a3b42d47ff4b",
+        "config_sha256": "bcde7c997db90cc3cf98f98fb8e6828becfee5cb3ba6b901b64488d289bb4c78",
         "expected_violation": "LatestPendingWhenQueued"
       },
       {
         "model": "OAuthLifecycle",
         "config": "OAuthLifecycleLegacy.cfg",
-        "distinct": 207,
-        "source_sha256": "f646fbcc1297e3d1d3a9c820112a1e64f72f640f107ef392b268cc64a55452fa",
-        "config_sha256": "340a0c25d3ba0a17d1837e27543ce63454350fc59882a4e54566cc56d3366d3f",
+        "distinct": 205,
+        "source_sha256": "b1a576825af737bee465cfe275635eafbe57596d903cfafcfaf09904f1e63a26",
+        "config_sha256": "29e82838a0b515664d0743e5ad296392e194f1d6a9897cadc15d5be136a9644b",
         "expected_violation": "LogoutWins"
       },
       {
         "model": "RequestProtocols",
         "config": "RequestProtocolsLegacy.cfg",
-        "distinct": 13,
-        "source_sha256": "4924987c7efe89bac2a29987c5e6cb0b5f59512987e26ab0df472cde4b8d1c51",
-        "config_sha256": "904d3192e0d45233e445f7d0ed39b976047892c0d67d7f6d8c432273a1d7c124",
+        "distinct": 9,
+        "source_sha256": "ada510646f56016676b1c9aa4d0ea572f9e3e73f6d60309aac4c6f15d45db2c7",
+        "config_sha256": "e6f49e574587437851c59515c607240f64626e5739341aa1eff84a3e213fcbdf",
         "expected_violation": "NoReplyWithoutIdentity"
       },
       {
         "model": "SettingsContracts",
         "config": "SettingsContractsLegacy.cfg",
         "distinct": 60,
-        "source_sha256": "bfade09b7fe477a4db021f47a036b206978c70717da26065463af7b8b2eae152",
-        "config_sha256": "2e8bc083e0724c3e43226709773adf4dfdf4e0d1cf6398ef65391a36ae60237d",
+        "source_sha256": "eac4af6690e81e6f28b985ad05fd598bce4cd35e74a374bcd42c8c5d13cd0c6e",
+        "config_sha256": "4617583facde0e65224afddc7d791b56ac37ae3244d6906ec780fdaf3d787f4a",
         "expected_violation": "CredentialFailureIsReported"
       },
       {
         "model": "MicrophoneMonitor",
         "config": "MicrophoneMonitorLegacy.cfg",
-        "distinct": 55,
-        "source_sha256": "14ff3c11ac1e0483ae9720b3757a12937adb977ab5d7d9ef6c76c6947c2afdfc",
-        "config_sha256": "cd898b7a954338a4647e96534938428506c051d9428a4176b4a57fec745bdf08",
+        "distinct": 53,
+        "source_sha256": "8d740c083bd5658db9e1fb2e65c5e1b72bcccfeb5d5f488b0514bcc9aeb2252f",
+        "config_sha256": "4d66852077f4fba95a7bbe3f233c0fa6cc005db2ce2e08e5fbc7f6408c456971",
         "expected_violation": "OnlyCurrentIdleStartPublishes"
       },
       {
         "model": "Personalization",
         "config": "Personalization.cfg",
-        "distinct": 9818,
-        "source_sha256": "a19f5ccd830d768915d3b316ac72c0b8c480878bf74146e46426858699474ecc",
-        "config_sha256": "b24615297895486c5d3ae0dec874ea1aefa55322ae875b9c9888e0cd5386eb3a",
+        "distinct": 9632,
+        "source_sha256": "e340564c65bd59b40957a89383b43386650bfa5c6ca00e85cae190ac63a5d8df",
+        "config_sha256": "3c1bdf7ec039de6941283d79c0edf2dff859e168d22d56f665ec27d00b1f9048",
         "expected_violation": "UserRulesSurviveAutomaticChanges"
       },
       {
         "model": "LlmTransport",
         "config": "LlmTransport.cfg",
-        "distinct": 42,
-        "source_sha256": "e5cbe7355ea7b89fe92b2b21fe52055038781d41424591f423c3d6dd36f23daa",
-        "config_sha256": "6a646ede02c402dac7a9bab639776d1ab8ed1eb12040a372a327d0d79b32f5cf",
+        "distinct": 40,
+        "source_sha256": "b8f0f69694f72ef59e416560c139a13641b257f6b6139573139b3bbcd621ac5c",
+        "config_sha256": "15a1701edb61c5d3d4a07165973f5b4b7bfd9bb71a5c9ba8df337c12b3b5c235",
         "expected_violation": "HeartbeatCannotExtendBudget"
       },
       {
         "model": "LlmTransport",
         "config": "LlmTransport.cfg",
-        "distinct": 34,
-        "source_sha256": "77e7d2b66d4bfa997bd7b5968a2129f44edf28cd48cd90e7f3e42a2f73f3d5e3",
-        "config_sha256": "6a646ede02c402dac7a9bab639776d1ab8ed1eb12040a372a327d0d79b32f5cf",
+        "distinct": 24,
+        "source_sha256": "584c906157985192b7500062dde899f947349b0facb9b32a1d22d136b93d1d50",
+        "config_sha256": "15a1701edb61c5d3d4a07165973f5b4b7bfd9bb71a5c9ba8df337c12b3b5c235",
         "expected_violation": "NoEmptySuccess"
       },
       {
         "model": "UiPreferences",
         "config": "UiPreferences.cfg",
         "distinct": 16,
-        "source_sha256": "2cbc58c25031920554a655316f1438779b0308dd1728188813999e7cc1b96d87",
-        "config_sha256": "7d2e99d20519d42a082b9d490176b65e353e4a6c277e1ba9c400e9aa4aa9c719",
+        "source_sha256": "622401ab9dfb5bb8712f7b97eeabcbc9f66f065460e216de84e6f067139a4c2f",
+        "config_sha256": "8b25eee2cbaed4de4e338a0ec00e0b8059217d9e4dd1abdd4ad4fb2be9010f66",
         "expected_violation": "ThemeResolvesCorrectly"
       },
       {
         "model": "AppWorkflow",
         "config": "AppWorkflowSubtitleNegative.cfg",
-        "distinct": 111,
-        "source_sha256": "9713359de38b96ae8d862c850f7783e668beed2f4df26e9d36975438e9d02821",
+        "distinct": 110,
+        "source_sha256": "6ac9cc64aaf8a8c588ca38f40f7221733d3bcbff3c72d5c6bf6c340297ab455b",
         "config_sha256": "f7a4c5ed72590f01cc296b84992ac1d202384d06412fd485bd4a5014cdb0877d",
         "expected_violation": "SubtitleFinalStaysFinal"
       },
@@ -549,127 +585,151 @@
         "model": "ProviderRequests",
         "config": "ProviderRequestsLegacy.cfg",
         "distinct": 15,
-        "source_sha256": "7a6840ef05c59263876c66c382ed782d7ec6ce33ab03355d42adb2cde842d98e",
-        "config_sha256": "8407b913deaa26532f98f87ed9de2e106b3e74f2b5e192a630f6489f1fc394ff",
+        "source_sha256": "2ed418fbe4a089763d98dd722e9d4a875c58be65dbf28a564746b0bdeb4791a5",
+        "config_sha256": "34af2f66509834486f48f6eb8c66fef2e056656234703583edfb6497f879837c",
         "expected_violation": "CredentialOnlyGoesToItsProvider"
       },
       {
         "model": "HotkeyPendingStart",
         "config": "HotkeyPendingStartLegacy.cfg",
-        "distinct": 15,
-        "source_sha256": "a9defda1aeefffb07c39c6bec6ea28613007af1be8d8b51fee48a9a676f022a5",
-        "config_sha256": "6f053fa67e61a8b263ab165ee6ed9f3d3e3a185056c8cb36fd98000b20ed2b0f",
+        "distinct": 13,
+        "source_sha256": "d01695703c8fa01e1d04b2bdb2197367df9f040481306b7dcf9bead38541a0f1",
+        "config_sha256": "090c83c760894bce0416c72bd18e09ce32763a8e80a682c51d849c3955125b0f",
         "expected_violation": "ReleasedOrSupersededStartCannotBind"
       },
       {
         "model": "OAuthStorage",
         "config": "OAuthStorageLegacy.cfg",
         "distinct": 12,
-        "source_sha256": "2d68c84f4a1e03d9da4f94a4e30760fa38f4839117b2edee0723ac5dd6fc0e3f",
-        "config_sha256": "6ed96d5603938b7b920ea60ad192b9dae262ce3676fe822990b2725c7d8c22b3",
+        "source_sha256": "fa8ff26b8857fe99c8dd0029a901f9f1d94812cc2396220391d819d58aee127d",
+        "config_sha256": "7764c4a0dfadbb9fe9a6433366174a5466a8ac7947828f37ab393f48bc67afec",
         "expected_violation": "InvalidMetadataCannotRestoreRefreshToken"
       },
       {
         "model": "ModelDirectoryMigration",
         "config": "ModelDirectoryMigration.cfg",
         "distinct": 12,
-        "source_sha256": "3ac105c9d58225db644ad7b08c24c55318e432c3443e3eed8bdd68c40c2d11ab",
-        "config_sha256": "326708a9df238105c65956f544c7a063a23bd441ad84bb27cec15f0b3ef4e487",
+        "source_sha256": "f8959f4a3ee34680dc186eeaaadcc89fa4291f33642735985d13a08bf1dca38e",
+        "config_sha256": "e05fe4031fbfcf4dd7f03e1fb8acf32a6195d5ae33ab6965f91723f6152c509f",
         "expected_violation": "NoDeleteBeforeSafeCommit"
       },
       {
         "model": "AppProfileRules",
         "config": "AppProfileRules.cfg",
-        "distinct": 122,
-        "source_sha256": "8bbf6713c9c30b406ba9dce1b1425168d89ed50a86642c12ec994fa0d501c0f7",
-        "config_sha256": "fdf8d44b90c26403022eec1b044e32767564b5cadf7b1881b067d1b1704d4454",
+        "distinct": 121,
+        "source_sha256": "b372df577e2a0add49fe9a4e50616fc80991cfd853594a30bf674d039f1ed6bf",
+        "config_sha256": "7dc001044f26817cb12f5f518c9d1509a6d404384f306787123cb2afc5ccf4a2",
         "expected_violation": "FirstMatchingRuleWins"
       },
       {
         "model": "HistoryRecords",
         "config": "HistoryRecords.cfg",
-        "distinct": 1052,
-        "source_sha256": "5b50f6dacacbf54cae3567633a3a109283f4bf8bbbc1d6c188370d0c6dc4cb67",
-        "config_sha256": "a6a5194766080e94615136ae7c8ddc947e66ef026430110e7365d286e47a8b61",
+        "distinct": 972,
+        "source_sha256": "3a241881c82fd13bf62518c94401d3b2a67464f34289aeca275248097a741a0a",
+        "config_sha256": "1965c6700548c295e9ba4d8b2e69eb1ca48b14baf17f4472fa2b88f5417e89b9",
         "expected_violation": "ReferencedOrLeasedAudioRetained"
       },
       {
         "model": "RuntimeConfiguration",
         "config": "RuntimeConfiguration.cfg",
-        "distinct": 174,
-        "source_sha256": "0a749560a7e77312afaaedaf149cdf77e02125532fb22c00703e8d4cfbad6e9e",
-        "config_sha256": "86affb384afb3253808c2aea66888c3b7332fce0de3f6321ba6f49842fdf3e7e",
+        "distinct": 171,
+        "source_sha256": "fab147cc612588d8249bf2582b5f85e5620efede61b42b4c332b6f40e57be061",
+        "config_sha256": "9c6460c87c03bf343d15ec7ace59cedc676510b89ae187d77d32bf5ad9a4793f",
         "expected_violation": "ActiveKeyComesFromActiveSlot"
       },
       {
         "model": "AsyncSettings",
         "config": "AsyncSettings.cfg",
-        "distinct": 46,
-        "source_sha256": "42682aee0d1a9fc72390b8c43d3e1d216bf3f3bfc5ae6fee13a654a1e05e61f4",
-        "config_sha256": "bd825d5ef79a1d0b3885bf3c97240d81eb60d27e0692e06d46956db335623949",
+        "distinct": 42,
+        "source_sha256": "bdfd3ad84586715d497a4f3b17bebe8f0c86433cd63791d516196b5435cb051e",
+        "config_sha256": "c9106515b95d446f1f93117bb14fe82bbfcfb90cc8cc74f4550c8636d314f6b1",
         "expected_violation": "NoPostUnmountPublication"
       },
       {
         "model": "RecordingLifecycle",
         "config": "RecordingLifecycle.cfg",
-        "distinct": 58,
-        "source_sha256": "c7f64b6b8b30162550120bfe572a1fccfb06ad6fb950f30efe94882335fa784b",
-        "config_sha256": "a14a89237179004678da5ac7d6e37ec4358eae0ba1f50486211fb3bb083cec56",
+        "distinct": 47,
+        "source_sha256": "af2409733c077c7874dd5712b954a6ab8730d7002537b1049dc9b1d583de3bce",
+        "config_sha256": "89ea4f3dadacf747905447a9532a9dbdcac5ad926b4ddab58e5f5fb3ccea37bb",
         "expected_violation": "CancelledNeverActive"
       },
       {
         "model": "EngineDownload",
         "config": "EngineDownload.cfg",
         "distinct": 7,
-        "source_sha256": "ba5d07b1e766236a217b88890d252f56187e06f2862e5674e2a9ac7dd17b3921",
-        "config_sha256": "c56902da87e65a81c7a15a4e32314696238c3f2a415701771df600a79428875e",
+        "source_sha256": "c91fca00c49470e77f2b2aed50d2aefc3ecaeabc6aec42cf1f8e932654600205",
+        "config_sha256": "6d06f13769e54bfd444ed675a16559c879680f388cd329941b1fff0daddfe139",
         "expected_violation": "RunningOwnsSlot"
       },
       {
         "model": "ContextRouting",
         "config": "ContextRouting.cfg",
         "distinct": 314930,
-        "source_sha256": "2d8ce5fac75022d74c701390b8d782b4b5056734a80af59c7752c658b9e0677b",
-        "config_sha256": "56738851b465abf93d2d6bba89f1d13b7d7131c81948dc2bbc7af113623f53b6",
+        "source_sha256": "69873fc388d40472f273dc808544de3d948949243f4b903df312d123acdd9c0a",
+        "config_sha256": "80bde90dc0bc03c6701e948d2d5506970ed5fd8d50d6f3caa9f542266a7e33f8",
         "expected_violation": "DisabledScreenStaysOff"
       },
       {
         "model": "WindowLifecycle",
         "config": "WindowLifecycle.cfg",
-        "distinct": 112,
-        "source_sha256": "2ca2463cfa224c5774ef627f87ae7b8a180a07fab7eeab830d3f6b2295fc00f7",
-        "config_sha256": "157d3cf732a3cfd38a43bcfd5d75f278f3d7d48f5c0286ccc25809371000ae67",
+        "distinct": 106,
+        "source_sha256": "14060d77929bedc3b1d4b329a45c30e7b139847d46f182824da148af7509b7a3",
+        "config_sha256": "a51d64bfc4d8844961a8e127a41142f0ca85ece56e5d80abbc5c8adf2f0f0fda",
         "expected_violation": "NoStaleShow"
       },
       {
         "model": "HotkeyLifecycle",
         "config": "HotkeyLifecycle.cfg",
         "distinct": 1380,
-        "source_sha256": "7c4ebcde6916505405dad21465576b39064254cf1e181e060e4ca66c10054db9",
-        "config_sha256": "cc7fee4b02264292d746718e05fe779d56995856bb5b8eb9987f0aaf2d89abdd",
+        "source_sha256": "94e64d7d3e610c728633ff1f76e3180535d66640404c935bd210b20579fe84f2",
+        "config_sha256": "9ca8284cab8596e5a62e1a6f20c688cb1f61bfcb9c17e1dad5619a2c2277ed05",
         "expected_violation": "OldReleaseCannotStopNewRecording"
       },
       {
         "model": "CapturePipeline",
         "config": "CapturePipelineNegative.cfg",
         "distinct": 68,
-        "source_sha256": "f21d95f8036cc5505cd4abb9c921edc6b5e210fef9d9ed7477b36fb2b230415d",
+        "source_sha256": "7c36221e4685f36766ffe1fb874162b9aaebfacf047da0989e594310c45f811b",
         "config_sha256": "fa18af298a3fe8bf19ded6b99e9aff081852699f1a19b638100125b067a27cf4",
         "expected_violation": "NativeSamplesRequireAcceptedWorker"
+      },
+      {
+        "model": "GpuIdleLifecycle",
+        "config": "GpuIdleStartup.cfg",
+        "distinct": null,
+        "source_sha256": "bfe78e6f62e1c5ffcd76f58e71a9b6314e76b91b904e0b03e9bc6c7afe1a4a6c",
+        "config_sha256": "8ba957c9bba45db2cbd9e04a2b1e12155e4e20ac71db5f2cd26318e234c479d0",
+        "expected_violation": "EnabledHasIdleWindow"
+      },
+      {
+        "model": "GpuIdleLifecycle",
+        "config": "GpuIdleLifecycle.cfg",
+        "distinct": 2,
+        "source_sha256": "f59ae2b4bc152b703b108727682c215e66f66d2065ce4dbe5662343abd0184fe",
+        "config_sha256": "c79cd4f980b0f629ecdb390c7ba7945403f00e969256cc2795c9eb5e8c131b56",
+        "expected_violation": "EnabledHasIdleWindow"
+      },
+      {
+        "model": "GpuIdleLifecycle",
+        "config": "GpuIdleLifecycle.cfg",
+        "distinct": 17,
+        "source_sha256": "00447184f5882c8107efabe8e60495e99840b51f2a5d6a2246e8671676cc2dfe",
+        "config_sha256": "c79cd4f980b0f629ecdb390c7ba7945403f00e969256cc2795c9eb5e8c131b56",
+        "expected_violation": "ActiveRuntimeLoaded"
+      },
+      {
+        "model": "GpuIdleSettings",
+        "config": "GpuIdleSettings.cfg",
+        "distinct": 32,
+        "source_sha256": "370f44f79575742957be9240c26a8f692fdf9ae13b55f0ba23899b983996ab12",
+        "config_sha256": "b9a2322d10b4ebf904046ecd7dabf1a2750ca5da3cb94f9d360149ec751d095f",
+        "expected_violation": "DisplayMatchesLastSave"
       }
-    ],
-    "hash_policy": "SHA-256 of actual local input bytes; checkout line endings can change raw hashes.",
-    "reuse": "Unchanged successful positive runs reused only after source/config hash equality and successful TLC log validation; new models and all negative controls executed at the final checkpoint.",
-    "binding_gate_regressions": {
-      "passed": 10,
-      "legacy_failures_reproduced": 7,
-      "command": "python scripts/test_check_formal.py"
-    }
+    ]
   },
   "lean": {
     "status": "passed",
-    "theorem_count": 24,
-    "source_sha256": "645405f70c4d823b596bf87151c623eee834dc05f23c19b7dae03bd60b8507ef",
+    "theorem_count": 29,
     "theorems": [
       "staleCommitIsInert",
       "logoutRejectsEarlierCompletion",
@@ -694,57 +754,74 @@
       "explicitDarkIgnoresSystem",
       "systemThemeTracksSystem",
       "firstApplicableIsMatch",
-      "earlierRulesDoNotMatch"
+      "earlierRulesDoNotMatch",
+      "busyGpuNeverUnloads",
+      "streamingGpuNeverUnloads",
+      "disabledGpuNeverUnloads",
+      "idleWindowWaitsForTimeout",
+      "editedGpuIdleReadIsInert"
     ],
+    "source_sha256": "41d94620dc3720175bc8566c959bcfc93f8af9bebd062b2b2f368a43001fb0c2",
     "unfinished_declarations": 0
   },
   "implementation": {
     "rust": {
       "status": "passed",
-      "unit_passed": 593,
+      "unit_passed": 600,
       "integration_passed": 16,
-      "ignored": 8,
-      "advisory_performance_filtered": 1,
-      "command": "cargo test --manifest-path src-tauri/Cargo.toml --all-targets --locked -- --skip services::qwen_hotword_service::tests::hotword_correction_p95_stays_below_one_millisecond"
+      "ignored": 10,
+      "advisory_performance_filtered": 1
     },
     "frontend": {
       "status": "passed",
-      "functional_tests": 443,
+      "functional_tests": 455,
       "fluidity_tests": 1,
       "lint": "passed",
       "typecheck_build": "passed",
-      "bundle_budget": "passed",
-      "command": "pnpm check"
+      "bundle_budget": "passed"
     },
     "python": {
       "status": "passed",
-      "unit_tests": 96,
+      "unit_tests": 113,
       "atomicity_tests": 13,
+      "release_gate_tests": 5,
+      "verifier_tests": 11,
+      "ci_fail_fast_tests": 2,
       "compileall": "passed",
-      "commands": [
-        "uv run --no-sync python -m compileall -q scripts src-tauri/resources",
-        "uv run --no-sync python -m unittest discover -s src-tauri/resources -p test_*.py",
-        "uv run --no-sync python scripts/test_build_engine_atomicity.py",
-        "uv run --no-sync python scripts/test_release_ci.py"
-      ],
-      "release_gate_tests": 5
+      "lockfile": "passed"
+    },
+    "gpu_runtime": {
+      "qwen3-asr-0.6b": {
+        "status": "passed",
+        "backend": "cuda",
+        "startup_idle_unloaded": true,
+        "post_use_idle_unloaded": true,
+        "speech_before": "The weather is sunny today. This is a speech recognition test.",
+        "speech_after_reload": "The weather is sunny today. This is a speech recognition test.",
+        "process_exit_code": 0
+      },
+      "confucius4-r2t2": {
+        "status": "passed",
+        "backend": "cuda",
+        "startup_idle_unloaded": true,
+        "post_use_idle_unloaded": true,
+        "speech_before": "The weather is sunny today. This is a speech recognition test.",
+        "speech_after_reload": "The weather is sunny today. This is a speech recognition test.",
+        "process_exit_code": 0,
+        "active_stream_retained": true
+      }
     },
     "rustfmt": "passed",
     "clippy_warnings_denied": "passed",
-    "whitespace_check": "passed",
-    "frozen_oauth_test_git_object": "495dc01a55edf4e50757d2db8e5f4dbb2e62fa31",
-    "model_status_test_sha256": "a385a8022cbbd422c396d8c13daaf55c11a9d88ef6d536eaac1d29cee7d1db8",
-    "independent_review": "Accepted final OAuth/provider/hotkey and supplemental credential/UI disposal source correspondence; final model review closed subscription binding and observable stale-completion publication gaps. Root reproduced all functional/formal gates. Native failure injection remains outside this evidence.",
-    "web_key_test_sha256": "bd47308e91c2d356ea779b726423e08bacf6063ef79eba267e1909154d9cf8a7",
-    "download_cancellation_test_sha256": "e20a51c7aff58a390c7654eb7413bf043cd682df9fdf1530d4609a426d083a3a",
-    "recording_disposal_test_sha256": "4ce9bcd7348dcf12ea7fd6e0c7c621c2ed9db520578eedc9a235d1d9aea9b036"
+    "dependency_audit": "no known production vulnerabilities",
+    "actionlint": "passed",
+    "review": "Main agent inspected the combined production paths and reproduced the regressions and final gates. No independent child review was performed."
   },
   "assumptions": [
-    "Finite TLC bounds and component decomposition are explicit in COVERAGE.md; counts across workloads are not globally unique application states.",
-    "Progress assumes stated scheduling, timeout and I/O fairness; generation counters do not wrap.",
-    "Windows, Tauri, audio drivers, platform keyring, filesystem, SQLite, browser/network and learned model internals are trusted environmental inputs.",
-    "Source guards and interface-scaffold RED evidence are identified explicitly; they are not original-service native runtime reproductions.",
-    "No live user OAuth, microphone or charged provider round-trip was required or claimed."
+    "Finite TLC bounds, weak fairness and source correspondence are explicit in formal/COVERAGE.md and verification.json.",
+    "Native dependencies, driver behavior and learned model accuracy are not proved. CUDA probes used one 5.73-second synthesized English clip on RTX 4070 SUPER, with no microphone or cloud-provider round-trip.",
+    "Ten environment-dependent Rust tests were ignored by the ordinary suite; one timing-sensitive test remains a separate advisory CI benchmark.",
+    "Local checks do not establish remote CI status or Rust cache speedup. These changes have not been committed, pushed or merged."
   ],
-  "ci": "See the current PR head checks and downloadable formal-contract-results artifact; remote results are not inferred from local test results."
+  "ci": "Local workflow passes Actionlint and native-failure injection checks. Remote CI for this exact candidate remains pending publication."
 }
