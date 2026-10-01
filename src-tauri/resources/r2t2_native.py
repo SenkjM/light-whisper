@@ -21,6 +21,9 @@ class _BackendConfig(ct.Structure):
 
 class NativeRuntime:
     SAMPLE_RATE = 16000
+    # Acoustic end context for immediate Stop: 80/160 ms still lost Chinese
+    # tails in paired GPU checks; 320 ms also aligns both native chunk sizes.
+    FINISH_CONTEXT_SAMPLES = SAMPLE_RATE * 320 // 1000
 
     def __init__(self, model_path, library_path, *, backend='cuda', chunk_ms=320,
                  threads=4, dll_directories=(), rolling=False):
@@ -198,6 +201,11 @@ class NativeRuntime:
     def finish(self):
         if not self._active:
             raise RuntimeError('No active R2T2 stream')
+        if self._offset:
+            # Decode the last spoken word without waiting for more microphone
+            # packets. This context stays inside the native runtime; captured
+            # sample counts, durations and live captions remain unchanged.
+            self.feed(np.zeros(self.FINISH_CONTEXT_SAMPLES, dtype=np.float32))
         result = ct.c_void_p()
         try:
             self._call('stream_finish', self.session, ct.byref(result))

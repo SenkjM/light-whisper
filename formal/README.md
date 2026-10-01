@@ -5,8 +5,8 @@ classes, credentials/OAuth, providers/settings/personalization, context/routing,
 selection/assistant, history, windows/subtitles, updates, theme/autostart and
 bundled protocols.
 
-[`verification.json`](verification.json) binds **120 registered commands**,
-**16 event families**, **15 lifecycle entries** and **11 protocol families** to
+[`verification.json`](verification.json) binds **122 registered commands**,
+**16 event families**, **16 lifecycle entries** and **11 protocol families** to
 obligations, model operators, source/test paths and explicit assumptions. CI
 rejects inventory drift, missing anchors, unasserted properties, unreachable
 explicitly declared actions, failed models/proofs and negative controls that no longer find the
@@ -17,7 +17,7 @@ automatic proof of a Rust/TypeScript function.
 
 | Layer | What is established |
 | --- | --- |
-| Integrated AppWorkflow, nine workloads | Cross-subsystem safety: recording/output, consent/context/clipboard, download/configuration, assistant/selection, history/subtitles and updates. All declared actions must be reached across workloads. |
+| Integrated AppWorkflow, ten workloads | Cross-subsystem safety: recording/output, consent/context/clipboard, download/configuration, assistant/selection, history/subtitles, updates and GPU suspension/reload. All declared actions must be reached across workloads. |
 | Component TLA+ models | Deeper interleavings and validation/error partitions, with explicit finite bounds and conditional fairness for progress. |
 | Lean StateContracts | Parameter-independent ownership/decision contracts, profile-version induction, first matching rule, consent, clipboard preservation, sample cap, correction provenance and theme. No sorry, admit or declared axiom. |
 | Implementation correspondence | Actual regression tests and source-path review, including a source guard requiring provider/endpoint/key snapshots before OAuth awaits. This is not compiler refinement. |
@@ -30,6 +30,7 @@ automatic proof of a Rust/TypeScript function.
 | Recording and capture | RecordingLifecycle, CapturePipeline, MicrophoneMonitor |
 | Hotkeys | HotkeyLifecycle (three event-kind runs plus registration workload), HotkeyPendingStart, HotkeyRegistrationEpoch, HotkeyRegistrationFailure |
 | Engines and migration | EngineDownload, RuntimeConfiguration, ModelDirectoryMigration |
+| GPU residency and settings | GpuIdleLifecycle (startup and runtime enable), GpuIdleSettings |
 | Authentication and provider pairing | OAuthLifecycle, OAuthStorage, ProviderRequests |
 | Credential publication and account snapshots | WebSearchKeys, ProviderAuthSnapshot |
 | Settings and personalization | ProfilePersistence, SettingsContracts, Personalization, AppProfileRules, AsyncSettings |
@@ -44,9 +45,12 @@ source/test anchors are recorded per contract there.
 
 ## Reproduce
 
-Use Python 3.10+, Java 21, official TLA+ tools **1.8.0** and Lean **4.34.1**.
+Use Python 3.10+, Java 21, official TLA+ tools **1.7.4** and Lean **4.34.1**.
 Official binary downloads and SHA-256 digests are pinned in
 [CI](../.github/workflows/ci.yml).
+The stable TLC release avoids the automatically replaced `v1.8.0` prerelease
+asset. SHA-256 verification remains mandatory. The runner keeps mutated modules
+and their configs together for TLC 1.7.4 module resolution.
 
 ```sh
 python scripts/check_formal.py --inventory-only

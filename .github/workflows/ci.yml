@@ -42,9 +42,9 @@ jobs:
         shell: bash
         run: |
           python scripts/test_check_formal.py
-          curl -fsSL https://github.com/tlaplus/tlaplus/releases/download/v1.8.0/tla2tools.jar -o "$RUNNER_TEMP/tla2tools.jar"
-          echo 'ab4694601923fd5ac06452abbf847c366a5054a3d739552085edd6ed986c29ec  '"$RUNNER_TEMP/tla2tools.jar" | sha256sum --check
-          curl -fsSL https://github.com/leanprover/lean4/releases/download/v4.34.1/lean-4.34.1-linux.tar.zst -o "$RUNNER_TEMP/lean.tar.zst"
+          curl -fsSL --retry 3 https://github.com/tlaplus/tlaplus/releases/download/v1.7.4/tla2tools.jar -o "$RUNNER_TEMP/tla2tools.jar"
+          echo '936a262061c914694dfd669a543be24573c45d5aa0ff20a8b96b23d01e050e88  '"$RUNNER_TEMP/tla2tools.jar" | sha256sum --check
+          curl -fsSL --retry 3 https://github.com/leanprover/lean4/releases/download/v4.34.1/lean-4.34.1-linux.tar.zst -o "$RUNNER_TEMP/lean.tar.zst"
           echo '47bf4bbd78f70c2e9670598ab7124d92b6efb7330ff33e5fbb4030f6fd72e4e4  '"$RUNNER_TEMP/lean.tar.zst" | sha256sum --check
           tar --zstd -xf "$RUNNER_TEMP/lean.tar.zst" -C "$RUNNER_TEMP"
           python scripts/check_formal.py \
@@ -150,10 +150,12 @@ jobs:
 
       - name: Compile and test Python sources
         run: |
+          $PSNativeCommandUseErrorActionPreference = $true
           uv run --no-sync python -m compileall -q scripts src-tauri/resources
           uv run --no-sync python -m unittest discover -s src-tauri/resources -p "test_*.py"
           uv run --no-sync python scripts/test_build_engine_atomicity.py
           uv run --no-sync python scripts/test_release_ci.py
+          uv run --no-sync python scripts/test_ci_fail_fast.py
 
       - name: Verify tracked files are unchanged
         run: git diff --exit-code
@@ -176,12 +178,26 @@ jobs:
 
       - name: Set up Rust
         run: |
+          $PSNativeCommandUseErrorActionPreference = $true
           rustup toolchain install 1.93.0 --profile minimal --component rustfmt,clippy
           rustup default 1.93.0
           rustc --version
 
+      - name: Cache Rust dependencies and build outputs
+        uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            src-tauri/target
+            !src-tauri/target/**/incremental/**
+          key: rust-${{ runner.os }}-1.93.0-${{ hashFiles('src-tauri/Cargo.lock') }}-${{ hashFiles('src-tauri/src/**/*.rs', 'src-tauri/build.rs', 'src-tauri/Cargo.toml', 'src-tauri/tauri.conf.json') }}
+          restore-keys: |
+            rust-${{ runner.os }}-1.93.0-${{ hashFiles('src-tauri/Cargo.lock') }}-
+
       - name: Check Rust formatting and lints
         run: |
+          $PSNativeCommandUseErrorActionPreference = $true
           cargo fmt --manifest-path src-tauri/Cargo.toml --all -- --check
           cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets --locked -- -D warnings
 

@@ -1,11 +1,21 @@
 """The formal gate must distinguish checked properties from reached actions."""
 
 import tempfile
+import re
 import unittest
 from pathlib import Path
 from unittest.mock import patch
 
 import check_formal
+
+
+class ToolPinTests(unittest.TestCase):
+    def test_ci_and_verifier_require_the_same_tlc_binary(self):
+        workflow = (check_formal.ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
+        pins = [re.search(r"[0-9a-f]{64}", line).group(0)
+                for line in workflow.splitlines()
+                if '"$RUNNER_TEMP/tla2tools.jar" | sha256sum --check' in line]
+        self.assertEqual(pins, [check_formal.TLC_SHA256])
 
 
 class ModelBindingTests(unittest.TestCase):

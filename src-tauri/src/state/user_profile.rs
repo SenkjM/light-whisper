@@ -68,6 +68,7 @@ pub enum JevProvider {
     TypeSafe,
     OpenRouter,
     Vercel,
+    Liquid,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]

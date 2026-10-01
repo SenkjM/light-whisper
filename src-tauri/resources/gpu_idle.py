@@ -70,8 +70,8 @@ def gpu_idle_should_unload(
     """True when the model should be unloaded.
 
     Idle is measured from the end of the last transcribe/stream command.
-    Startup alone is not activity, so a model that has not yet been used
-    stays resident. An active R2T2 stream always blocks unload.
+    Enabling the policy (including at startup) starts a fresh idle window.
+    An active R2T2 stream always blocks unload.
     """
     if idle_seconds <= 0 or stream_active or last_activity is None:
         return False

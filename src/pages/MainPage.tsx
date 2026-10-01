@@ -110,7 +110,7 @@ export default function MainPage({ onNavigate, animClass = "" }: {
   }, [isReady, isStarting, isRecording, stopRecording, startRecording]);
 
   return (
-    <div className="page-root">
+    <div className="page-root main-page">
       <TitleBar
         title={t("app.title")}
         leftAction={
@@ -137,7 +137,7 @@ export default function MainPage({ onNavigate, animClass = "" }: {
 
       <div className={pageContentClass} style={{ display: "flex", flexDirection: "column", flex: 1, minHeight: 0, overflow: "hidden" }}>
         {/* Recording zone */}
-        <div className="recording-zone" style={{ padding: `16px ${PADDING}px 6px` }}>
+        <div className="recording-zone" style={{ padding: `24px ${PADDING}px 18px` }}>
           <StatusIndicator
             stage={stage}
             isReady={isReady}

@@ -9,6 +9,8 @@ pub use crate::state::user_profile::JevProvider;
 use crate::services::llm_provider::KEYRING_SERVICE;
 
 const REQUEST_TIMEOUT: Duration = Duration::from_millis(1000);
+/// Minimum probability for auto-polish bypass and its automatic screen route.
+pub const POLISH_ROUTING_MIN_PROBABILITY: f64 = 0.80;
 // Jev returns a probability for each of the three route choices. The API may
 // round those probabilities to two decimals, so small sum drift is accepted;
 // materially malformed distributions fail closed to ordinary polishing.
@@ -20,6 +22,7 @@ impl JevProvider {
             Self::TypeSafe => "https://api.typesafe.ai/v1/systemone",
             Self::OpenRouter => "https://openrouter.ai/api/alpha/decisions",
             Self::Vercel => "https://ai-gateway.vercel.sh/v4/ai/evaluation-model",
+            Self::Liquid => "https://api.liquid.ai/decisions/v1/systemone",
         }
     }
 
@@ -28,6 +31,7 @@ impl JevProvider {
             Self::TypeSafe => Some("jev-1.13.0"),
             Self::OpenRouter => Some("typesafe/jev-1.13"),
             Self::Vercel => None,
+            Self::Liquid => Some("d1:free"),
         }
     }
 
@@ -36,6 +40,7 @@ impl JevProvider {
             Self::TypeSafe => "/v1/systemone",
             Self::OpenRouter => "/api/alpha/decisions",
             Self::Vercel => "/v4/ai/evaluation-model",
+            Self::Liquid => "/decisions/v1/systemone",
         }
     }
 }
@@ -45,6 +50,7 @@ pub fn keyring_user_for_provider(provider: JevProvider) -> &'static str {
         JevProvider::TypeSafe => "jev-typesafe-api-key",
         JevProvider::OpenRouter => "jev-openrouter-api-key",
         JevProvider::Vercel => "jev-vercel-api-key",
+        JevProvider::Liquid => "decision-liquid-api-key",
     }
 }
 
@@ -55,7 +61,7 @@ pub fn load_api_key_for_provider(
     app_handle
         .keyring()
         .get_password(KEYRING_SERVICE, keyring_user_for_provider(provider))
-        .map_err(|_| "无法读取 Jev API Key".to_string())
+        .map_err(|_| "无法读取决策模型 API Key".to_string())
         .map(|value| value.unwrap_or_default())
 }
 
@@ -69,12 +75,12 @@ pub fn save_or_delete_api_key(
         app_handle
             .keyring()
             .delete_password(KEYRING_SERVICE, keyring_user)
-            .map_err(|_| "无法删除 Jev API Key".to_string())
+            .map_err(|_| "无法删除决策模型 API Key".to_string())
     } else {
         app_handle
             .keyring()
             .set_password(KEYRING_SERVICE, keyring_user, api_key.trim())
-            .map_err(|_| "无法保存 Jev API Key".to_string())
+            .map_err(|_| "无法保存决策模型 API Key".to_string())
     }
 }
 
@@ -227,7 +233,7 @@ pub fn parse_decision(response: &str) -> bool {
     let sum = pass + polish + uncertain;
     sum.is_finite()
         && (sum - 1.0).abs() <= PROBABILITY_SUM_TOLERANCE
-        && pass >= 0.90
+        && pass >= POLISH_ROUTING_MIN_PROBABILITY
         && pass >= polish
         && pass >= uncertain
 }
@@ -253,7 +259,7 @@ pub async fn evaluate(
     ) {
         Ok(request) => request,
         Err(_) => {
-            log::debug!(
+            log::warn!(
                 "Jev gate skipped: provider={:?}, reason=request_build, elapsed_ms={}",
                 provider,
                 started.elapsed().as_millis()
@@ -263,11 +269,11 @@ pub async fn evaluate(
     };
 
     let result = tokio::time::timeout(REQUEST_TIMEOUT, async {
-        let response = client.execute(request).await.map_err(|_| ())?;
+        let response = client.execute(request).await.map_err(|_| None)?;
         if !response.status().is_success() {
-            return Err(());
+            return Err(Some(response.status().as_u16()));
         }
-        let body = response.bytes().await.map_err(|_| ())?;
+        let body = response.bytes().await.map_err(|_| None)?;
         Ok(parse_decision(
             std::str::from_utf8(&body).unwrap_or_default(),
         ))
@@ -285,23 +291,24 @@ pub async fn evaluate(
             true
         }
         Ok(Ok(false)) => {
-            log::debug!(
+            log::info!(
                 "Jev gate decision: provider={:?}, reason=nonpass_or_invalid, elapsed_ms={}",
                 provider,
                 elapsed_ms
             );
             false
         }
-        Ok(Err(())) => {
-            log::debug!(
-                "Jev gate skipped: provider={:?}, reason=http_or_body_error, elapsed_ms={}",
+        Ok(Err(status)) => {
+            log::warn!(
+                "Jev gate skipped: provider={:?}, reason=http_or_body_error, status={:?}, elapsed_ms={}",
                 provider,
+                status,
                 elapsed_ms
             );
             false
         }
         Err(_) => {
-            log::debug!(
+            log::warn!(
                 "Jev gate skipped: provider={:?}, reason=timeout, elapsed_ms={}",
                 provider,
                 elapsed_ms

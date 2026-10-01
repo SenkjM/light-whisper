@@ -374,6 +374,7 @@ class BaseASRServer:
         if seconds <= 0:
             return
         self._gpu_idle_seconds = seconds
+        self._last_activity_at = time.monotonic()
         self._ensure_gpu_idle_thread()
         self.logger.info("GPU 空闲卸载已启用，超时 %s 秒", seconds)
 
@@ -384,6 +385,8 @@ class BaseASRServer:
             return {"success": False, "error": "缺少 seconds"}
         seconds = parse_gpu_idle_seconds(command.get("seconds"))
         with self._gpu_idle_lock:
+            if seconds > 0 and self._gpu_idle_seconds <= 0:
+                self._last_activity_at = time.monotonic()
             self._gpu_idle_seconds = seconds
             if seconds <= 0:
                 self._last_activity_at = None

@@ -182,7 +182,7 @@ class IdleServerTests(unittest.TestCase):
         self.assertIsNone(server._gpu_idle_thread)
         self.assertEqual(server.suspend_calls, 0)
 
-    def test_positive_env_starts_timer_without_unloading_before_activity(self):
+    def test_positive_env_starts_idle_window_after_startup(self):
         server = _IdleServer()
         server.saw_thread = False
         original = server._gpu_idle_loop
@@ -192,11 +192,34 @@ class IdleServerTests(unittest.TestCase):
             return original(stop)
 
         server._gpu_idle_loop = loop
-        self._run(server, [{"action": "exit", "request_id": 1}], env={GPU_IDLE_ENV: "15"})
+        with mock.patch("server_common.time.monotonic", return_value=100):
+            self._run(server, [{"action": "exit", "request_id": 1}], env={GPU_IDLE_ENV: "15"})
         self.assertTrue(server.saw_thread)
         self.assertEqual(server._gpu_idle_seconds, 15)
         self.assertEqual(server.suspend_calls, 0)
-        self.assertIsNone(server._last_activity_at)
+        self.assertEqual(server._last_activity_at, 100)
+        self.assertFalse(server._gpu_idle_tick(now=114))
+        self.assertTrue(server._gpu_idle_tick(now=115))
+
+    def test_enabling_after_use_starts_a_fresh_idle_window(self):
+        server = _IdleServer()
+        self._run(server, [{"action": "transcribe", "audio_path": "a.wav"}])
+        with (
+            mock.patch.object(server, "_ensure_gpu_idle_thread"),
+            mock.patch("server_common.time.monotonic", return_value=100),
+        ):
+            server._handle_set_gpu_idle({"seconds": 15})
+        self.assertFalse(server._gpu_idle_tick(now=114))
+        self.assertTrue(server._gpu_idle_tick(now=115))
+
+    def test_changing_positive_timeout_keeps_the_activity_window(self):
+        server = _IdleServer()
+        server._gpu_idle_seconds = 30
+        server._last_activity_at = 100
+        with mock.patch.object(server, "_ensure_gpu_idle_thread"):
+            server._handle_set_gpu_idle({"seconds": 15})
+        self.assertFalse(server._gpu_idle_tick(now=114))
+        self.assertTrue(server._gpu_idle_tick(now=115))
 
     def test_activity_resets_and_status_does_not_count(self):
         server = _IdleServer()
@@ -222,8 +245,8 @@ class IdleServerTests(unittest.TestCase):
                     {"action": "exit", "request_id": 7},
                 ],
             )
-        # transcribe then stream_finish each sample the clock. status/stats/cleanup do not.
-        self.assertEqual(server._last_activity_at, 10.0)
+        # Enable, transcribe and stream_finish sample the clock; queries do not.
+        self.assertEqual(server._last_activity_at, 15.0)
         self.assertEqual(server.suspend_calls, 0)
 
     def test_tick_unloads_only_when_due_and_not_busy_or_streaming(self):

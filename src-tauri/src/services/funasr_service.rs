@@ -40,6 +40,9 @@ mod protocol;
 #[cfg(test)]
 mod native_stream_tests;
 
+#[cfg(all(test, target_os = "windows"))]
+mod ipc_recovery_tests;
+
 #[cfg(test)]
 use installation::{engine_install_fingerprint_matches, replace_engine_dir};
 pub use installation::{find_engine, EngineRuntime};
@@ -398,7 +401,10 @@ pub async fn start_server(app_handle: &tauri::AppHandle, state: &AppState) -> Re
         });
 
     if gpu_idle_at_spawn > 0 {
-        cmd.env("LIGHT_WHISPER_GPU_IDLE_SECONDS", gpu_idle_at_spawn.to_string());
+        cmd.env(
+            "LIGHT_WHISPER_GPU_IDLE_SECONDS",
+            gpu_idle_at_spawn.to_string(),
+        );
     }
 
     // Windows 上隐藏控制台窗口
@@ -800,10 +806,10 @@ async fn transcribe_pcm16_via_path(
 /// - 命令和响应都是单行 JSON
 /// - 为了保证同一时间只有一个命令与子进程通信，
 ///   这里会在 I/O 完成前保持锁，避免并发读写导致协议错乱。
-async fn send_command_to_server(
+async fn send_command_to_server<R: tauri::Runtime>(
     state: &AppState,
     command: &ServerCommand,
-    app_handle: Option<&tauri::AppHandle>,
+    app_handle: Option<&tauri::AppHandle<R>>,
 ) -> Result<ServerResponse, AppError> {
     let mut guard = state.engine.funasr_process.lock().await;
 
@@ -814,23 +820,22 @@ async fn send_command_to_server(
         send_command_impl(process, command).await
     };
 
-    if result.is_err() {
-        if let Some(process) = guard.as_mut() {
-            if let Ok(Some(status)) = process.child.try_wait() {
-                log::warn!("FunASR 进程已退出，状态码: {}", status);
-                state.set_funasr_ready(false);
-                *guard = None;
-                // 主动通知前端进程已崩溃
-                if let Some(handle) = app_handle {
-                    let _ = handle.emit(
-                        "funasr-status",
-                        serde_json::json!({
-                            "status": "crashed",
-                            "message": format!("FunASR 进程异常退出（状态码: {}），正在准备重启...", status)
-                        }),
-                    );
-                }
-            }
+    if let Err(error) = &result {
+        // A broken pipe/EOF/timeout makes this IPC session unusable even if
+        // the child has not exited yet (e.g. after sleep). Dropping the handle
+        // also requests termination of the stale child.
+        log::warn!("FunASR 通信失效，释放进程并准备重启: {}", error);
+        state.set_funasr_ready(false);
+        state.set_inline_audio_transport(None);
+        *guard = None;
+        if let Some(handle) = app_handle {
+            let _ = handle.emit(
+                "funasr-status",
+                serde_json::json!({
+                    "status": "crashed",
+                    "message": "语音识别引擎连接已断开，正在准备重启..."
+                }),
+            );
         }
     }
 
@@ -937,12 +942,9 @@ pub async fn push_gpu_idle_seconds(state: &AppState, seconds: u64) -> Result<(),
     if !has_process {
         return Ok(());
     }
-    let response = send_command_to_server(
-        state,
-        &ServerCommand::SetGpuIdle { seconds },
-        None,
-    )
-    .await?;
+    let response =
+        send_command_to_server::<tauri::Wry>(state, &ServerCommand::SetGpuIdle { seconds }, None)
+            .await?;
     if response.success == Some(false) {
         return Err(AppError::Asr(
             response

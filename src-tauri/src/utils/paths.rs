@@ -505,15 +505,30 @@ mod tests {
     #[test]
     fn gpu_idle_seconds_default_off_and_reject_garbage() {
         assert_eq!(super::parse_gpu_idle_seconds(None), 0);
-        assert_eq!(super::parse_gpu_idle_seconds(Some(&serde_json::json!(0))), 0);
-        assert_eq!(super::parse_gpu_idle_seconds(Some(&serde_json::json!(180))), 180);
-        assert_eq!(super::parse_gpu_idle_seconds(Some(&serde_json::json!(-5))), 0);
-        assert_eq!(super::parse_gpu_idle_seconds(Some(&serde_json::json!("nope"))), 0);
-        assert_eq!(super::parse_gpu_idle_seconds(Some(&serde_json::json!(true))), 0);
         assert_eq!(
-            super::parse_gpu_idle_seconds(Some(
-                &serde_json::json!(super::MAX_GPU_IDLE_SECONDS + 10)
-            )),
+            super::parse_gpu_idle_seconds(Some(&serde_json::json!(0))),
+            0
+        );
+        assert_eq!(
+            super::parse_gpu_idle_seconds(Some(&serde_json::json!(180))),
+            180
+        );
+        assert_eq!(
+            super::parse_gpu_idle_seconds(Some(&serde_json::json!(-5))),
+            0
+        );
+        assert_eq!(
+            super::parse_gpu_idle_seconds(Some(&serde_json::json!("nope"))),
+            0
+        );
+        assert_eq!(
+            super::parse_gpu_idle_seconds(Some(&serde_json::json!(true))),
+            0
+        );
+        assert_eq!(
+            super::parse_gpu_idle_seconds(Some(&serde_json::json!(
+                super::MAX_GPU_IDLE_SECONDS + 10
+            ))),
             super::MAX_GPU_IDLE_SECONDS
         );
     }

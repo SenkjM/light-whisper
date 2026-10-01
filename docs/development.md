@@ -61,6 +61,7 @@ uv run --no-sync python -m compileall -q scripts src-tauri/resources
 uv run --no-sync python -m unittest discover -s src-tauri/resources -p "test_*.py"
 uv run --no-sync python scripts/test_build_engine_atomicity.py
 uv run --no-sync python scripts/test_release_ci.py
+uv run --no-sync python scripts/test_ci_fail_fast.py
 cargo fmt --manifest-path src-tauri/Cargo.toml --all -- --check
 cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets --locked -- -D warnings
 cargo test --manifest-path src-tauri/Cargo.toml --all-targets --locked -- --skip services::qwen_hotword_service::tests::hotword_correction_p95_stays_below_one_millisecond
@@ -71,6 +72,8 @@ CI measures the skipped timing-sensitive hotword benchmark separately as advisor
 CI also runs the [TLA+ and Lean contracts](../formal/README.md), including verifier
 regressions and intentional counterexamples, and uploads the proof logs. The
 release gate requires this job to succeed for the exact candidate commit.
+Multi-command PowerShell steps stop on any native command failure. Rust caches
+use OS, compiler, lockfile and source hashes; cache hits still run every check.
 
 ## Troubleshooting
 
@@ -86,6 +89,19 @@ release gate requires this job to succeed for the exact candidate commit.
 
 `LIGHT_WHISPER_DATA_DIR` overrides the ASR data directory. Standalone Python
 servers use `%TEMP%\light_whisper_logs\` when it is unset.
+
+**Automatic decisions**: `app.log` records the selected decision provider,
+validated route/screen choices, probabilities and whether polishing was skipped.
+`Decision model fallback` records HTTP status, transport, malformed-response or
+timeout failures; these retain normal polishing and do not imply a `polish` decision.
+For example, Vercel's HTTP 403 can indicate unavailable model access, while Liquid's
+HTTP 429 can indicate temporary `d1:free` capacity limits. Decision logs omit transcript
+content, request bodies and credentials.
+
+Auto-polish bypass and its automatic screen route use an 80% minimum choice
+probability. A pass also requires a valid complete distribution and no explicit
+screen, translation or edit requirement. Correction-rule deletion and meaning
+audits keep their separate review thresholds.
 
 
 ## Repository map

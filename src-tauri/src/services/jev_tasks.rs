@@ -1,6 +1,6 @@
 //! Shared Jev evaluation seams for the opt-in expansion features.
 
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use crate::services::jev_service::JevProvider;
 use reqwest::Client;
@@ -285,6 +285,7 @@ pub async fn evaluate(
     deadline: Duration,
     endpoint_override: Option<&str>,
 ) -> Option<Value> {
+    let started = Instant::now();
     if api_key.trim().is_empty()
         || questions
             .as_object()
@@ -293,27 +294,60 @@ pub async fn evaluate(
         return None;
     }
 
-    let request = crate::services::jev_service::build_evaluation_request(
+    let request = match crate::services::jev_service::build_evaluation_request(
         client,
         provider,
         api_key,
         state,
         questions,
         endpoint_override,
-    )
-    .ok()?;
-
-    tokio::time::timeout(deadline, async {
-        let response = client.execute(request).await.ok()?;
-        if !response.status().is_success() {
+    ) {
+        Ok(request) => request,
+        Err(_) => {
+            log::warn!(
+                "Decision model fallback: provider={:?}, reason=request_build",
+                provider
+            );
             return None;
         }
-        let body = response.bytes().await.ok()?;
-        serde_json::from_slice::<Value>(&body).ok()
+    };
+
+    let result = tokio::time::timeout(deadline, async {
+        let response = client
+            .execute(request)
+            .await
+            .map_err(|_| ("transport", None))?;
+        if !response.status().is_success() {
+            return Err(("http_status", Some(response.status().as_u16())));
+        }
+        let body = response
+            .bytes()
+            .await
+            .map_err(|_| ("response_body", None))?;
+        serde_json::from_slice::<Value>(&body).map_err(|_| ("invalid_json", None))
     })
-    .await
-    .ok()
-    .flatten()
+    .await;
+    match result {
+        Ok(Ok(payload)) => Some(payload),
+        Ok(Err((reason, status))) => {
+            log::warn!(
+                "Decision model fallback: provider={:?}, reason={}, status={:?}, elapsed_ms={}",
+                provider,
+                reason,
+                status,
+                started.elapsed().as_millis()
+            );
+            None
+        }
+        Err(_) => {
+            log::warn!(
+                "Decision model fallback: provider={:?}, reason=timeout, elapsed_ms={}",
+                provider,
+                started.elapsed().as_millis()
+            );
+            None
+        }
+    }
 }
 
 /// Keep screen context disabled when it was not requested; otherwise only a

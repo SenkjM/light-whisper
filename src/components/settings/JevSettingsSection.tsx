@@ -11,6 +11,7 @@ const PROVIDERS: ReadonlyArray<{ value: JevProvider; label: string }> = [
   { value: "typesafe", label: "TypeSafe (official)" },
   { value: "openrouter", label: "OpenRouter" },
   { value: "vercel", label: "Vercel" },
+  { value: "liquid", label: "Liquid AI" },
 ];
 
 interface JevSettingsSectionProps {
@@ -35,6 +36,8 @@ export default function JevSettingsSection({ profile, onSaved, polishEnabled = t
   });
   const enabled = savedEnabled;
   const [provider, setProvider] = useState<JevProvider>(savedProvider);
+  const model = provider === "liquid" ? "d1" : "jev";
+  const modelProviders = PROVIDERS.filter((option) => (option.value === "liquid") === (model === "d1"));
   const anyEnabled = (enabled && polishEnabled) || Object.values(features).some(Boolean)
     || Boolean(profile?.jev?.screen_routing && (profile.ai_polish_screen_context_enabled || profile.assistant_screen_context_enabled))
     || Boolean(profile?.jev?.search_routing && profile.web_search?.enabled);
@@ -210,22 +213,37 @@ export default function JevSettingsSection({ profile, onSaved, polishEnabled = t
       ))}
 
       {anyEnabled && (
-        <div className="settings-column">
+        <div className="settings-column decision-model-connection">
           <span className="settings-hint settings-hint-flush">{t("settings.jevSharedServiceHint")}</span>
-          <label className="settings-column" style={{ gap: 6 }}>
-            <span className="settings-option-desc">{t("settings.jevProvider")}</span>
-            <select
-              className="settings-input"
-              aria-label={t("settings.jevProvider")}
-              value={provider}
-              disabled={configSaving}
-              onChange={(event) => { void handleProviderChange(event.target.value as JevProvider); }}
-            >
-              {PROVIDERS.map((option) => (
-                <option key={option.value} value={option.value}>{option.label}</option>
-              ))}
-            </select>
-          </label>
+          <div className="decision-model-fields">
+            <label className="settings-column">
+              <span className="settings-option-desc">{t("settings.jevModel")}</span>
+              <select
+                className="settings-input"
+                aria-label={t("settings.jevModel")}
+                value={model}
+                disabled={configSaving}
+                onChange={(event) => { void handleProviderChange(event.target.value === "d1" ? "liquid" : "typesafe"); }}
+              >
+                <option value="jev">JEV</option>
+                <option value="d1">d1</option>
+              </select>
+            </label>
+            <label className="settings-column">
+              <span className="settings-option-desc">{t("settings.jevProvider")}</span>
+              <select
+                className="settings-input"
+                aria-label={t("settings.jevProvider")}
+                value={provider}
+                disabled={configSaving}
+                onChange={(event) => { void handleProviderChange(event.target.value as JevProvider); }}
+              >
+                {modelProviders.map((option) => (
+                  <option key={option.value} value={option.value}>{option.label}</option>
+                ))}
+              </select>
+            </label>
+          </div>
 
           <fieldset
             disabled={configSaving}

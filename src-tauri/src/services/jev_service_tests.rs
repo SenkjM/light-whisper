@@ -266,6 +266,11 @@ fn assert_common_request_contract(request: &reqwest::Request) {
     }
 }
 
+fn liquid_provider() -> JevProvider {
+    serde_json::from_value::<JevProvider>(json!("liquid"))
+        .expect("persisted liquid provider must deserialize")
+}
+
 #[test]
 fn profile_jev_defaults_off_and_contains_no_provider_secrets() {
     let profile = UserProfile::default();
@@ -283,6 +288,7 @@ fn profile_jev_defaults_off_and_contains_no_provider_secrets() {
         "typesafe_api_key",
         "openrouter_api_key",
         "vercel_api_key",
+        "liquid_api_key",
     ] {
         assert!(
             jev.get(secret_name).is_none(),
@@ -380,13 +386,77 @@ fn build_request_matches_vercel_evaluation_model_contract() {
 }
 
 #[test]
-fn parse_decision_accepts_pass_at_the_ninety_percent_boundary() {
+fn build_request_matches_liquid_d1_contract() {
+    let provider = liquid_provider();
+    let request = jev_service::build_request(
+        &reqwest::Client::new(),
+        provider,
+        TEST_API_KEY,
+        ORIGINAL,
+        POLICY_CONTEXT,
+        None,
+    )
+    .expect("Liquid d1 request should build");
+
+    assert_eq!(
+        request.url().as_str(),
+        "https://api.liquid.ai/decisions/v1/systemone"
+    );
+    assert_common_request_contract(&request);
+    assert_eq!(request_body(&request)["model"], json!("d1:free"));
+    assert!(request
+        .headers()
+        .get(reqwest::header::AUTHORIZATION)
+        .expect("Liquid request should authenticate")
+        .is_sensitive());
+    assert_eq!(
+        serde_json::to_value(provider).expect("Liquid provider should serialize"),
+        json!("liquid")
+    );
+}
+
+#[test]
+fn liquid_request_keeps_a_unique_credential_slot_and_provider_path_on_override() {
+    let provider = liquid_provider();
+    let liquid_slot = jev_service::keyring_user_for_provider(provider);
+    assert_eq!(liquid_slot, "decision-liquid-api-key");
+    for existing_provider in [
+        JevProvider::TypeSafe,
+        JevProvider::OpenRouter,
+        JevProvider::Vercel,
+    ] {
+        assert_ne!(
+            liquid_slot,
+            jev_service::keyring_user_for_provider(existing_provider),
+            "Liquid credentials must use a separate keyring slot"
+        );
+    }
+
+    let request = jev_service::build_request(
+        &reqwest::Client::new(),
+        provider,
+        TEST_API_KEY,
+        ORIGINAL,
+        POLICY_CONTEXT,
+        Some("https://override.example/api"),
+    )
+    .expect("Liquid request with endpoint override should build");
+
+    assert_eq!(
+        request.url().as_str(),
+        "https://override.example/api/decisions/v1/systemone"
+    );
+    assert_eq!(request_body(&request)["model"], json!("d1:free"));
+}
+
+#[test]
+fn parse_decision_accepts_pass_at_the_eighty_percent_boundary() {
     let response = json!({
         "answers": {
             "route": {
                 "type": "choice",
                 "choice": "pass",
-                "probabilities": {"pass": 0.90, "polish": 0.10, "uncertain": 0.0}
+                "probabilities": {"pass": 0.80, "polish": 0.20, "uncertain": 0.0}
             }
         }
     });
@@ -399,7 +469,7 @@ fn parse_decision_fails_conservatively_for_invalid_or_uncertain_results() {
     let responses = [
         json!({"answers":{"route":{"type":"choice","choice":"polish","probabilities":{"pass":0.99,"polish":0.01,"uncertain":0.0}}}}),
         json!({"answers":{"route":{"type":"choice","choice":"unknown","probabilities":{"pass":0.99,"polish":0.01,"uncertain":0.0}}}}),
-        json!({"answers":{"route":{"type":"choice","choice":"pass","probabilities":{"pass":0.899,"polish":0.101,"uncertain":0.0}}}}),
+        json!({"answers":{"route":{"type":"choice","choice":"pass","probabilities":{"pass":0.799,"polish":0.201,"uncertain":0.0}}}}),
         json!({"answers":{"route":{"type":"choice","choice":"pass","probabilities":{"pass":1.01,"polish":-0.01,"uncertain":0.0}}}}),
         json!({"answers":{"route":{"type":"choice","choice":"pass","probabilities":{"pass":0.95,"polish":0.04,"uncertain":0.50}}}}),
         json!({"answers":{"route":{"type":"choice","choice":"pass","probabilities":{"pass":0.99,"polish":0.01}}}}),
@@ -787,7 +857,7 @@ async fn evaluate_polish_gate_returns_none_for_low_confidence_and_http_errors() 
         (
             "low confidence",
             "200 OK",
-            br#"{"answers":{"route":{"type":"choice","choice":"pass","probabilities":{"pass":0.89,"polish":0.10,"uncertain":0.01}}}}"#,
+            br#"{"answers":{"route":{"type":"choice","choice":"pass","probabilities":{"pass":0.79,"polish":0.20,"uncertain":0.01}}}}"#,
         ),
         ("HTTP error", "503 Service Unavailable", br#"{"error":"busy"}"#),
     ];
