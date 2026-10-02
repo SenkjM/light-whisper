@@ -50,7 +50,12 @@ describe("GpuIdleUnloadControl", () => {
     expect(screen.queryByRole("spinbutton")).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole("switch", { name: zh.settings.gpuIdleTitle }));
     await waitFor(() => expect(api.setGpuIdleSeconds).toHaveBeenLastCalledWith(0));
-    await waitFor(() => expect(screen.queryByLabelText(zh.settings.gpuIdleSeconds)).not.toBeInTheDocument());
+    await waitFor(() => expect(screen.queryByRole("textbox", { name: zh.settings.gpuIdleSeconds })).not.toBeInTheDocument());
+    // Keep the field in the document while its containing row collapses.
+    expect(input).toBeInTheDocument();
+    expect(input.closest("[aria-hidden]")).toHaveAttribute("aria-hidden", "true");
+    expect(input.closest("[inert]")).not.toBeNull();
+    await waitFor(() => expect(input).not.toBeInTheDocument());
   });
 
   it("turns off with one click while the timeout has unsaved edits", async () => {

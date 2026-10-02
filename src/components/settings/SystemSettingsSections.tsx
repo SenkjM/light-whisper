@@ -1,5 +1,5 @@
 import { useRef } from "react";
-import { Accessibility, Copy, Download, Power, Upload } from "lucide-react";
+import { Archive, Copy, Download, Power, RefreshCw, ShieldCheck, Upload } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 interface SystemSettingsSectionsProps {
@@ -40,7 +40,7 @@ export default function SystemSettingsSections({
     <>
       <section className="settings-card">
         <div className="settings-section-header">
-          <Download size={15} className="icon-accent" />
+          <Archive size={15} className="icon-accent" />
           <h2 className="settings-section-title">{t("settings.data")}</h2>
         </div>
         <div className="settings-data-actions">
@@ -85,13 +85,13 @@ export default function SystemSettingsSections({
 
       <section className="settings-card">
         <div className="settings-section-header">
-          <Accessibility size={15} className="icon-accent" />
+          <ShieldCheck size={15} className="icon-accent" />
           <h2 className="settings-section-title">{t("settings.permissions")}</h2>
         </div>
         <div className="permission-list">
           <div className="settings-row">
             <div className="permission-item">
-              <Accessibility size={14} className="icon-tertiary" />
+              <ShieldCheck size={14} className="icon-tertiary" />
               <span className="permission-label">{t("settings.accessibilityPaste")}</span>
             </div>
             <button className="test-btn" onClick={onTestPaste}>{t("common.test")}</button>
@@ -123,12 +123,12 @@ export default function SystemSettingsSections({
 
       <section className="settings-card">
         <div className="settings-section-header">
-          <Download size={15} className="icon-accent" />
+          <RefreshCw size={15} className="icon-accent" />
           <h2 className="settings-section-title">{t("settings.update")}</h2>
         </div>
         <div className="settings-row settings-update-row">
           <div className="permission-item settings-update-copy">
-            <Download size={14} className="icon-tertiary" />
+            <RefreshCw size={14} className="icon-tertiary" />
             <div className="settings-column settings-update-details">
               <span className="permission-label">{t("settings.checkAppUpdate")}</span>
               <p className="settings-hint">

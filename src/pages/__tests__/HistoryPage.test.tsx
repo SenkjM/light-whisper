@@ -105,6 +105,21 @@ beforeEach(() => {
 });
 
 describe("HistoryPage", () => {
+  it("finishes the delete transition before applying a backend history notification", async () => {
+    vi.spyOn(window, "confirm").mockReturnValue(true);
+    const { container } = render(<HistoryPage onNavigate={vi.fn()} />);
+    await screen.findByText("润色后的最终文本");
+    api.listTranscriptionHistory.mockResolvedValue({ items: [], total: 0, hasMore: false });
+    fireEvent.click(screen.getByRole("button", { name: "删除记录" }));
+    await waitFor(() => expect(container.querySelector(".history-record-motion")).toHaveAttribute("data-removing", "true"));
+    const calls = api.listTranscriptionHistory.mock.calls.length;
+    const handler = event.listen.mock.calls.find(([name]) => name === "history-updated")?.[1];
+    act(() => handler?.({ payload: null }));
+    expect(api.listTranscriptionHistory).toHaveBeenCalledTimes(calls);
+    expect(screen.getByText("润色后的最终文本")).toBeInTheDocument();
+    await waitFor(() => expect(screen.queryByText("润色后的最终文本")).not.toBeInTheDocument());
+    expect(api.listTranscriptionHistory.mock.calls.length).toBeGreaterThan(calls);
+  });
   it("loads persisted records and forwards search filters", async () => {
     render(<HistoryPage onNavigate={vi.fn()} />);
 

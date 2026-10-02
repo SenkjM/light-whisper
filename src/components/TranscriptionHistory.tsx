@@ -24,7 +24,7 @@ export default function TranscriptionHistory({
   return (
     <div className="history-list">
       {filtered.map((item, idx) => (
-        <div key={item.id} className="history-item" style={{ animationDelay: `${idx * 50}ms` }}>
+        <div key={item.id} className="history-item" data-history-id={item.id} style={{ animationDelay: `${idx * 50}ms` }}>
           <div className="history-item-body">
             <p className="history-item-text">{item.text}</p>
             <span className="history-item-time">{item.timeDisplay}</span>

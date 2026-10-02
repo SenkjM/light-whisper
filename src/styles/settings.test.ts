@@ -44,17 +44,17 @@ describe("settings CSS contracts", () => {
     expect(track).toMatch(/--color-accent/);
   });
 
-  it("uses one native UI font stack without bundled font assets", () => {
+  it("uses Windows native UI fonts and a real monospace stack without bundled font assets", () => {
     const fontFaces = themeCss.match(/@font-face\s*\{[^}]*\}/g) ?? [];
     const root = ruleBody(themeCss, ":root");
 
     expect(fontFaces).toHaveLength(0);
     expect(root).toMatch(
-      /--font-ui:\s*-apple-system,\s*BlinkMacSystemFont,\s*"SF Pro Text",\s*"PingFang SC"/,
+      /--font-ui:\s*-apple-system,\s*BlinkMacSystemFont,.*"Segoe UI",\s*"Microsoft YaHei UI"/,
     );
     expect(root).toMatch(/--font-serif:\s*var\(--font-ui\);/);
     expect(root).toMatch(/--font-sans:\s*var\(--font-ui\);/);
-    expect(root).toMatch(/--font-mono:\s*var\(--font-ui\);/);
+    expect(root).toMatch(/--font-mono:\s*"Cascadia Mono",\s*Consolas,\s*monospace;/);
     expect(root).toMatch(/--font-display:\s*var\(--font-ui\);/);
     expect(root).toMatch(/--tracking-body:\s*-0\.008em;/);
     expect(root).toMatch(/--tracking-display:\s*-0\.02em;/);

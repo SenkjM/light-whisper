@@ -108,8 +108,6 @@ export function useExclusivePicker<T extends string>() {
     const options = Array.from(
       listbox.querySelectorAll<HTMLButtonElement>("button.picker-option:not(:disabled)"),
     );
-    if (options.length === 0) return;
-
     const popover = listbox.closest<HTMLElement>(".picker-popover");
     if (popover) {
       const containerRect = container.getBoundingClientRect();
@@ -124,6 +122,7 @@ export function useExclusivePicker<T extends string>() {
         ? "top"
         : "bottom";
     }
+    if (options.length === 0) return;
 
     options.forEach((option, index) => {
       option.id = `${listboxId}-option-${index}`;

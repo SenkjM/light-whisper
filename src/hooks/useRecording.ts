@@ -174,7 +174,7 @@ export function useRecording(): UseRecordingReturn {
             id: historyId,
             text,
             originalText: rawText,
-            timestamp: now, timeDisplay: new Date(now).toLocaleTimeString(),
+            timestamp: now, timeDisplay: new Date(now).toLocaleTimeString(i18n.language),
             editGrabStatus: payload.editGrabStatus,
             timing: payload.timing,
           },

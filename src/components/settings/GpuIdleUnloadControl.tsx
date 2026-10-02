@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { getGpuIdleSeconds, setGpuIdleSeconds } from "@/api/tauri";
+import { SettingsReveal } from "./SettingsReveal";
 import {
   GPU_IDLE_OFF_SECONDS,
   GPU_IDLE_SUGGESTED_SECONDS,
@@ -79,14 +80,13 @@ export default function GpuIdleUnloadControl() {
             }}
             className="toggle-switch"
             style={{
-              background: enabled ? "var(--color-accent)" : "var(--color-bg-tertiary)",
               flexShrink: 0,
             }}
           >
-            <div className="toggle-knob" style={{ transform: enabled ? "translateX(20px)" : "translateX(0)" }} />
+            <div className="toggle-knob" />
           </button>
         </div>
-        {enabled && (
+        <SettingsReveal open={enabled} gap={6}>
           <label className="settings-column" style={{ gap: 4 }}>
             <span className="settings-option-desc">{t("settings.gpuIdleSeconds")}</span>
             <input
@@ -97,7 +97,7 @@ export default function GpuIdleUnloadControl() {
               spellCheck={false}
               aria-label={t("settings.gpuIdleSeconds")}
               value={draft}
-              disabled={saving}
+              disabled={saving || !enabled}
               onChange={(event) => setDraft(event.target.value)}
               onBlur={(event) => {
                 // Let a switch click save its final value, without a competing blur save.
@@ -114,7 +114,7 @@ export default function GpuIdleUnloadControl() {
               style={{ maxWidth: 140 }}
             />
           </label>
-        )}
+        </SettingsReveal>
       </div>
     </div>
   );

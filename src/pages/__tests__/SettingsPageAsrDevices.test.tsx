@@ -326,6 +326,17 @@ beforeEach(() => resetMocks());
 afterEach(() => vi.clearAllMocks());
 
 describe("SettingsPage ASR and device settings", () => {
+  it("selects the final navigation section when manually scrolling to the bottom", async () => {
+    const { container } = await renderSettings();
+    const content = container.querySelector<HTMLElement>(".settings-content")!;
+    Object.defineProperties(content, {
+      scrollHeight: { configurable: true, value: 2400 },
+      clientHeight: { configurable: true, value: 600 },
+    });
+    content.scrollTop = 1800;
+    fireEvent.scroll(content);
+    await waitFor(() => expect(container.querySelector('[data-nav-tab="startup"]')).toHaveAttribute("data-active", "true"));
+  });
   it("loads the persisted engine, microphone, and model directory and applies a directory change", async () => {
     const defaultModelsDir = "C:\\light-whisper\\models";
     const customModelsDir = "D:\\light-whisper\\models";

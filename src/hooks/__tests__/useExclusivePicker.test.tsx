@@ -2,7 +2,7 @@ import { act, fireEvent, render, screen, waitFor } from "@testing-library/react"
 import userEvent from "@testing-library/user-event";
 import { useExclusivePicker } from "@/hooks/useExclusivePicker";
 
-function PickerHarness() {
+function PickerHarness({ empty = false }: { empty?: boolean }) {
   const picker = useExclusivePicker<"engine">();
   return (
     <>
@@ -19,9 +19,11 @@ function PickerHarness() {
         {picker.isOpen("engine") && (
           <div className={picker.popoverClass("engine")}>
             <div className="picker-list" role="listbox">
+              {!empty && <>
               <button className="picker-option" data-active="false" onClick={picker.close}>Alpha</button>
               <button className="picker-option" data-active="true" onClick={picker.close}>Beta</button>
               <button className="picker-option" data-active="false" onClick={picker.close}>Gamma</button>
+              </>}
             </div>
           </div>
         )}
@@ -57,6 +59,20 @@ function PickerWithInputHarness() {
 }
 
 describe("useExclusivePicker accessibility", () => {
+  it("opens an empty model list upward when the space below is too small", () => {
+    const geometry = vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(function (this: HTMLElement) {
+      return this.classList.contains("settings-content")
+        ? new DOMRect(0, 0, 400, 600)
+        : new DOMRect(0, 500, 200, 30);
+    });
+    try {
+      render(<div className="settings-content"><PickerHarness empty /></div>);
+      fireEvent.click(screen.getByRole("button", { name: "Engine" }));
+      expect(screen.getByRole("listbox").closest(".picker-popover")).toHaveAttribute("data-placement", "top");
+    } finally {
+      geometry.mockRestore();
+    }
+  });
   it("does not run queued opening focus after an outside click closes the picker", () => {
     const frames = new Map<number, FrameRequestCallback>();
     let nextFrame = 0;

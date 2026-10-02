@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useLayoutEffect, useRef, useCallback } from "react";
 import { History as HistoryIcon, Settings, Minus, X } from "lucide-react";
 import { toast } from "sonner";
 import { getCurrentWindow } from "@tauri-apps/api/window";
@@ -13,6 +13,7 @@ import { useDebouncedCallback } from "@/hooks/useDebouncedCallback";
 import { useTranslation } from "react-i18next";
 import { PADDING, ONBOARDING_DISMISSED_KEY, RECORDING_MODE_KEY } from "@/lib/constants";
 import { readLocalStorage, writeLocalStorage } from "@/lib/storage";
+import { prefersReducedMotion } from "@/lib/motion";
 
 export default function MainPage({ onNavigate, animClass = "" }: {
   onNavigate: (v: "main" | "settings" | "history") => void;
@@ -33,6 +34,28 @@ export default function MainPage({ onNavigate, animClass = "" }: {
   const [onboardingDismissed, setOnboardingDismissed] = useState(() => readLocalStorage(ONBOARDING_DISMISSED_KEY) === "true");
   const isToggleMode = useRef(readLocalStorage(RECORDING_MODE_KEY) === "toggle").current;
   const copyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const resultsRef = useRef<HTMLDivElement>(null);
+  const previousResult = useRef<{ id: string; top: number } | null>(null);
+
+  useLayoutEffect(() => {
+    const root = resultsRef.current;
+    const current = history[0];
+    const card = root?.querySelector<HTMLElement>(".result-card");
+    if (!root || !card || !current || current.text !== transcriptionResult) return;
+    const previous = previousResult.current;
+    if (previous && previous.id !== current.id && !prefersReducedMotion()) {
+      const oldItem = Array.from(root.querySelectorAll<HTMLElement>(".history-item"))
+        .find((item) => item.dataset.historyId === previous.id);
+      if (oldItem?.animate) {
+        oldItem.animate([
+          { transform: `translateY(${previous.top - oldItem.getBoundingClientRect().top}px)`, opacity: 0.5 },
+          { transform: "translateY(0)", opacity: 1 },
+        ], { duration: 220, easing: "cubic-bezier(0.16, 1, 0.3, 1)" });
+      }
+      card.querySelector("textarea")?.animate?.([{ opacity: 0 }, { opacity: 1 }], { duration: 160, easing: "ease-out" });
+    }
+    previousResult.current = { id: current.id, top: card.getBoundingClientRect().top };
+  }, [history, transcriptionResult]);
 
   useEffect(() => { setErrorDismissed(false); }, [recordingError, modelError]);
   // Auto-dismiss onboarding after first successful transcription
@@ -178,7 +201,7 @@ export default function MainPage({ onNavigate, animClass = "" }: {
         )}
 
         {/* Results */}
-        <div className="results-area" style={{ padding: `12px ${PADDING}px 12px` }}>
+        <div ref={resultsRef} className="results-area" style={{ padding: `12px ${PADDING}px 12px` }}>
           {polishAuditWarning && (
             <div className="polish-audit-notice" role="status">
               <p>{t("settings.jevAuditWarning")}</p>

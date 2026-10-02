@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next";
 
 import SecretInput from "@/components/SecretInput";
 import TranslationLanguagePicker from "@/components/settings/TranslationLanguagePicker";
+import { SettingsReveal } from "@/components/settings/SettingsReveal";
 import { resolveSelectionModelConfig } from "@/features/selection-assistant/modelConfig";
 import { useDebouncedCallback } from "@/hooks/useDebouncedCallback";
 import { useExclusivePicker } from "@/hooks/useExclusivePicker";
@@ -263,9 +264,9 @@ export default function SelectionAssistantSettingsSection({
               setEnabled((value) => !value);
               scheduleSelectionConfigSave();
             }}
-            style={{ background: enabled ? "var(--color-accent)" : "var(--color-bg-tertiary)", flexShrink: 0 }}
+            style={{ flexShrink: 0 }}
           >
-            <div className="toggle-knob" style={{ transform: enabled ? "translateX(20px)" : "translateX(0)" }} />
+            <div className="toggle-knob" />
           </button>
         </div>
 
@@ -284,9 +285,9 @@ export default function SelectionAssistantSettingsSection({
               setAutoScreenshot((value) => !value);
               scheduleSelectionConfigSave();
             }}
-            style={{ background: autoScreenshot ? "var(--color-accent)" : "var(--color-bg-tertiary)", flexShrink: 0 }}
+            style={{ flexShrink: 0 }}
           >
-            <div className="toggle-knob" style={{ transform: autoScreenshot ? "translateX(20px)" : "translateX(0)" }} />
+            <div className="toggle-knob" />
           </button>
         </div>
 
@@ -305,13 +306,13 @@ export default function SelectionAssistantSettingsSection({
               setSeparate((value) => !value);
               scheduleSelectionConfigSave();
             }}
-            style={{ background: separate ? "var(--color-accent)" : "var(--color-bg-tertiary)", flexShrink: 0 }}
+            style={{ flexShrink: 0 }}
           >
-            <div className="toggle-knob" style={{ transform: separate ? "translateX(20px)" : "translateX(0)" }} />
+            <div className="toggle-knob" />
           </button>
         </div>
 
-        {separate && (
+        <SettingsReveal open={separate} gap={12}>
           <div className="settings-column" style={{ gap: 8 }}>
             <span className="settings-option-desc">{t("settings.selectionProvider")}</span>
             <div className="picker-shell" ref={picker.setRef("selectionProvider")}>
@@ -530,7 +531,7 @@ export default function SelectionAssistantSettingsSection({
               )}
             </div>
           </div>
-        )}
+        </SettingsReveal>
 
         <div className="settings-column" style={{ gap: 4 }}>
           <span className="settings-option-desc">{t("settings.selectionTranslationTarget")}</span>

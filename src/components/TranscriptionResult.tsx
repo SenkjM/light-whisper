@@ -74,7 +74,7 @@ export default function TranscriptionResult({
     <>
       {hasResult && (
         <div style={{ marginBottom: 12 }} className="animate-slide-up">
-          <div className="result-card">
+          <div className={`result-card${isProcessing ? " result-card-busy" : ""}`} aria-busy={isProcessing}>
             <div className="result-card-header">
               <span className="result-card-title">
                 <span className="result-dot" />
@@ -86,6 +86,13 @@ export default function TranscriptionResult({
                   : <Copy size={12} strokeWidth={1.5} />}
               </button>
             </div>
+            {isProcessing && (
+              <div className="result-processing" role="status">
+                <Loader2 size={12} className="animate-spin" />
+                <span>{t("result.recognizingSpeech")}</span>
+                <span className="skeleton-shimmer result-processing-line" />
+              </div>
+            )}
             <textarea
               ref={bodyRef}
               className="result-card-body"

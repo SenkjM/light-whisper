@@ -1,5 +1,5 @@
 import { useRef } from "react";
-import { Check, Copy, GripVertical, Languages, Search, Sparkles, WandSparkles, X } from "lucide-react";
+import { BookOpenText, Check, Copy, GripVertical, Languages, Search, WandSparkles, X } from "lucide-react";
 
 import { normalizeSelectionText } from "./selectionPolicy";
 
@@ -87,7 +87,7 @@ export function SelectionToolbar({
           onStartDrag();
         }}
       >
-        <div className="selection-brand" aria-hidden="true"><Sparkles size={15} /></div>
+        <div className="selection-brand" aria-hidden="true">轻</div>
         <div className="selection-preview-copy">
           <span>{labels.selected}</span>
           <p title={selectionText}>{selectionText}</p>
@@ -122,7 +122,7 @@ export function SelectionToolbar({
       </div>
       <div className="selection-actions">
         {actionButton("translate", labels.translate, <Languages size={15} />)}
-        {actionButton("explain", labels.explain, <Sparkles size={15} />)}
+        {actionButton("explain", labels.explain, <BookOpenText size={15} />)}
         {actionButton("optimize", labels.optimize, <WandSparkles size={15} />)}
         {actionButton("copy", labels.copy, copied ? <Check size={15} /> : <Copy size={15} />)}
         {actionButton("search", labels.search, <Search size={15} />)}

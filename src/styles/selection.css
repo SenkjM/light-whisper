@@ -111,7 +111,7 @@ body,
   background: var(--color-bg-secondary);
 }
 
-.selection-close:active { transform: scale(0.94); }
+.selection-close:active { transform: scale(0.97); }
 
 .selection-actions {
   display: flex;
@@ -147,7 +147,7 @@ body,
 }
 
 .selection-actions button:active,
-.selection-result-action:active { transform: scale(0.96); }
+.selection-result-action:active { transform: scale(0.97); }
 
 .selection-actions button:focus-visible,
 .selection-close:focus-visible,
@@ -410,4 +410,11 @@ body,
   .selection-close,
   .selection-result-action { transition: none; }
   .selection-loading svg { animation: none; }
+}
+
+.selection-panel,
+.selection-result { transition: opacity var(--dur-2) var(--ease-out-expo), transform var(--dur-2) var(--ease-out-expo); }
+@starting-style {
+  .selection-panel,
+  .selection-result { opacity: 0; transform: translateY(4px); }
 }

@@ -53,7 +53,7 @@ function assertCssMotionContracts(): void {
 
   expect(themeCss).toContain("@keyframes fade-in");
   expect(themeCss).toMatch(/@keyframes fade-in\s*\{[\s\S]*?opacity:[\s\S]*?transform:/);
-  expect(historyRule).toMatch(/animation:\s*fade-in\s+0\.3s/);
+  expect(historyRule).toMatch(/animation:\s*fade-in\s+var\(--dur-3\)/);
   expect(historyRule).toMatch(/transition:/);
 
   expect(cssRule(themeCss, ".page-enter-right"))

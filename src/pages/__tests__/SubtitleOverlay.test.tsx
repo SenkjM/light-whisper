@@ -1325,6 +1325,32 @@ describe("SubtitleOverlay stale-flash cleanup", () => {
 });
 
 describe("SubtitleOverlay local-ASR interim stability layers", () => {
+  it("keeps finalized text readable without replaying character entrances or removing the indicator slot", async () => {
+    const { container } = render(<SubtitleOverlay />);
+    await flushAsyncListeners();
+    act(() => {
+      tauriEvents.emit("recording-state", { sessionId: 1, isRecording: true, isProcessing: false });
+      tauriEvents.emit("transcription-result", {
+        sessionId: 1, text: "今天天气很好", interim: true, stableText: "今天", tentativeText: "天气很好",
+      });
+    });
+    const slot = container.querySelector(".subtitle-status-indicator");
+    act(() => {
+      tauriEvents.emit("transcription-result", { sessionId: 1, text: "今天天气很好。", interim: false, polished: true });
+    });
+    expect(container.querySelector(".subtitle-text")?.textContent).toBe("今天天气很好。");
+    expect(container.querySelectorAll(".stream-char")).toHaveLength(0);
+    expect(container.querySelector(".subtitle-text")).toHaveClass("subtitle-polish-flash");
+    expect(container.querySelector(".subtitle-status-indicator")).toBe(slot);
+    // React uses the prefixed animation event when JSDOM lacks AnimationEvent.
+    fireEvent(container.querySelector(".subtitle-text")!, new Event("webkitAnimationEnd", { bubbles: true }));
+    expect(container.querySelector(".subtitle-polish-flash")).toBeNull();
+    act(() => {
+      tauriEvents.emit("recording-state", { sessionId: 2, isRecording: true, isProcessing: false });
+      tauriEvents.emit("transcription-result", { sessionId: 2, text: "没有润色的结果。", interim: false, polished: false });
+    });
+    expect(container.querySelector(".subtitle-polish-flash")).toBeNull();
+  });
   it("renders the first local hypothesis entirely as tentative text", async () => {
     const { container } = render(<SubtitleOverlay />);
     await flushAsyncListeners();

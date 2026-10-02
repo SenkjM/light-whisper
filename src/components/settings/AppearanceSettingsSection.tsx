@@ -1,4 +1,4 @@
-import { Languages, Monitor, Moon, Sun } from "lucide-react";
+import { ChevronDown, Languages, Monitor, Moon, Sun } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useTheme } from "@/hooks/useTheme";
 import { LANGUAGE_STORAGE_KEY } from "@/lib/constants";
@@ -56,7 +56,8 @@ export default function AppearanceSettingsSection({ picker }: { picker: Appearan
             aria-label={t("settings.language")}
             onClick={picker.toggle}
           >
-            <Languages size={13} />
+            <span>{i18n.language.startsWith("zh") ? "中文" : "English"}</span>
+            <ChevronDown size={12} />
           </button>
           {picker.isOpen && (
             <div className={`${picker.popoverClass} settings-language-popover`}>

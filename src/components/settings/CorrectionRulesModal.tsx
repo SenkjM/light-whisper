@@ -9,6 +9,7 @@ import {
   validateCorrections,
 } from "@/api/tauri";
 import type { CorrectionPattern, UserProfile } from "@/types";
+import { prefersReducedMotion } from "@/lib/motion";
 
 interface CorrectionRulesModalProps {
   profile: UserProfile | null;
@@ -52,7 +53,7 @@ export default function CorrectionRulesModal({
   validationResult,
   setValidationResult,
   returnFocusRef,
-  onClose,
+  onClose: closeModal,
   onRefreshProfile,
 }: CorrectionRulesModalProps) {
   const { t } = useTranslation();
@@ -60,6 +61,15 @@ export default function CorrectionRulesModal({
   const [sourceFilter, setSourceFilter] = useState<"all" | "user" | "ai">("all");
   const dialogRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
+  const [closing, setClosing] = useState(false);
+  const closeTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const onClose = useCallback(() => {
+    if (prefersReducedMotion()) { closeModal(); return; }
+    if (closeTimer.current) return;
+    setClosing(true);
+    closeTimer.current = setTimeout(closeModal, 160);
+  }, [closeModal]);
+  useEffect(() => () => clearTimeout(closeTimer.current), []);
 
   useEffect(() => {
     searchInputRef.current?.focus();
@@ -134,7 +144,7 @@ export default function CorrectionRulesModal({
   };
 
   return (
-    <div className="correction-modal">
+    <div className="correction-modal" data-closing={closing}>
       <button
         type="button"
         className="modal-dismiss"
@@ -270,9 +280,9 @@ export default function CorrectionRulesModal({
                 setValidationEnabled(next);
                 await setCorrectionValidationConfig({ enabled: next });
               }}
-              style={{ background: validationEnabled ? "var(--color-accent)" : "var(--color-bg-tertiary)" }}
+
             >
-              <div className="toggle-knob" style={{ transform: validationEnabled ? "translateX(20px)" : "translateX(0)" }} />
+              <div className="toggle-knob" />
             </button>
           </div>
           <p style={{ fontSize: 11, color: "var(--color-text-tertiary)", margin: "0 0 8px" }}>
@@ -298,9 +308,9 @@ export default function CorrectionRulesModal({
                       useSeparateModel: next,
                     });
                   }}
-                  style={{ background: validationUseSeparateModel ? "var(--color-accent)" : "var(--color-bg-tertiary)" }}
+
                 >
-                  <div className="toggle-knob" style={{ transform: validationUseSeparateModel ? "translateX(20px)" : "translateX(0)" }} />
+                  <div className="toggle-knob" />
                 </button>
               </div>
 

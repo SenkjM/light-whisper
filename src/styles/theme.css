@@ -79,15 +79,14 @@
   /* Transitions — perceptually tuned curves */
   --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
   --ease-out-quart: cubic-bezier(0.25, 1, 0.5, 1);
-  --ease-spring: cubic-bezier(0.16, 1, 0.3, 1);
-  --ease-spring-soft: cubic-bezier(0.2, 0.8, 0.2, 1);
   --ease-micro: cubic-bezier(0.2, 0, 0.2, 1);   /* tap feedback */
   --ease-standard: var(--ease-out-expo);        /* canonical enter/exit */
 
   /* Duration scale — use these instead of hand-picked ms */
-  --dur-1: 80ms;
+  --dur-1: 100ms;
   --dur-2: 140ms;
   --dur-3: 200ms;
+  --dur-exit: 160ms;
   --dur-4: 280ms;
   --dur-5: 380ms;
   --dur-6: 520ms;
@@ -95,19 +94,20 @@
   --transition-fast: var(--dur-2) var(--ease-out-expo);
   --transition-normal: var(--dur-3) var(--ease-out-expo);
   --transition-slow: var(--dur-5) var(--ease-out-quart);
-  --transition-spring: 450ms var(--ease-spring);
 
-  /* Typography — prefer the macOS native UI stack without bundling Apple font files */
+  /* Typography — Windows native fonts; no runtime font download. */
   --font-ui: -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang SC", "Helvetica Neue", "Segoe UI", "Microsoft YaHei UI", system-ui, sans-serif;
   --font-serif: var(--font-ui);
   --font-sans: var(--font-ui);
-  --font-mono: var(--font-ui);
+  --font-mono: "Cascadia Mono", Consolas, monospace;
   --font-display: var(--font-ui);
 
   /* Text sizes */
+  --text-2xs: 0.6875rem;  /* 11px minimum for compact labels */
   --text-xs: 0.75rem;     /* 12px */
   --text-sm: 0.8125rem;   /* 13px */
   --text-base: 0.875rem;  /* 14px */
+  --text-body-lg: 0.9375rem; /* 15px */
   --text-md: 1rem;        /* 16px */
   --text-lg: 1.125rem;    /* 18px */
   --text-xl: 1.25rem;     /* 20px */
@@ -335,15 +335,15 @@ textarea,
 }
 
 /* ============================================================
-   Animations — state-driven, compact, and non-overshooting
+   Animations — compact entrances and gentle success feedback
    ============================================================ */
 
 @keyframes fade-in {
-  from { opacity: 0; transform: translateY(6px) scale(0.98); }
+  from { opacity: 0; transform: translateY(6px) scale(0.97); }
   to   { opacity: 1; transform: translateY(0) scale(1); }
 }
 
-.animate-fade-in { animation: fade-in 0.32s var(--ease-out-expo) forwards; }
+.animate-fade-in { animation: fade-in var(--dur-3) var(--ease-out-expo) forwards; }
 
 /* Slide-up — result card entrance */
 @keyframes slide-up {
@@ -351,16 +351,16 @@ textarea,
   to   { opacity: 1; transform: translateY(0) scale(1); }
 }
 
-.animate-slide-up { animation: slide-up 0.38s var(--ease-out-expo) forwards; }
+.animate-slide-up { animation: slide-up var(--dur-4) var(--ease-out-expo) forwards; }
 
 /* Success pop — model ready chip entrance */
 @keyframes success-pop {
-  0%   { opacity: 0; transform: scale(0.5); }
-  60%  { opacity: 1; transform: scale(1.04); }
-  100% { transform: scale(1); }
+  0%   { opacity: 0; transform: scale(0.92); }
+  65%  { opacity: 1; transform: scale(1.025); }
+  100% { opacity: 1; transform: scale(1); }
 }
 
-.animate-success { animation: success-pop 0.5s var(--ease-spring) forwards; }
+.animate-success { animation: success-pop var(--dur-4) var(--ease-out-expo) forwards; }
 
 /* Gentle shake — error prompt with fade entrance */
 @keyframes gentle-shake {
@@ -374,7 +374,7 @@ textarea,
   100%     { transform: translateX(0); }
 }
 
-.animate-shake { animation: gentle-shake 0.5s var(--ease-out-expo) both; }
+.animate-shake { animation: gentle-shake var(--dur-4) var(--ease-out-expo) both; }
 
 /* Text swap — subtle opacity fade for inline text changes */
 @keyframes text-swap {
@@ -382,7 +382,7 @@ textarea,
   to   { opacity: 1; }
 }
 
-.animate-text-swap { animation: text-swap 0.2s var(--ease-out-expo); }
+.animate-text-swap { animation: text-swap var(--dur-3) var(--ease-out-expo); }
 
 /* Recording pulse — dual-ring expanding with stagger */
 @keyframes recording-pulse {
@@ -403,36 +403,27 @@ textarea,
   100% { transform: translateX(180%); }
 }
 
-/* Record state enter — spring scale on toggle */
-@keyframes record-state-enter {
-  0%   { transform: scale(0.82); }
-  50%  { transform: scale(1.07); }
-  75%  { transform: scale(0.97); }
-  100% { transform: scale(1); }
-}
-
-.animate-record-enter { animation: record-state-enter 0.45s var(--ease-spring); }
-
 /* Checkmark draw — satisfying stroke reveal on copy success */
 @keyframes check-draw {
-  from { stroke-dashoffset: 16; }
+  from { stroke-dashoffset: 24; }
   to   { stroke-dashoffset: 0; }
 }
 
 @keyframes check-pop {
-  0%   { transform: scale(0.6); opacity: 0; }
-  50%  { transform: scale(1.15); }
+  0%   { transform: scale(0.9); opacity: 0; }
+  65%  { transform: scale(1.04); opacity: 1; }
   100% { transform: scale(1); opacity: 1; }
 }
 
 .animate-check-draw {
-  animation: check-pop 0.35s var(--ease-spring) forwards;
+  animation: check-pop var(--dur-4) var(--ease-out-expo) forwards;
 }
 
 .animate-check-draw svg {
-  stroke-dasharray: 16;
-  stroke-dashoffset: 16;
-  animation: check-draw 0.3s var(--ease-out-expo) 0.1s forwards;
+  /* Lucide Check is 22.63 units long. Cover the entire path. */
+  stroke-dasharray: 24;
+  stroke-dashoffset: 24;
+  animation: check-draw var(--dur-3) var(--ease-out-expo) forwards;
 }
 
 /* Page transitions — desktop shared-axis: short slide + opacity, no scaling */
@@ -514,9 +505,9 @@ textarea,
   border: 1px solid var(--color-border-subtle);
   box-shadow: var(--shadow-card);
   padding: 14px;
-  transition: background-color 0.3s var(--ease-out-expo),
-              box-shadow 0.3s var(--ease-out-expo),
-              border-color 0.3s var(--ease-out-expo);
+  transition: background-color var(--dur-3) var(--ease-out-expo),
+              box-shadow var(--dur-3) var(--ease-out-expo),
+              border-color var(--dur-3) var(--ease-out-expo);
 }
 
 /* Spin — replaces Tailwind animate-spin */
@@ -528,19 +519,13 @@ textarea,
 .animate-spin { animation: spin 1s linear infinite; }
 
 /* Equalizer bars — recording waveform (uses scaleY for GPU perf) */
-@keyframes eq {
-  0%   { transform: scaleY(0.2); }
-  50%  { transform: scaleY(1); }
-  100% { transform: scaleY(0.3); }
-}
-
 .eq-bar {
   width: 2.5px;
-  height: 12px;
+  height: 18px;
   border-radius: 1.5px;
   background: white; /* always on --color-accent button, matches RecordingButton color: "white" */
-  transform-origin: center bottom;
-  animation: eq 0.7s cubic-bezier(0.4, 0, 0.6, 1) infinite alternate;
+  transform-origin: center;
+  transition: transform var(--dur-1) linear;
   will-change: transform;
 }
 
@@ -641,7 +626,7 @@ textarea,
   border: 1px solid var(--color-border-subtle);
   color: var(--color-text-tertiary);
   font-family: var(--font-sans);
-  font-size: 10px;
+  font-size: var(--text-2xs);
   font-weight: 500;
   letter-spacing: 0.025em;
   text-transform: uppercase;
@@ -660,9 +645,9 @@ textarea,
   font-size: var(--text-sm);
   font-family: var(--font-sans);
   cursor: pointer;
-  transition: background 0.2s var(--ease-out-expo),
-              color 0.2s var(--ease-out-expo),
-              transform 0.25s var(--ease-spring-soft);
+  transition: background var(--dur-3) var(--ease-out-expo),
+              color var(--dur-3) var(--ease-out-expo),
+              transform var(--dur-3) var(--ease-out-expo);
 }
 
 .btn-ghost:hover {
@@ -671,8 +656,8 @@ textarea,
 }
 
 .btn-ghost:active {
-  transform: scale(0.95);
-  transition: transform 60ms ease-out;
+  transform: scale(0.97);
+  transition: transform var(--dur-1) var(--ease-micro);
 }
 
 /* Primary button */
@@ -690,22 +675,22 @@ textarea,
   font-family: var(--font-sans);
   cursor: pointer;
   box-shadow: var(--shadow-sm), inset 0 1px 0 rgba(255,255,255,0.12);
-  transition: background 0.2s var(--ease-out-expo),
-              box-shadow 0.25s var(--ease-out-expo),
-              transform 0.3s var(--ease-spring-soft);
+  transition: background var(--dur-3) var(--ease-out-expo),
+              box-shadow var(--dur-3) var(--ease-out-expo),
+              transform var(--dur-3) var(--ease-out-expo);
 }
 
 .btn-primary:hover {
   background: var(--color-accent-hover);
-  box-shadow: var(--shadow-md), var(--shadow-glow), inset 0 1px 0 rgba(255,255,255,0.12);
   transform: translateY(-1px);
+  box-shadow: var(--shadow-md), 0 0 12px rgba(var(--color-accent-rgb), 0.16);
 }
 
 .btn-primary:active {
   background: var(--color-accent-active);
   transform: translateY(0) scale(0.97);
   box-shadow: var(--shadow-xs);
-  transition: transform 60ms ease-out, background 60ms ease-out;
+  transition: transform var(--dur-1) var(--ease-micro), background var(--dur-1) var(--ease-micro);
 }
 
 /* Compact primary button — settings download, etc. */
@@ -751,9 +736,9 @@ textarea,
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: color 0.2s var(--ease-out-expo),
-              background 0.2s var(--ease-out-expo),
-              transform 0.25s var(--ease-spring-soft);
+  transition: color var(--dur-3) var(--ease-out-expo),
+              background var(--dur-3) var(--ease-out-expo),
+              transform var(--dur-3) var(--ease-out-expo);
 }
 
 .icon-btn:hover {
@@ -766,8 +751,8 @@ textarea,
 }
 
 .icon-btn:active {
-  transform: scale(0.82);
-  transition: transform 60ms ease-out;
+  transform: scale(0.92);
+  transition: transform var(--dur-1) var(--ease-micro);
 }
 
 .icon-btn-sm {
@@ -776,7 +761,7 @@ textarea,
 
 /* Gear spin — settings icon rotates on hover */
 .icon-btn-gear svg {
-  transition: transform 0.5s var(--ease-spring);
+  transition: transform var(--dur-4) var(--ease-out-expo);
 }
 
 .icon-btn-gear:hover svg {
@@ -793,10 +778,10 @@ textarea,
   color: var(--color-text-secondary);
   border: 1px solid var(--color-border-subtle);
   cursor: pointer;
-  transition: background 0.2s var(--ease-out-expo),
-              color 0.2s var(--ease-out-expo),
-              border-color 0.2s var(--ease-out-expo),
-              transform 0.25s var(--ease-spring-soft);
+  transition: background var(--dur-3) var(--ease-out-expo),
+              color var(--dur-3) var(--ease-out-expo),
+              border-color var(--dur-3) var(--ease-out-expo),
+              transform var(--dur-3) var(--ease-out-expo);
 }
 
 .test-btn:hover {
@@ -806,8 +791,8 @@ textarea,
 }
 
 .test-btn:active {
-  transform: scale(0.95);
-  transition: transform 60ms ease-out;
+  transform: scale(0.97);
+  transition: transform var(--dur-1) var(--ease-micro);
 }
 
 /* Title bar — shared between pages */
@@ -819,12 +804,13 @@ textarea,
   border-bottom: 1px solid var(--color-border-subtle);
   background: var(--color-bg-overlay);
   backdrop-filter: blur(8px);
-  transition: background-color 0.3s var(--ease-out-expo),
-              border-color 0.3s var(--ease-out-expo);
+  transition: background-color var(--dur-3) var(--ease-out-expo),
+              border-color var(--dur-3) var(--ease-out-expo);
 }
 
 /* Recording button — circular mic button with microinteractions */
 .record-btn {
+  position: relative;
   width: 50px;
   height: 50px;
   border-radius: 50%;
@@ -834,19 +820,19 @@ textarea,
   transition: background var(--dur-4) var(--ease-out-expo),
               color var(--dur-3) var(--ease-out-expo),
               box-shadow var(--dur-4) var(--ease-out-expo),
-              transform var(--dur-5) var(--ease-spring-soft),
+              transform var(--dur-5) var(--ease-out-expo),
               opacity var(--dur-3) var(--ease-out-expo),
               border-color var(--dur-3) var(--ease-out-expo);
   will-change: transform;
 }
 
 .record-btn:not(:disabled):hover {
-  transform: scale(1.06);
+  transform: scale(1.03);
   box-shadow: var(--shadow-lg) !important;
 }
 
 .record-btn:not(:disabled):active {
-  transform: scale(0.91);
+  transform: scale(0.97);
   transition: transform var(--dur-1) var(--ease-micro);
 }
 
@@ -858,13 +844,33 @@ textarea,
   border-radius: 12px;
   border: none;
   padding: 2px;
-  transition: background 0.35s var(--ease-out-expo),
-              opacity 0.2s var(--ease-out-expo),
-              box-shadow 0.35s var(--ease-out-expo);
+  transition: background var(--dur-4) var(--ease-out-expo),
+              opacity var(--dur-3) var(--ease-out-expo),
+              box-shadow var(--dur-4) var(--ease-out-expo);
 }
+
+.record-icon {
+  position: absolute;
+  inset: 0;
+  width: 24px;
+  height: 24px;
+  margin: auto;
+  display: grid;
+  place-items: center;
+  opacity: 0;
+  transition: opacity var(--dur-2) var(--ease-out-expo);
+  pointer-events: none;
+}
+
+.record-icon[data-visible="true"] {
+  opacity: 1;
+}
+
+.record-icon > svg { width: 18px; height: 18px; }
 
 .toggle-switch[aria-checked="false"] {
   background: var(--color-bg-tertiary);
+  box-shadow: inset 0 0 0 1px var(--color-border);
 }
 
 .toggle-switch[aria-checked="true"] {
@@ -885,16 +891,15 @@ textarea,
 }
 
 .toggle-switch[aria-checked="true"] {
-  box-shadow: 0 0 8px rgba(var(--color-accent-rgb), 0.25);
-}
-
-[data-theme="dark"] .toggle-switch[aria-checked="true"],
-.dark .toggle-switch[aria-checked="true"] {
-  box-shadow: 0 0 10px rgba(var(--color-accent-rgb), 0.30);
+  box-shadow: none;
 }
 
 .toggle-switch:active .toggle-knob {
   width: 24px;  /* stretch knob on press for tactile feel */
+}
+
+.toggle-switch[aria-checked="true"]:active .toggle-knob {
+  transform: translateX(16px);
 }
 
 .toggle-knob {
@@ -903,8 +908,8 @@ textarea,
   border-radius: 50%;
   background: white;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.18), 0 0 0 0.5px rgba(0, 0, 0, 0.04);
-  transition: transform 0.4s var(--ease-spring),
-              width 0.2s var(--ease-out-expo);
+  transition: transform var(--dur-4) cubic-bezier(0.2, 0.8, 0.2, 1),
+              width var(--dur-3) var(--ease-out-expo);
 }
 
 /* Theme option button — settings page theme selector */
@@ -922,21 +927,22 @@ textarea,
   font-weight: 500;
   font-family: var(--font-sans);
   cursor: pointer;
-  transition: border-color 0.2s var(--ease-out-expo),
-              background-color 0.2s var(--ease-out-expo),
-              color 0.2s var(--ease-out-expo),
-              transform 0.3s var(--ease-spring-soft),
-              box-shadow 0.25s var(--ease-out-expo);
+  transition: border-color var(--dur-3) var(--ease-out-expo),
+              background-color var(--dur-3) var(--ease-out-expo),
+              color var(--dur-3) var(--ease-out-expo),
+              transform var(--dur-3) var(--ease-out-expo),
+              box-shadow var(--dur-3) var(--ease-out-expo);
 }
 
 .theme-btn:hover {
+  border-color: var(--color-border);
+  transform: translateY(-1px);
   box-shadow: var(--shadow-sm);
-  transform: translateY(-1.5px);
 }
 
 .theme-btn:active {
-  transform: translateY(0) scale(0.96);
-  transition: transform 60ms ease-out;
+  transform: translateY(0) scale(0.97);
+  transition: transform var(--dur-1) var(--ease-micro);
 }
 
 .theme-btn.active {
@@ -992,8 +998,8 @@ input[type="range"]::-webkit-slider-thumb {
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.18), 0 0 0 0.5px rgba(0, 0, 0, 0.04);
   margin-top: -6px;
   cursor: pointer;
-  transition: transform 0.2s var(--ease-spring-soft),
-              box-shadow 0.2s var(--ease-out-expo);
+  transition: transform var(--dur-3) var(--ease-out-expo),
+              box-shadow var(--dur-3) var(--ease-out-expo);
 }
 
 input[type="range"]::-webkit-slider-thumb:hover {
@@ -1002,7 +1008,7 @@ input[type="range"]::-webkit-slider-thumb:hover {
 }
 
 input[type="range"]::-webkit-slider-thumb:active {
-  transform: scale(0.95);
+  transform: scale(0.97);
 }
 
 input[type="range"]:focus-visible::-webkit-slider-thumb {
@@ -1016,7 +1022,7 @@ input[type="range"]:focus-visible::-webkit-slider-thumb {
 
 /* Title bar text */
 .title-text {
-  font-size: 13px;
+  font-size: var(--text-sm);
   font-weight: 700;
   letter-spacing: var(--tracking-display);
   font-family: var(--font-display);
@@ -1029,7 +1035,7 @@ input[type="range"]:focus-visible::-webkit-slider-thumb {
 /* Onboarding card body */
 .onboarding-body {
   padding: 10px 12px;
-  font-size: 13px;
+  font-size: var(--text-sm);
   line-height: 1.8;
   color: var(--color-text-secondary);
 }
@@ -1040,7 +1046,7 @@ input[type="range"]:focus-visible::-webkit-slider-thumb {
 
 .onboarding-body p:last-child {
   margin: 0;
-  font-size: 12px;
+  font-size: var(--text-xs);
   color: var(--color-text-tertiary);
 }
 
@@ -1048,3 +1054,9 @@ input[type="range"]:focus-visible::-webkit-slider-thumb {
   color: var(--color-accent);
   font-weight: 600;
 }
+
+/* Consistent Lucide strokes across state changes and window controls. */
+svg.lucide { stroke-width: 1.5; }
+
+::view-transition-old(root),
+::view-transition-new(root) { animation-duration: var(--dur-3); }

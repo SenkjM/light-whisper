@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { readLocalStorage, writeLocalStorage } from "@/lib/storage";
 import { THEME_STORAGE_KEY } from "@/lib/constants";
+import { prefersReducedMotion } from "@/lib/motion";
 
 export type ThemeMode = "light" | "dark" | "system";
 
@@ -20,28 +21,31 @@ function resolveIsDark(mode: ThemeMode): boolean {
 }
 
 let isFirstApply = true;
+let activeTransition: ViewTransition | undefined;
+let themeRevision = 0;
 
 function applyThemeToDOM(isDark: boolean): void {
   const root = document.documentElement;
 
-  // First call: suppress transitions to prevent light→dark flash on load
-  // Subsequent calls: let existing CSS transitions handle the smooth crossfade
-  if (isFirstApply) {
-    isFirstApply = false;
+  const revision = ++themeRevision;
+  activeTransition?.skipTransition();
+  const nextTheme = isDark ? "dark" : "light";
+  if (root.dataset.theme === nextTheme) return;
+  const apply = () => {
+    // A rapid reversal may happen before the earlier snapshot callback runs.
+    if (revision !== themeRevision) return;
     root.classList.add("no-transition");
-  }
-
-  if (isDark) {
-    root.classList.add("dark");
-    root.setAttribute("data-theme", "dark");
-  } else {
-    root.classList.remove("dark");
-    root.setAttribute("data-theme", "light");
-  }
-
-  if (root.classList.contains("no-transition")) {
+    root.classList.toggle("dark", isDark);
+    root.dataset.theme = nextTheme;
     void root.offsetHeight; // force reflow
     root.classList.remove("no-transition");
+  };
+  if (isFirstApply || prefersReducedMotion() || !document.startViewTransition) {
+    isFirstApply = false;
+    apply();
+  } else {
+    activeTransition = document.startViewTransition(apply);
+    void activeTransition.finished.catch(() => undefined);
   }
 }
 

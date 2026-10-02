@@ -10,7 +10,7 @@ import {
 } from "react";
 import { useTranslation } from "react-i18next";
 import { listen } from "@tauri-apps/api/event";
-import { Copy, ExternalLink, MessageCircle, Send, Sparkles, X } from "lucide-react";
+import { Copy, ExternalLink, MessageCircle, Send, X } from "lucide-react";
 import { searchNoticeKey } from "@/lib/searchNotice";
 import GoogleSearchEntryPoint from "@/features/assistant/GoogleSearchEntryPoint";
 import {
@@ -95,7 +95,7 @@ interface ConversationMessage extends AssistantConversationTurn {
 
 type Phase = "idle" | "starting" | "recording" | "processing" | "searching" | "polishing" | "result" | "outcome";
 const RESULT_FADE_DELAY_MS = 2000;
-// Fade animation is ~300ms; add ~100ms buffer. Total ~2400ms — fires before the
+// Fade animation is 160ms; keep a buffer before clearing the stale state and
 // backend hides the subtitle window at 2500ms, so we clear stale state in time
 // to prevent a one-frame flash of previous text on the next recording.
 const RESULT_CLEANUP_DELAY_MS = RESULT_FADE_DELAY_MS + 400;
@@ -165,9 +165,9 @@ export default function SubtitleOverlay() {
   // 初始 "idle"：窗口预创建后隐藏，等待录音事件时切换状态
   const [phase, setPhase] = useState<Phase>("idle");
   const [text, setText] = useState("");
+  const [polishFlash, setPolishFlash] = useState(false);
   const [interimSegments, setInterimSegments] = useState<InterimSegments | null>(null);
   const [fadingOut, setFadingOut] = useState(false);
-  const [polishFlash, setPolishFlash] = useState(false);
   const [outcome, setOutcome] = useState<RecordingOutcomeKind | null>(null);
   const [streamTokens, setStreamTokens] = useState(0);
   const [waveformBars, setWaveformBars] = useState<number[]>(EMPTY_WAVEFORM_BARS);
@@ -224,6 +224,7 @@ export default function SubtitleOverlay() {
   const { t, i18n } = useTranslation();
 
   const updatePhase = useCallback((nextPhase: Phase) => {
+    if (nextPhase !== "result") setPolishFlash(false);
     phaseRef.current = nextPhase;
     setPhase(nextPhase);
   }, []);
@@ -359,7 +360,6 @@ export default function SubtitleOverlay() {
       setInterimSegments(null);
       setOutcome(null);
       setWaveformBars(EMPTY_WAVEFORM_BARS);
-      setPolishFlash(false);
       setStreamTokens(0);
       setAssistantCopied(false);
       shouldAutoScrollRef.current = true;
@@ -437,7 +437,6 @@ export default function SubtitleOverlay() {
     ));
     setInterimSegments(null);
     setWaveformBars(EMPTY_WAVEFORM_BARS);
-    setPolishFlash(false);
     setStreamTokens(0);
     setAssistantCopied(false);
     setOutcome(nextOutcome);
@@ -475,7 +474,6 @@ export default function SubtitleOverlay() {
       setInterimSegments(null);
       setOutcome(null);
       setWaveformBars(EMPTY_WAVEFORM_BARS);
-      setPolishFlash(false);
       setStreamTokens(0);
       setAssistantCopied(false);
       setFadingOut(true);
@@ -571,7 +569,6 @@ export default function SubtitleOverlay() {
           if (status === "polishing") {
             clearFadeTimer();
             setFadingOut(false);
-            setPolishFlash(false);
             setStreamTokens(0);
             updatePhase("polishing");
           } else if (status === "fallback") {
@@ -883,9 +880,9 @@ export default function SubtitleOverlay() {
           }
 
           setText(finalText);
+          setPolishFlash(Boolean(event.payload.polished));
           updatePhase("result");
           setFadingOut(false);
-          setPolishFlash(!!event.payload.polished);
           if (event.payload.mode === "assistant") {
             conversationInitialResponseRef.current = finalText;
           }
@@ -907,7 +904,6 @@ export default function SubtitleOverlay() {
               setOutcome(null);
               updatePhase("idle");
               setFadingOut(false);
-              setPolishFlash(false);
               setStreamTokens(0);
               setWaveformBars(EMPTY_WAVEFORM_BARS);
               cleanupTimerRef.current = null;
@@ -1206,7 +1202,7 @@ export default function SubtitleOverlay() {
           >
             <header className="subtitle-conversation-header">
               <div className="subtitle-conversation-title">
-                <Sparkles size={15} aria-hidden="true" />
+                <MessageCircle size={15} aria-hidden="true" />
                 <span>{t("subtitle.conversation.title")}</span>
               </div>
               <button
@@ -1238,7 +1234,7 @@ export default function SubtitleOverlay() {
                   <div className="subtitle-conversation-row">
                     {message.role === "assistant" && (
                       <span className="subtitle-conversation-assistant-mark" aria-hidden="true">
-                        <Sparkles size={12} />
+                        <MessageCircle size={12} />
                       </span>
                     )}
                     <div className="subtitle-conversation-bubble">{message.content}</div>
@@ -1257,7 +1253,7 @@ export default function SubtitleOverlay() {
                 <article className="subtitle-conversation-message is-assistant is-streaming">
                   <div className="subtitle-conversation-row">
                     <span className="subtitle-conversation-assistant-mark" aria-hidden="true">
-                      <Sparkles size={12} />
+                      <MessageCircle size={12} />
                     </span>
                     <div className="subtitle-conversation-bubble">
                       {conversationDraft || t("subtitle.conversation.thinking")}
@@ -1325,8 +1321,8 @@ export default function SubtitleOverlay() {
                 </button>
               </div>
             )}
-            {(phase === "starting" || phase === "recording" || indicatorClass) && (
-              <span className="subtitle-status-indicator" aria-hidden="true">
+            {(hasText || phase === "starting" || phase === "recording" || indicatorClass) && (
+              <span className="subtitle-status-indicator" data-visible={phase === "starting" || phase === "recording" || !!indicatorClass} aria-hidden="true">
                 {(phase === "starting" || phase === "recording") ? (
                   <span className={`subtitle-waveform-indicator${mode === "assistant" ? " is-assistant" : ""}`}>
                     {waveformBars.map((h, i) => (
@@ -1345,13 +1341,11 @@ export default function SubtitleOverlay() {
             {hasText && (
               <div
                 ref={assistantTextRef}
-                className={`subtitle-text${polishFlash ? " subtitle-polish-flash" : ""}${isStreaming ? " subtitle-text-streaming" : ""}`}
+                className={`subtitle-text${isStreaming ? " subtitle-text-streaming" : ""}${polishFlash ? " subtitle-polish-flash" : ""}`}
+                onAnimationEnd={(event) => { if (event.target === event.currentTarget) setPolishFlash(false); }}
                 role="status"
                 aria-live="polite"
                 onScroll={assistantPanelActive ? handleAssistantScroll : undefined}
-                onAnimationEnd={(e) => {
-                  if (e.target === e.currentTarget) setPolishFlash(false);
-                }}
               >
                 {interimSegments ? (
                   <>
@@ -1360,7 +1354,7 @@ export default function SubtitleOverlay() {
                       {interimSegments.tentativeText}
                     </span>
                   </>
-                ) : segmentGraphemes(smoothText).map((g, i) => (
+                ) : phase === "result" ? text : segmentGraphemes(smoothText).map((g, i) => (
                   <span key={i} className="stream-char">{g}</span>
                 ))}
               </div>

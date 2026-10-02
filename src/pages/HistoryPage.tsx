@@ -30,6 +30,7 @@ import {
   reprocessTranscriptionHistory,
 } from "@/api/tauri";
 import TitleBar from "@/components/TitleBar";
+import { prefersReducedMotion } from "@/lib/motion";
 import type {
   PersistentHistoryRecord,
   PersistentHistoryStats,
@@ -77,6 +78,8 @@ export default function HistoryPage({
   const [expandedId, setExpandedId] = useState<number | null>(null);
   const [copiedId, setCopiedId] = useState<number | null>(null);
   const [workingId, setWorkingId] = useState<number | null>(null);
+  const [removingId, setRemovingId] = useState<number | null>(null);
+  const deletionInProgress = useRef(false);
   const [exportFormat, setExportFormat] = useState<"json" | "markdown">("markdown");
   const requestId = useRef(0);
   const itemCount = useRef(0);
@@ -136,6 +139,7 @@ export default function HistoryPage({
     let disposed = false;
     let unlisten: UnlistenFn | undefined;
     void listen("history-updated", () => {
+      if (deletionInProgress.current) return;
       void loadRef.current(true);
       void refreshStats();
     }).then((dispose) => {
@@ -190,18 +194,25 @@ export default function HistoryPage({
     if (workingId != null) return;
     if (!window.confirm(t("historyPage.deleteConfirm"))) return;
     setWorkingId(record.id);
+    deletionInProgress.current = true;
     try {
       const removed = await deleteTranscriptionHistory(record.id);
       if (!removed) {
         await Promise.all([load(true), refreshStats()]);
         return;
       }
+      if (!prefersReducedMotion()) {
+        setRemovingId(record.id);
+        await new Promise<void>((resolve) => window.setTimeout(resolve, 180));
+      }
       setItems((previous) => previous.filter((item) => item.id !== record.id));
+      setRemovingId(null);
       setTotal((value) => Math.max(0, value - 1));
-      await refreshStats();
+      await Promise.all([load(true), refreshStats()]);
     } catch (error) {
       toast.error(t("historyPage.deleteFailed", { error: errorMessage(error) }));
     } finally {
+      deletionInProgress.current = false;
       setWorkingId(null);
     }
   };
@@ -321,7 +332,9 @@ export default function HistoryPage({
               const isWorking = workingId === record.id;
               const canReprocess = record.workflow === "dictation";
               return (
-                <article className={`persistent-history-card${failed ? " history-card-failed" : ""}`} key={record.id}>
+                <div className="history-record-motion" data-removing={removingId === record.id} key={record.id}>
+                <div className="history-record-clip">
+                <article className={`persistent-history-card${failed ? " history-card-failed" : ""}`}>
                   <header className="history-card-header">
                     <div className="history-card-context">
                       <span className={`history-status-dot${failed ? " failed" : ""}`} />
@@ -343,7 +356,9 @@ export default function HistoryPage({
                     {record.appRuleName && <small>{t("historyPage.appRule", { name: record.appRuleName })}</small>}
                   </div>
 
-                  {hasDetails && expanded && (
+                  {hasDetails && (
+                    <div className="history-details-motion" data-expanded={expanded} inert={!expanded} aria-hidden={!expanded}>
+                    <div className="history-record-clip">
                     <div className="history-raw-panel">
                       {hasDistinctRaw && (
                         <>
@@ -358,6 +373,8 @@ export default function HistoryPage({
                         </>
                       )}
                     </div>
+                    </div>
+                    </div>
                   )}
 
                   <div className="history-latency-strip" aria-label={t("historyPage.totalLatency")}>
@@ -369,7 +386,7 @@ export default function HistoryPage({
 
                   <footer className="history-card-actions">
                     {hasDetails && (
-                      <button className="history-text-action" onClick={() => setExpandedId(expanded ? null : record.id)}>
+                      <button className="history-text-action" aria-expanded={expanded} onClick={() => setExpandedId(expanded ? null : record.id)}>
                         {expanded ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
                         {t(expanded ? "historyPage.hideDetails" : "historyPage.showDetails")}
                       </button>
@@ -393,6 +410,8 @@ export default function HistoryPage({
                     </button>
                   </footer>
                 </article>
+                </div>
+                </div>
               );
             })}
           </div>

@@ -1,6 +1,7 @@
 mod commands;
 mod services;
 mod state;
+mod tray_icon;
 mod utils;
 
 #[cfg(test)]
@@ -569,6 +570,14 @@ fn stop_funasr_on_exit(app: &tauri::AppHandle) {
 fn setup_system_tray(app_handle: &tauri::AppHandle) -> Result<(), Box<dyn std::error::Error>> {
     use tauri::menu::{MenuBuilder, MenuItemBuilder};
     use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
+    use tauri::Listener;
+
+    let scale = app_handle
+        .primary_monitor()
+        .ok()
+        .flatten()
+        .map_or(1.0, |monitor| monitor.scale_factor());
+    let icon_size = tray_icon::size_for_scale(scale);
 
     let show_item = MenuItemBuilder::with_id("show", "显示主窗口").build(app_handle)?;
     let hide_item = MenuItemBuilder::with_id("hide", "隐藏主窗口").build(app_handle)?;
@@ -580,12 +589,7 @@ fn setup_system_tray(app_handle: &tauri::AppHandle) -> Result<(), Box<dyn std::e
         .build()?;
 
     let _tray = TrayIconBuilder::with_id("main-tray")
-        .icon(
-            app_handle
-                .default_window_icon()
-                .ok_or("缺少默认窗口图标")?
-                .clone(),
-        )
+        .icon(tray_icon::image(icon_size, false))
         .tooltip("轻语 Whisper - 语音转文字")
         .menu(&menu)
         .show_menu_on_left_click(false)
@@ -610,6 +614,22 @@ fn setup_system_tray(app_handle: &tauri::AppHandle) -> Result<(), Box<dyn std::e
             }
         })
         .build(app_handle)?;
+
+    let app = app_handle.clone();
+    app_handle.listen("recording-state", move |_| {
+        // Read canonical state so a delayed event from an older session cannot
+        // clear the mark while a newer recording is active.
+        let recording = app
+            .state::<AppState>()
+            .recording
+            .snapshot()
+            .is_some_and(|snapshot| snapshot.phase == state::RecordingPhase::Recording);
+        if let Some(tray) = app.tray_by_id("main-tray") {
+            if let Err(error) = tray.set_icon(Some(tray_icon::image(icon_size, recording))) {
+                log::warn!("更新托盘录音图标失败: {error}");
+            }
+        }
+    });
 
     Ok(())
 }

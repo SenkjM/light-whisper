@@ -340,6 +340,10 @@ describe("SettingsPage navigation", () => {
     const contentScrollTo = vi.fn();
     const targetScrollIntoView = vi.fn();
     Object.defineProperty(content!, "scrollTop", { configurable: true, value: 200 });
+    Object.defineProperties(content!, {
+      scrollHeight: { configurable: true, value: 2000 },
+      clientHeight: { configurable: true, value: 500 },
+    });
     Object.defineProperty(content!, "scrollTo", { configurable: true, value: contentScrollTo });
     Object.defineProperty(target!, "scrollIntoView", {
       configurable: true,
@@ -370,6 +374,10 @@ describe("SettingsPage navigation", () => {
 
     const contentScrollTo = vi.fn();
     Object.defineProperty(content!, "scrollTop", { configurable: true, value: 100 });
+    Object.defineProperties(content!, {
+      scrollHeight: { configurable: true, value: 2000 },
+      clientHeight: { configurable: true, value: 500 },
+    });
     Object.defineProperty(content!, "scrollTo", { configurable: true, value: contentScrollTo });
     startupSection!.style.scrollMarginTop = "4px";
     vi.spyOn(content!, "getBoundingClientRect").mockReturnValue({ top: 100 } as DOMRect);
@@ -409,7 +417,7 @@ describe("SettingsPage correction rules dialog", () => {
     expect(last).toHaveFocus();
 
     await user.keyboard("{Escape}");
-    expect(screen.queryByRole("dialog", { name: "Correction rules" })).not.toBeInTheDocument();
+    await waitFor(() => expect(screen.queryByRole("dialog", { name: "Correction rules" })).not.toBeInTheDocument());
     expect(trigger).toHaveFocus();
   });
 
@@ -426,7 +434,7 @@ describe("SettingsPage correction rules dialog", () => {
     const backdropDismiss = rendered.container.querySelector<HTMLElement>(".modal-dismiss");
     expect(backdropDismiss).not.toBeNull();
     fireEvent.click(backdropDismiss!);
-    expect(screen.queryByRole("dialog", { name: "Correction rules" })).not.toBeInTheDocument();
+    await waitFor(() => expect(screen.queryByRole("dialog", { name: "Correction rules" })).not.toBeInTheDocument());
   });
 });
 

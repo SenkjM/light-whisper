@@ -18,6 +18,18 @@ vi.mock("react-i18next", () => ({
 }));
 
 describe("TranscriptionResult", () => {
+  it("shows recognition activity over an existing result on subsequent recordings", () => {
+    const { container, rerender } = render(
+      <TranscriptionResult text="previous result" originalText="previous result" isProcessing copiedId={null} onCopy={vi.fn()} durationSec={1} charCount={15} />,
+    );
+    expect(container.querySelector(".result-card")).toHaveAttribute("aria-busy", "true");
+    expect(screen.getByText("result.recognizingSpeech")).toBeInTheDocument();
+    expect(screen.getByLabelText("result.editableTranscription")).toHaveValue("previous result");
+    rerender(<TranscriptionResult text="next result" originalText="next result" isProcessing={false} copiedId={null} onCopy={vi.fn()} durationSec={1} charCount={11} />);
+    expect(container.querySelector(".result-card")).toHaveAttribute("aria-busy", "false");
+    expect(screen.queryByText("result.recognizingSpeech")).not.toBeInTheDocument();
+    expect(screen.getByLabelText("result.editableTranscription")).toHaveValue("next result");
+  });
   it("shows ASR, AI polish, and total latency when timing is available", () => {
     render(
       <TranscriptionResult

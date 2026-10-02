@@ -1,6 +1,6 @@
 import { lazy, Suspense, useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
-import { ArrowLeft, Mic, Eye, Keyboard, ClipboardPaste, AudioLines, Zap, Sparkles, BookOpen, Plus, X, Minus, ChevronsUpDown, Globe, Cloud, Trash2, FolderOpen, RotateCcw, HardDrive, AlertTriangle } from "lucide-react";
+import { ArrowLeft, Mic, Eye, Keyboard, ClipboardPaste, AudioLines, AudioWaveform, Zap, Sparkles, BookOpen, Plus, X, Minus, ChevronsUpDown, Globe, Cloud, Trash2, FolderOpen, RotateCcw, HardDrive, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 import { useDebouncedCallback } from "@/hooks/useDebouncedCallback";
 import { useHotkeyCapture } from "@/hooks/useHotkeyCapture";
@@ -71,7 +71,10 @@ import PolishStructureControl from "@/components/settings/PolishStructureControl
 import ProcessingModeControl from "@/components/settings/ProcessingModeControl";
 import JevSettingsSection from "@/components/settings/JevSettingsSection";
 import GpuIdleUnloadControl from "@/components/settings/GpuIdleUnloadControl";
+import { SettingsDisclosure, SettingsReveal } from "@/components/settings/SettingsReveal";
+import ScreenVisionModelPicker from "@/components/settings/ScreenVisionModelPicker";
 import R2T2SettingsSection from "@/components/settings/R2T2SettingsSection";
+import { prefersReducedMotion } from "@/lib/motion";
 import { PADDING, INPUT_METHOD_KEY, DEFAULT_HOTKEY, AI_POLISH_ENABLED_KEY, SOUND_ENABLED_KEY, RECORDING_MODE_KEY } from "@/lib/constants";
 import { formatAsrEngineDescription, getAsrEngineCapability } from "@/lib/asrEngineCapabilities";
 import {
@@ -106,14 +109,13 @@ import { readLocalStorage, writeLocalStorage } from "@/lib/storage";
 import { useTranslation } from "react-i18next";
 
 const CorrectionRulesModal = lazy(() => import("@/components/settings/CorrectionRulesModal"));
-const ScreenVisionModelPicker = lazy(() => import("@/components/settings/ScreenVisionModelPicker"));
 
 const DEFAULT_SCREEN_VISION_PROVIDER = "openai";
 const DEFAULT_SCREEN_VISION_MODEL = "gpt-4.1-mini";
 
 const engineOptions = [
   { key: "qwen3-asr-0.6b", icon: Zap, label: "Qwen3-ASR 0.6B Q8", labelKey: undefined, descKey: "settings.qwen3Asr06Desc" },
-  { key: "confucius4-r2t2", icon: Sparkles, label: "Confucius4-R2T2 Q8", labelKey: undefined, descKey: "settings.r2t2Desc" },
+  { key: "confucius4-r2t2", icon: AudioWaveform, label: "Confucius4-R2T2 Q8", labelKey: undefined, descKey: "settings.r2t2Desc" },
   { key: "glm-asr", icon: Globe, label: "GLM-ASR", labelKey: undefined, descKey: "settings.glmAsrDesc" },
   { key: "alibaba-asr", icon: Cloud, label: "Alibaba DashScope", labelKey: "settings.alibabaAsrLabel", descKey: "settings.alibabaAsrDesc" },
 ] as const;
@@ -252,8 +254,10 @@ export default function SettingsPage({
   const settingsContentRef = useRef<HTMLDivElement | null>(null);
   const navScrollRef = useRef<HTMLDivElement | null>(null);
   const isNavClickScrolling = useRef(false);
+  const navScrollTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
-  // IntersectionObserver: track which section is in view
+  // Measure the scroll position instead of relying on a narrow intersection
+  // band that the final sections cannot reach. Keep click intent until scrollend.
   useEffect(() => {
     const container = settingsContentRef.current;
     if (!container) return;
@@ -262,24 +266,45 @@ export default function SettingsPage({
       .filter(Boolean) as Element[];
     if (sectionEls.length === 0) return;
 
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (isNavClickScrolling.current) return;
-        // Pick the topmost visible section
-        let topId = "";
-        let topY = Infinity;
-        for (const entry of entries) {
-          if (entry.isIntersecting && entry.boundingClientRect.top < topY) {
-            topY = entry.boundingClientRect.top;
-            topId = (entry.target as HTMLElement).dataset.navId ?? "";
-          }
-        }
-        if (topId) setActiveNavSection(topId);
-      },
-      { root: container, rootMargin: "-10% 0px -70% 0px", threshold: 0 },
-    );
-    for (const el of sectionEls) observer.observe(el);
-    return () => observer.disconnect();
+    let frame = 0;
+    const updateSection = () => {
+      frame = 0;
+      if (isNavClickScrolling.current) return;
+      const atBottom = container.scrollHeight > container.clientHeight
+        && container.scrollTop + container.clientHeight >= container.scrollHeight - 2;
+      const top = container.getBoundingClientRect().top + container.clientHeight * 0.1;
+      const current = atBottom ? sectionEls[sectionEls.length - 1] : sectionEls.reduce((selected, section) => (
+        section.getBoundingClientRect().top <= top ? section : selected
+      ), sectionEls[0]);
+      const id = (current as HTMLElement).dataset.navId;
+      if (id) setActiveNavSection(id);
+    };
+    const finishScroll = () => {
+      clearTimeout(navScrollTimer.current);
+      isNavClickScrolling.current = false;
+    };
+    const onScroll = () => {
+      if (!frame) frame = requestAnimationFrame(updateSection);
+      clearTimeout(navScrollTimer.current);
+      // Fallback for WebView versions without scrollend: wait for silence,
+      // restarting on every scroll frame instead of guessing journey duration.
+      navScrollTimer.current = setTimeout(finishScroll, 180);
+    };
+    const interruptScroll = () => { finishScroll(); };
+    container.addEventListener("scroll", onScroll, { passive: true });
+    container.addEventListener("scrollend", finishScroll);
+    container.addEventListener("wheel", interruptScroll, { passive: true });
+    container.addEventListener("touchstart", interruptScroll, { passive: true });
+    container.addEventListener("keydown", interruptScroll);
+    return () => {
+      cancelAnimationFrame(frame);
+      clearTimeout(navScrollTimer.current);
+      container.removeEventListener("scroll", onScroll);
+      container.removeEventListener("scrollend", finishScroll);
+      container.removeEventListener("wheel", interruptScroll);
+      container.removeEventListener("touchstart", interruptScroll);
+      container.removeEventListener("keydown", interruptScroll);
+    };
   }, [navSections]);
 
   const handleNavClick = useCallback((id: string) => {
@@ -294,13 +319,16 @@ export default function SettingsPage({
     const scrollMarginTop = Number.parseFloat(
       window.getComputedStyle(target).scrollMarginTop,
     ) || 0;
-    const top = Math.max(
+    const top = Math.min(Math.max(0, container.scrollHeight - container.clientHeight), Math.max(
       0,
       container.scrollTop + targetRect.top - containerRect.top - scrollMarginTop,
-    );
+    ));
+    if (Math.abs(container.scrollTop - top) < 1 || prefersReducedMotion()) {
+      container.scrollTo({ top, behavior: "instant" });
+      isNavClickScrolling.current = false;
+      return;
+    }
     container.scrollTo({ top, behavior: "smooth" });
-    // Re-enable observer after scroll settles
-    setTimeout(() => { isNavClickScrolling.current = false; }, 600);
   }, []);
 
   // Auto-scroll the nav bar to keep active tab visible + measure indicator position
@@ -311,7 +339,7 @@ export default function SettingsPage({
       const activeBtn = navEl.querySelector(`[data-nav-tab="${activeNavSection}"]`) as HTMLElement | null;
       if (!activeBtn) return;
       const left = activeBtn.offsetLeft - navEl.offsetWidth / 2 + activeBtn.offsetWidth / 2;
-      navEl.scrollTo({ left, behavior: "smooth" });
+      navEl.scrollTo({ left, behavior: prefersReducedMotion() ? "instant" : "smooth" });
       setNavIndicatorStyle({ left: activeBtn.offsetLeft, width: activeBtn.offsetWidth });
     };
     updateIndicator();
@@ -1343,19 +1371,11 @@ export default function SettingsPage({
               onClick={() => handleOpenaiFastModeToggle(!openaiFastMode)}
               className="toggle-switch"
               style={{
-                background: openaiFastMode
-                  ? "var(--color-accent)"
-                  : "var(--color-bg-tertiary)",
                 flexShrink: 0,
               }}
             >
               <div
                 className="toggle-knob"
-                style={{
-                  transform: openaiFastMode
-                    ? "translateX(20px)"
-                    : "translateX(0)",
-                }}
               />
             </button>
           </div>
@@ -2116,7 +2136,7 @@ export default function SettingsPage({
           {navIndicatorStyle && (
             <div
               className="settings-nav-indicator"
-              style={{ transform: `translateX(${navIndicatorStyle.left}px)`, width: navIndicatorStyle.width }}
+              style={{ transform: `translateX(${navIndicatorStyle.left}px) scaleX(${navIndicatorStyle.width})`, width: 1 }}
             />
           )}
           {navSections.map(({ id, labelKey }) => (
@@ -2198,7 +2218,7 @@ export default function SettingsPage({
                         </span>
                       </span>
                     </span>
-                    <ChevronsUpDown size={14} style={{ flexShrink: 0, opacity: 0.6 }} />
+                    <ChevronsUpDown size={14} className="icon-tertiary" style={{ flexShrink: 0 }} />
                   </button>
                   {picker.isOpen("engine") && (
                     <div className={picker.popoverClass("engine")}>
@@ -2270,7 +2290,7 @@ export default function SettingsPage({
                     ))}
                   </div>
                   {onlineAsrUrl && (
-                    <span className="settings-option-desc" style={{ fontSize: 11, opacity: 0.6 }}>
+                    <span className="settings-option-desc" style={{ fontSize: 11, color: "var(--color-text-tertiary)" }}>
                       {onlineAsrUrl}
                     </span>
                   )}
@@ -2280,7 +2300,7 @@ export default function SettingsPage({
                     <div className="settings-row" style={{ gap: 6, alignItems: "center" }}>
                       <span className="settings-option-desc" style={{ flex: 1 }}>
                         {t("settings.alibabaModelLabel")}
-                        <span style={{ marginLeft: 6, fontSize: 10, opacity: 0.55 }}>
+                        <span style={{ marginLeft: 6, fontSize: 11, color: "var(--color-text-tertiary)" }}>
                           {alibabaAsrModelsLoading
                             ? t("settings.alibabaModelsLoading")
                             : alibabaAsrModelsSource === "live"
@@ -2356,7 +2376,7 @@ export default function SettingsPage({
             {!isOnlineEngineKey(engine) && (
               <div className="settings-column" style={{ gap: 6, marginTop: 8 }}>
                 <div className="settings-row" style={{ gap: 6, alignItems: "center" }}>
-                  <HardDrive size={13} style={{ opacity: 0.6, flexShrink: 0 }} />
+                  <HardDrive size={13} className="icon-tertiary" style={{ flexShrink: 0 }} />
                   <span className="settings-option-desc" style={{ flex: 1 }}>{t("settings.modelStorageDir")}</span>
                   {modelsDirCustom && (
                     <button
@@ -2379,7 +2399,7 @@ export default function SettingsPage({
                 </div>
                 <span
                   className="settings-option-desc"
-                  style={{ fontSize: 11, opacity: 0.5, wordBreak: "break-all", userSelect: "text" }}
+                  style={{ fontSize: 11, color: "var(--color-text-tertiary)", wordBreak: "break-all", userSelect: "text" }}
                 >
                   {modelsDir || t("common.loading")}
                 </span>
@@ -2484,7 +2504,7 @@ export default function SettingsPage({
                 </div>
               </div>
               {hotkeyDiagnostic?.systemConflict && (
-                <p className="settings-error" style={{ opacity: 0.85, display: "flex", alignItems: "center", gap: 4 }}>
+                <p className="settings-error" style={{ display: "flex", alignItems: "center", gap: 4 }}>
                   <AlertTriangle size={12} style={{ flexShrink: 0 }} /> {hotkeyDiagnostic.systemConflict}
                 </p>
               )}
@@ -2513,11 +2533,8 @@ export default function SettingsPage({
                   aria-label={t("settings.micLevelMonitor")}
                   onClick={() => handleMicLevelMonitorToggle(!micLevelMonitorEnabled)}
                   className="toggle-switch"
-                  style={{
-                    background: micLevelMonitorEnabled ? "var(--color-accent)" : "var(--color-bg-tertiary)",
-                  }}
                 >
-                  <div className="toggle-knob" style={{ transform: micLevelMonitorEnabled ? "translateX(20px)" : "translateX(0)" }} />
+                  <div className="toggle-knob" />
                 </button>
               </div>
             </div>
@@ -2592,7 +2609,7 @@ export default function SettingsPage({
                 <button className="test-btn" onClick={() => { void handleTestMicrophone(); }}>{t("common.test")}</button>
               </div>
               <div className="mic-level-shell" aria-label={t("settings.micLevelPreview")}>
-                <div className="mic-level-fill" style={{ width: `${Math.round(micLevel * 100)}%` }} />
+                <div className="mic-level-fill" style={{ "--mic-level": `${Math.round(micLevel * 100)}%` } as React.CSSProperties} />
               </div>
               <div className="settings-row" style={{ gap: 10 }}>
                 <span className="settings-hint">
@@ -2653,11 +2670,8 @@ export default function SettingsPage({
                   setSoundEnabled(next).catch(() => {});
                 }}
                 className="toggle-switch"
-                style={{
-                  background: soundEnabled ? "var(--color-accent)" : "var(--color-bg-tertiary)",
-                }}
               >
-                <div className="toggle-knob" style={{ transform: soundEnabled ? "translateX(20px)" : "translateX(0)" }} />
+                <div className="toggle-knob" />
               </button>
             </div>
           </section>
@@ -2746,7 +2760,7 @@ export default function SettingsPage({
                             <button
                               type="button"
                               className="picker-option"
-                              style={{ borderTop: "1px solid var(--color-border)", opacity: 0.8 }}
+                              style={{ borderTop: "1px solid var(--color-border)" }}
                               onClick={(e) => { e.stopPropagation(); setAddingProvider(true); }}
                             >
                               <span className="picker-option-copy">
@@ -3076,8 +3090,7 @@ export default function SettingsPage({
               </div>
 
 
-              <details className="settings-disclosure">
-                <summary>{t("settings.customPrompt")}</summary>
+              <SettingsDisclosure label={t("settings.customPrompt")}>
                 <div className="settings-column" style={{ gap: 6 }}>
                   <textarea
                     className="settings-input"
@@ -3092,7 +3105,7 @@ export default function SettingsPage({
                     {t("settings.customPromptHint")}
                   </p>
                 </div>
-              </details>
+              </SettingsDisclosure>
 
               <p className="settings-hint">
                 {t("settings.aiPolishLearnHint")}
@@ -3112,7 +3125,7 @@ export default function SettingsPage({
                 hint={t("settings.screenModeHint")} disabled={modeSaving || !profile}
                 onChange={(mode) => { void handleProcessingMode("screen", mode); }} onConfigure={configureJev} />
 
-              {screenContextEnabled && (
+              <SettingsReveal open={screenContextEnabled} gap={16}>
                 <div className="settings-column">
                   <div className="settings-row">
                     <div className="permission-item" style={{ gap: 8 }}>
@@ -3131,25 +3144,16 @@ export default function SettingsPage({
                       onClick={() => handleScreenVisionToggle(!screenVisionEnabled)}
                       className="toggle-switch"
                       style={{
-                        background: screenVisionEnabled
-                          ? "var(--color-accent)"
-                          : "var(--color-bg-tertiary)",
                         flexShrink: 0,
                       }}
                     >
                       <div
                         className="toggle-knob"
-                        style={{
-                          transform: screenVisionEnabled
-                            ? "translateX(20px)"
-                            : "translateX(0)",
-                        }}
                       />
                     </button>
                   </div>
 
-                  {screenVisionEnabled && (
-                    <Suspense fallback={null}>
+                  <SettingsReveal open={screenVisionEnabled} gap={10}>
                       <ScreenVisionModelPicker
                         model={screenVisionModel}
                         provider={screenVisionProvider}
@@ -3176,10 +3180,9 @@ export default function SettingsPage({
                         onBlur={handleScreenVisionModelBlur}
                         onSelect={handleScreenVisionModelSelect}
                       />
-                    </Suspense>
-                  )}
+                  </SettingsReveal>
                 </div>
-              )}
+              </SettingsReveal>
 
               {/* 联网搜索 */}
 
@@ -3198,7 +3201,7 @@ export default function SettingsPage({
                 </p>
               ) : null}
 
-              {webSearchEnabled && (
+              <SettingsReveal open={webSearchEnabled} gap={16}>
                 <div className="settings-column" style={{ gap: 10 }}>
                   {/* 搜索方式（下拉列表） */}
                   <div className="settings-column" style={{ gap: 6 }}>
@@ -3247,7 +3250,7 @@ export default function SettingsPage({
                     <div className="settings-column" style={{ gap: 6 }}>
                       <div className="settings-row">
                         <span className="settings-option-desc">{t("settings.webSearchMaxResults")}</span>
-                        <span style={{ fontSize: 12, opacity: 0.7, minWidth: 16, textAlign: "right" }}>{webSearchMaxResults}</span>
+                        <span style={{ fontSize: 12, color: "var(--color-text-tertiary)", minWidth: 16, textAlign: "right" }}>{webSearchMaxResults}</span>
                       </div>
                       <input
                         type="range"
@@ -3290,7 +3293,7 @@ export default function SettingsPage({
                     </div>
                   )}
                 </div>
-              )}
+              </SettingsReveal>
             </div>
           </section>
 
@@ -3363,19 +3366,11 @@ export default function SettingsPage({
                   onClick={() => handleAssistantModelToggle(!assistantUseSeparateModel)}
                   className="toggle-switch"
                   style={{
-                    background: assistantUseSeparateModel
-                      ? "var(--color-accent)"
-                      : "var(--color-bg-tertiary)",
                     flexShrink: 0,
                   }}
                 >
                   <div
                     className="toggle-knob"
-                    style={{
-                      transform: assistantUseSeparateModel
-                        ? "translateX(20px)"
-                        : "translateX(0)",
-                    }}
                   />
                 </button>
               </div>
@@ -3383,7 +3378,7 @@ export default function SettingsPage({
               {renderOpenaiCodexOauthBlock("assistant")}
 
 
-              {assistantUseSeparateModel ? (
+              <SettingsReveal open={assistantUseSeparateModel} gap={10}>
                 <div className="settings-column" style={{ gap: 6 }}>
                   {/* 助手供应商选择器 */}
                   <span className="settings-option-desc">{t("settings.assistantProvider")}</span>
@@ -3584,11 +3579,12 @@ export default function SettingsPage({
                     )}
                   </div>
                 </div>
-              ) : (
+              </SettingsReveal>
+              <SettingsReveal open={!assistantUseSeparateModel} gap={10}>
                 <p className="settings-hint" style={{ margin: 0 }}>
                   {t("settings.sharedProviderAndModel", { provider: currentLlmPreset.label, model: customModel || currentLlmPreset.defaultModel })}
                 </p>
-              )}
+              </SettingsReveal>
 
               <div className="settings-column" style={{ gap: 6 }}>
                 <span className="settings-option-desc">{t("settings.assistantReasoningMode")}</span>
@@ -3644,8 +3640,7 @@ export default function SettingsPage({
               </div>
 
 
-              <details className="settings-disclosure">
-                <summary>{t("settings.customAssistantPrompt")}</summary>
+              <SettingsDisclosure label={t("settings.customAssistantPrompt")}>
                 <div className="settings-column" style={{ gap: 6 }}>
                   <textarea
                     className="settings-input"
@@ -3660,7 +3655,7 @@ export default function SettingsPage({
                     {t("settings.assistantPromptHint")}
                   </p>
                 </div>
-              </details>
+              </SettingsDisclosure>
 
 
             </div>

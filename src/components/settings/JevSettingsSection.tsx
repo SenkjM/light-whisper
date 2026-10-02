@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 
 import { getJevApiKey, setJevApiKey, setJevProvider, setJevFeatures, validateCorrections } from "@/api/tauri";
 import SecretInput from "@/components/SecretInput";
+import { SettingsReveal } from "./SettingsReveal";
 import { useDebouncedCallback } from "@/hooks/useDebouncedCallback";
 import type { JevFeatures, JevProvider, UserProfile } from "@/types";
 
@@ -203,16 +204,16 @@ export default function JevSettingsSection({ profile, onSaved, polishEnabled = t
             </button>
           </div>
           <span id={`jev-${feature}-hint`} className="settings-hint settings-hint-flush">{t(`settings.${label}Hint`)}</span>
-          {feature === "correction_review" && features.correction_review && (
+          {feature === "correction_review" && <SettingsReveal open={features.correction_review} gap={10}>
             <button className="btn-ghost" type="button" disabled={reviewing || configSaving}
               onClick={() => { void reviewNow(); }}>
               {t(reviewing ? "settings.jevReviewing" : "settings.jevReviewNow")}
             </button>
-          )}
+          </SettingsReveal>}
         </div>
       ))}
 
-      {anyEnabled && (
+      <SettingsReveal open={anyEnabled} gap={16}>
         <div className="settings-column decision-model-connection">
           <span className="settings-hint settings-hint-flush">{t("settings.jevSharedServiceHint")}</span>
           <div className="decision-model-fields">
@@ -272,7 +273,7 @@ export default function JevSettingsSection({ profile, onSaved, polishEnabled = t
             </div>
           </fieldset>
         </div>
-      )}
+      </SettingsReveal>
     </div>
   );
 }

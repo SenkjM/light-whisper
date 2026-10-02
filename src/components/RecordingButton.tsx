@@ -1,9 +1,9 @@
-import { useRef, useEffect } from "react";
+import { useRef, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Loader2 } from "lucide-react";
+import { listen } from "@tauri-apps/api/event";
+import { Loader2, Mic } from "lucide-react";
 
 const EQ_BAR_COUNT = 5;
-const EQ_BAR_DELAY_STEP = 0.12;
 
 interface RecordingButtonProps {
   isStarting: boolean;
@@ -18,11 +18,26 @@ export default function RecordingButton({
 }: RecordingButtonProps) {
   const { t } = useTranslation();
   const isActive = isStarting || isRecording;
-  const prevActive = useRef(isActive);
+  const [bars, setBars] = useState<number[]>(Array(EQ_BAR_COUNT).fill(0));
+  const latestSession = useRef(0);
 
   useEffect(() => {
-    prevActive.current = isActive;
-  }, [isActive]);
+    if (!isRecording) return;
+    let disposed = false;
+    let unlisten: (() => void) | undefined;
+    void listen<{ sessionId: number; bars: number[] }>("waveform", ({ payload }) => {
+      if (disposed || !Number.isSafeInteger(payload.sessionId) || payload.sessionId <= 0 || payload.sessionId < latestSession.current) return;
+      latestSession.current = payload.sessionId;
+      setBars(Array.from({ length: EQ_BAR_COUNT }, (_, index) => {
+        const value = payload.bars[Math.round(index * (payload.bars.length - 1) / (EQ_BAR_COUNT - 1))];
+        return Number.isFinite(value) ? Math.max(0, Math.min(1, value)) : 0;
+      }));
+    }).then((dispose) => {
+      if (disposed) dispose();
+      else unlisten = dispose;
+    }).catch(() => undefined);
+    return () => { disposed = true; unlisten?.(); };
+  }, [isRecording]);
 
   const isIdle = !isStarting && !isRecording && !isProcessing;
   const label = isStarting
@@ -42,13 +57,14 @@ export default function RecordingButton({
         </>
       )}
       <button
-        className={`record-btn${isActive !== prevActive.current ? " animate-record-enter" : ""}`}
+        className="record-btn"
         aria-label={label}
         aria-pressed={isActive}
         disabled={!isReady || isProcessing}
         onClick={onToggle}
         style={{
-          border: isRecording ? "none" : "1px solid var(--color-border)",
+          border: "1px solid",
+          borderColor: isRecording ? "transparent" : "var(--color-border)",
           background: isRecording ? "var(--color-accent)" : isProcessing ? "var(--color-bg-tertiary)" : "var(--color-bg-elevated)",
           color: isRecording ? "white" : isProcessing ? "var(--color-text-tertiary)" : "var(--color-accent)",
           boxShadow: isRecording ? "var(--shadow-record-ring), var(--shadow-lg)" : "var(--shadow-md)",
@@ -56,23 +72,15 @@ export default function RecordingButton({
           opacity: !isReady ? 0.4 : 1,
         }}
       >
-        {isRecording && (
-          <div className="eq-bar-container">
-            {Array.from({ length: EQ_BAR_COUNT }, (_, i) => (
-              <span key={i} className="eq-bar" style={{ animationDelay: `${i * EQ_BAR_DELAY_STEP}s` }} />
+        <span className="record-icon" data-visible={isRecording} aria-hidden="true">
+          <span className="eq-bar-container">
+            {bars.map((level, i) => (
+              <span key={i} className="eq-bar" style={{ transform: `scaleY(${Math.max(0.12, level)})` }} />
             ))}
-          </div>
-        )}
-        {isStarting && <Loader2 size={18} className="animate-spin" strokeWidth={1.5} />}
-        {isIdle && isReady && (
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z" />
-            <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
-            <line x1="12" x2="12" y1="19" y2="22" />
-          </svg>
-        )}
-        {isProcessing && <Loader2 size={20} className="animate-spin" strokeWidth={1.5} />}
-        {!isReady && isIdle && <Loader2 size={18} className="animate-spin" strokeWidth={1.5} />}
+          </span>
+        </span>
+        <span className="record-icon" data-visible={isIdle && isReady} aria-hidden="true"><Mic size={18} /></span>
+        <span className="record-icon" data-visible={isStarting || isProcessing || (!isReady && isIdle)} aria-hidden="true"><Loader2 size={18} className="animate-spin" /></span>
       </button>
     </div>
   );
