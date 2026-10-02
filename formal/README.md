@@ -5,7 +5,7 @@ classes, credentials/OAuth, providers/settings/personalization, context/routing,
 selection/assistant, history, windows/subtitles, updates, theme/autostart and
 bundled protocols.
 
-[`verification.json`](verification.json) binds **122 registered commands**,
+[`verification.json`](verification.json) binds **123 registered commands**,
 **16 event families**, **16 lifecycle entries** and **11 protocol families** to
 obligations, model operators, source/test paths and explicit assumptions. CI
 rejects inventory drift, missing anchors, unasserted properties, unreachable

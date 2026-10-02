@@ -231,6 +231,11 @@
     "commands::profile::get_user_profile": [
       "profile-save"
     ],
+    "commands::profile::set_autostart_minimized": [
+      "preferences",
+      "profile-save",
+      "ui-preferences"
+    ],
     "commands::profile::set_history_settings": [
       "history",
       "preferences",
@@ -1230,14 +1235,18 @@
       "implementation": [
         "src/hooks/useTheme.ts",
         "src/hooks/useSystemSettings.ts",
-        "src/main.tsx"
+        "src/main.tsx",
+        "src-tauri/src/commands/profile.rs#fn set_autostart_minimized(",
+        "src-tauri/src/lib.rs#fn should_start_hidden("
       ],
       "evidence": [
         "src/components/settings/__tests__/P0SettingsSections.test.tsx",
         "src/pages/__tests__/SettingsPageExportPath.test.tsx",
+        "src-tauri/src/lib.rs#fn autostart_minimized_requires_both_the_preference_and_login_argument(",
+        "src-tauri/src/state/user_profile.rs#fn autostart_minimized_defaults_off_for_legacy_profiles_and_round_trips(",
         "formal/lean/StateContracts.lean"
       ],
-      "assumptions": "localStorage/media query/Tauri autostart are platform primitives; visuals/accessibility need UI tests. Failed initial autostart read does not establish a known value."
+      "assumptions": "localStorage/media query/Tauri autostart are platform primitives; visuals/accessibility need UI tests. Failed initial autostart read does not establish a known value. The optional tray startup preference is bound to the abstract preference/profile contracts; login-argument and legacy-default behavior have implementation tests, not a proof of native Windows startup."
     },
     "gpu-idle": {
       "obligation": "Enabling at startup or runtime starts an idle window; no unload during commands or native streams; readiness survives suspension; successful next commands reload; stale initial settings reads cannot overwrite edits.",
@@ -1824,6 +1833,7 @@
     "commands::jev::get_jev_api_key": "src-tauri/src/commands/jev.rs#fn get_jev_api_key(",
     "commands::jev::set_jev_api_key": "src-tauri/src/commands/jev.rs#fn set_jev_api_key(",
     "commands::profile::get_user_profile": "src-tauri/src/commands/profile.rs#fn get_user_profile(",
+    "commands::profile::set_autostart_minimized": "src-tauri/src/commands/profile.rs#fn set_autostart_minimized(",
     "commands::profile::set_history_settings": "src-tauri/src/commands/profile.rs#fn set_history_settings(",
     "commands::profile::set_app_profile_rules": "src-tauri/src/commands/profile.rs#fn set_app_profile_rules(",
     "commands::profile::add_hot_word": "src-tauri/src/commands/profile.rs#fn add_hot_word(",
