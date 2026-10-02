@@ -1298,6 +1298,18 @@
   justify-content: space-between;
 }
 
+.settings-startup-option {
+  gap: 12px;
+  padding-top: 12px;
+  margin-top: 12px;
+  border-top: 1px solid var(--color-border);
+}
+
+.settings-column.settings-startup-copy {
+  min-width: 0;
+  gap: 4px;
+}
+
 /* Settings section header */
 .settings-section-header {
   display: flex;

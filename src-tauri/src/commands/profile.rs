@@ -207,6 +207,20 @@ pub async fn get_user_profile(state: tauri::State<'_, AppState>) -> Result<UserP
 }
 
 #[tauri::command]
+pub async fn set_autostart_minimized(
+    state: tauri::State<'_, AppState>,
+    enabled: bool,
+) -> Result<(), String> {
+    let previous = state
+        .update_profile_mut(|profile| std::mem::replace(&mut profile.autostart_minimized, enabled));
+    if let Err(error) = profile_service::save_profile_async(state.inner()).await {
+        state.update_profile_mut(|profile| profile.autostart_minimized = previous);
+        return Err(error);
+    }
+    Ok(())
+}
+
+#[tauri::command]
 pub async fn set_history_settings(
     state: tauri::State<'_, AppState>,
     enabled: bool,

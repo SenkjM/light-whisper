@@ -17,7 +17,13 @@ pub fn run() {
             tauri_plugin_autostart::MacosLauncher::LaunchAgent,
             Some(vec!["--minimized"]),
         ))
-        .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
+        .plugin(tauri_plugin_single_instance::init(|app, args, _cwd| {
+            let minimized = app
+                .state::<AppState>()
+                .with_profile(|profile| profile.autostart_minimized);
+            if should_start_hidden(minimized, args.into_iter()) {
+                return;
+            }
             // 已有实例运行时，聚焦主窗口
             focus_main_window(app);
         }))
@@ -53,6 +59,11 @@ pub fn run() {
             {
                 let state = app_handle.state::<AppState>();
                 let loaded = services::profile_service::load_profile();
+                // The main window starts hidden to avoid a flash during autostart.
+                // A normal launch still opens it, regardless of this preference.
+                if !should_start_hidden(loaded.autostart_minimized, std::env::args()) {
+                    focus_main_window(&app_handle);
+                }
                 // 迁移旧版 custom API key 到新 keyring key（仅在目标 key 不存在时执行）
                 if loaded.llm_provider.active == "custom_migrated" {
                     use tauri_plugin_keyring::KeyringExt;
@@ -251,6 +262,7 @@ pub fn run() {
             commands::grok_build_oauth::logout_grok_build_oauth,
             commands::grok_build_oauth::get_grok_build_oauth_status,
             commands::window::hide_main_window,
+            commands::profile::set_autostart_minimized,
             commands::window::show_subtitle_window,
             commands::window::hide_subtitle_window,
             commands::hotkey::register_custom_hotkey,
@@ -509,6 +521,10 @@ fn spawn_profile_maintenance(app_handle: tauri::AppHandle) {
     });
 }
 
+fn should_start_hidden(autostart_minimized: bool, mut args: impl Iterator<Item = String>) -> bool {
+    autostart_minimized && args.any(|arg| arg == "--minimized")
+}
+
 fn focus_main_window(app: &tauri::AppHandle) {
     if let Some(window) = app.get_webview_window("main") {
         let _ = window.show();
@@ -632,4 +648,25 @@ fn setup_system_tray(app_handle: &tauri::AppHandle) -> Result<(), Box<dyn std::e
     });
 
     Ok(())
+}
+
+#[cfg(test)]
+mod startup_tests {
+    use super::should_start_hidden;
+
+    #[test]
+    fn autostart_minimized_requires_both_the_preference_and_login_argument() {
+        for (enabled, args, hidden) in [
+            (false, vec!["light-whisper"], false),
+            (true, vec!["light-whisper"], false),
+            (false, vec!["light-whisper", "--minimized"], false),
+            (true, vec!["light-whisper", "--minimized"], true),
+            (true, vec!["light-whisper", "--minimized=false"], false),
+        ] {
+            assert_eq!(
+                should_start_hidden(enabled, args.into_iter().map(str::to_owned)),
+                hidden
+            );
+        }
+    }
 }

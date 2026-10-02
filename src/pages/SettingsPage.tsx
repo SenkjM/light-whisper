@@ -829,7 +829,10 @@ export default function SettingsPage({
     appVersion,
     autostart,
     autostartLoading,
+    autostartMinimized,
+    autostartMinimizedLoading,
     handleAutostartToggle,
+    handleAutostartMinimizedToggle,
     handleCheckForUpdates,
     handleCopyExportPath,
     handleExportConfig,
@@ -840,7 +843,7 @@ export default function SettingsPage({
     latestAvailableVersion,
     updateChecking,
     updateStatusText,
-  } = useSystemSettings({ inputMethod, refreshProfile, refreshAiPolishKey });
+  } = useSystemSettings({ inputMethod, profile, refreshProfile, refreshAiPolishKey });
 
   useEffect(() => {
     if (!assistantUsesOpenaiOauth || webSearchProvider !== "model_native") return;
@@ -3825,6 +3828,8 @@ export default function SettingsPage({
             lastExportPath={lastExportPath}
             autostart={autostart}
             autostartLoading={autostartLoading}
+            autostartMinimized={autostartMinimized}
+            autostartMinimizedLoading={autostartMinimizedLoading}
             appVersion={appVersion}
             updateStatusText={updateStatusText}
             latestAvailableVersion={latestAvailableVersion}
@@ -3834,6 +3839,7 @@ export default function SettingsPage({
             onImport={handleImportConfig}
             onTestPaste={() => { void handleTestPaste(); }}
             onToggleAutostart={() => { void handleAutostartToggle(); }}
+            onToggleAutostartMinimized={() => { void handleAutostartMinimizedToggle(); }}
             onUpdateAction={() => {
               void (latestAvailableVersion ? handleOpenReleasePage() : handleCheckForUpdates());
             }}

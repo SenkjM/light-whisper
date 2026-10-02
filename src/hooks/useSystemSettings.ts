@@ -12,22 +12,28 @@ import {
   isAutostartEnabled,
   openAppReleasePage,
   pasteText,
+  setAutostartMinimized,
 } from "@/api/tauri";
+import type { UserProfile } from "@/types";
 
 interface UseSystemSettingsOptions {
   inputMethod: "sendInput" | "clipboard";
-  refreshProfile: () => Promise<unknown>;
+  profile: UserProfile | null;
+  refreshProfile: () => Promise<UserProfile | undefined>;
   refreshAiPolishKey: () => Promise<unknown>;
 }
 
 export function useSystemSettings({
   inputMethod,
+  profile,
   refreshProfile,
   refreshAiPolishKey,
 }: UseSystemSettingsOptions) {
   const { t } = useTranslation();
   const [autostart, setAutostart] = useState(false);
   const [autostartLoading, setAutostartLoading] = useState(true);
+  const [autostartMinimizedSaving, setAutostartMinimizedSaving] = useState(false);
+  const autostartMinimized = profile?.autostart_minimized ?? false;
   const [appVersion, setAppVersion] = useState("");
   const [updateChecking, setUpdateChecking] = useState(false);
   const [updateStatusText, setUpdateStatusText] = useState("");
@@ -118,6 +124,23 @@ export function useSystemSettings({
     }
   }, [autostart, autostartLoading, t]);
 
+  const handleAutostartMinimizedToggle = useCallback(async () => {
+    if (!profile || !autostart || autostartLoading || autostartMinimizedSaving) return;
+    const next = !autostartMinimized;
+    setAutostartMinimizedSaving(true);
+    try {
+      await setAutostartMinimized(next);
+      const confirmed = await refreshProfile();
+      if (confirmed?.autostart_minimized !== next) {
+        throw new Error("Startup preference could not be confirmed");
+      }
+    } catch {
+      toast.error(t("toast.autostartMinimizedFailed"));
+    } finally {
+      setAutostartMinimizedSaving(false);
+    }
+  }, [profile, autostart, autostartLoading, autostartMinimized, autostartMinimizedSaving, refreshProfile, t]);
+
   const handleExportConfig = useCallback(async () => {
     try {
       const path = await exportUserProfile();
@@ -163,7 +186,10 @@ export function useSystemSettings({
     appVersion,
     autostart,
     autostartLoading,
+    autostartMinimized,
+    autostartMinimizedLoading: autostartLoading || autostartMinimizedSaving || !profile,
     handleAutostartToggle,
+    handleAutostartMinimizedToggle,
     handleCheckForUpdates,
     handleCopyExportPath,
     handleExportConfig,

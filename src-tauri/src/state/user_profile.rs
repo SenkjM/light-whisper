@@ -111,6 +111,9 @@ pub struct R2T2Config {
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct UserProfile {
+    /// 开机自启动时隐藏主窗口，仅保留系统托盘入口。
+    #[serde(default)]
+    pub autostart_minimized: bool,
     #[serde(default)]
     pub r2t2: R2T2Config,
     pub hot_words: Vec<HotWord>,
@@ -858,6 +861,19 @@ mod tests {
             model: format!("model-{id}"),
             api_format: ApiFormat::OpenaiCompat,
         }
+    }
+
+    #[test]
+    fn autostart_minimized_defaults_off_for_legacy_profiles_and_round_trips() {
+        let mut value = serde_json::to_value(UserProfile::default()).unwrap();
+        value.as_object_mut().unwrap().remove("autostart_minimized");
+        let mut profile: UserProfile = serde_json::from_value(value).unwrap();
+        assert!(!profile.autostart_minimized);
+
+        profile.autostart_minimized = true;
+        let saved = serde_json::to_string(&profile).unwrap();
+        let restored: UserProfile = serde_json::from_str(&saved).unwrap();
+        assert!(restored.autostart_minimized);
     }
 
     #[test]

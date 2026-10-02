@@ -24,6 +24,7 @@
         "transparent": true,
         "alwaysOnTop": false,
         "skipTaskbar": false,
+        "visible": false,
         "center": true,
         "url": "/",
         "windowEffects": {

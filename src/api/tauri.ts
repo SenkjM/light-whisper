@@ -275,6 +275,10 @@ export interface AssistantConversationTurn {
 // Profile commands
 export const getUserProfile = createNoArgCommand<UserProfile>("get_user_profile");
 
+export function setAutostartMinimized(enabled: boolean): Promise<void> {
+  return invokeCommand<void>("set_autostart_minimized", { enabled });
+}
+
 export function setHistorySettings(
   enabled: boolean,
   saveAudio: boolean,

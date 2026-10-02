@@ -1,11 +1,14 @@
 import { useRef } from "react";
 import { Archive, Copy, Download, Power, RefreshCw, ShieldCheck, Upload } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { SettingsReveal } from "./SettingsReveal";
 
 interface SystemSettingsSectionsProps {
   lastExportPath: string | null;
   autostart: boolean;
   autostartLoading: boolean;
+  autostartMinimized: boolean;
+  autostartMinimizedLoading: boolean;
   appVersion: string;
   updateStatusText: string;
   latestAvailableVersion: string | null;
@@ -15,6 +18,7 @@ interface SystemSettingsSectionsProps {
   onImport: (json: string) => Promise<void>;
   onTestPaste: () => void;
   onToggleAutostart: () => void;
+  onToggleAutostartMinimized: () => void;
   onUpdateAction: () => void;
 }
 
@@ -22,6 +26,8 @@ export default function SystemSettingsSections({
   lastExportPath,
   autostart,
   autostartLoading,
+  autostartMinimized,
+  autostartMinimizedLoading,
   appVersion,
   updateStatusText,
   latestAvailableVersion,
@@ -31,6 +37,7 @@ export default function SystemSettingsSections({
   onImport,
   onTestPaste,
   onToggleAutostart,
+  onToggleAutostartMinimized,
   onUpdateAction,
 }: SystemSettingsSectionsProps) {
   const { t } = useTranslation();
@@ -119,6 +126,28 @@ export default function SystemSettingsSections({
             <div className="toggle-knob" />
           </button>
         </div>
+        <SettingsReveal open={autostart}>
+          <div className="settings-row settings-startup-option">
+            <div className="settings-column settings-startup-copy">
+              <span className="permission-label">{t("settings.autostartMinimized")}</span>
+              <p id="autostart-minimized-hint" className="settings-hint">{t("settings.autostartMinimizedHint")}</p>
+            </div>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={autostartMinimized}
+              aria-busy={autostartMinimizedLoading}
+              aria-label={t("settings.autostartMinimized")}
+              aria-describedby="autostart-minimized-hint"
+              onClick={onToggleAutostartMinimized}
+              className="toggle-switch"
+              data-active={autostartMinimized}
+              disabled={autostartMinimizedLoading}
+            >
+              <div className="toggle-knob" />
+            </button>
+          </div>
+        </SettingsReveal>
       </section>
 
       <section className="settings-card">

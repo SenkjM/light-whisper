@@ -64,6 +64,7 @@ const tauriMock = vi.hoisted(() => ({
   setRecordingMode: vi.fn(),
   setSelectionAssistantConfig: vi.fn(),
   setSoundEnabled: vi.fn(),
+  setAutostartMinimized: vi.fn(),
   setTranslationHotkey: vi.fn(),
   setTranslationTarget: vi.fn(),
   setWebSearchApiKey: vi.fn(),
@@ -162,6 +163,7 @@ const labels: Record<string, string> = {
   "settings.updateSource": "Source: GitHub Releases",
   "settings.startup": "Startup",
   "settings.autostart": "Launch at Login",
+  "settings.autostartMinimized": "Start in the system tray",
   "settings.webSearchMaxResults": "Search result count",
   "toast.alreadyLatest": "Already up to date",
   "toast.checkingGitHub": "Checking GitHub Release...",
@@ -636,6 +638,82 @@ describe("SettingsPage app updates", () => {
 });
 
 describe("SettingsPage autostart", () => {
+  it("reveals the tray option below autostart and hides it when autostart is disabled", async () => {
+    tauriMock.isAutostartEnabled.mockReset()
+      .mockResolvedValueOnce(false)
+      .mockResolvedValueOnce(true)
+      .mockResolvedValueOnce(false);
+    const { default: SettingsPage } = await import("@/pages/SettingsPage");
+    render(<SettingsPage active onNavigate={vi.fn()} />);
+
+    const toggle = await screen.findByRole("switch", { name: "Launch at Login" });
+    await waitFor(() => expect(toggle).not.toBeDisabled());
+    expect(screen.queryByRole("switch", { name: "Start in the system tray" })).not.toBeInTheDocument();
+    fireEvent.click(toggle);
+    const trayToggle = await screen.findByRole("switch", { name: "Start in the system tray" });
+    await waitFor(() => expect(toggle).not.toBeDisabled());
+    expect(trayToggle).toHaveAttribute("aria-checked", "false");
+    expect(trayToggle.closest(".settings-reveal")).toHaveAttribute("data-open", "true");
+    expect(toggle.compareDocumentPosition(trayToggle) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+
+    fireEvent.click(toggle);
+    await waitFor(() => {
+      expect(toggle).not.toBeDisabled();
+      expect(screen.queryByRole("switch", { name: "Start in the system tray" })).not.toBeInTheDocument();
+    });
+    expect(tauriMock.setAutostartMinimized).not.toHaveBeenCalled();
+  });
+
+  it("loads the saved tray preference and persists both toggle directions", async () => {
+    tauriMock.isAutostartEnabled.mockResolvedValue(true);
+    tauriMock.getUserProfile.mockResolvedValue({ ...profile, autostart_minimized: true });
+    tauriMock.setAutostartMinimized.mockImplementation(async (enabled: boolean) => {
+      tauriMock.getUserProfile.mockResolvedValue({ ...profile, autostart_minimized: enabled });
+    });
+    const { default: SettingsPage } = await import("@/pages/SettingsPage");
+    render(<SettingsPage active onNavigate={vi.fn()} />);
+
+    const trayToggle = await screen.findByRole("switch", { name: "Start in the system tray" });
+    await waitFor(() => expect(trayToggle).toHaveAttribute("aria-checked", "true"));
+    fireEvent.click(trayToggle);
+    await waitFor(() => {
+      expect(tauriMock.setAutostartMinimized).toHaveBeenLastCalledWith(false);
+      expect(trayToggle).toHaveAttribute("aria-checked", "false");
+      expect(trayToggle).not.toBeDisabled();
+    });
+    fireEvent.click(trayToggle);
+    await waitFor(() => {
+      expect(tauriMock.setAutostartMinimized).toHaveBeenLastCalledWith(true);
+      expect(trayToggle).toHaveAttribute("aria-checked", "true");
+      expect(trayToggle).not.toBeDisabled();
+    });
+    expect(tauriMock.setAutostartMinimized).toHaveBeenCalledTimes(2);
+  });
+
+  it("blocks repeated tray writes and retains the saved preference when saving fails", async () => {
+    tauriMock.isAutostartEnabled.mockResolvedValue(true);
+    let rejectSave!: (error: Error) => void;
+    tauriMock.setAutostartMinimized.mockReturnValueOnce(new Promise<void>((_resolve, reject) => {
+      rejectSave = reject;
+    }));
+    const { default: SettingsPage } = await import("@/pages/SettingsPage");
+    render(<SettingsPage active onNavigate={vi.fn()} />);
+
+    const trayToggle = await screen.findByRole("switch", { name: "Start in the system tray" });
+    await waitFor(() => expect(trayToggle).not.toBeDisabled());
+    fireEvent.click(trayToggle);
+    expect(trayToggle).toBeDisabled();
+    expect(trayToggle).toHaveAttribute("aria-busy", "true");
+    fireEvent.click(trayToggle);
+    expect(tauriMock.setAutostartMinimized).toHaveBeenCalledTimes(1);
+    rejectSave(new Error("disk unavailable"));
+    await waitFor(() => {
+      expect(trayToggle).not.toBeDisabled();
+      expect(trayToggle).toHaveAttribute("aria-checked", "false");
+      expect(toastMock.error).toHaveBeenCalledWith("toast.autostartMinimizedFailed");
+    });
+  });
+
   it("leaves the switch off and usable when the initial state cannot be read", async () => {
     tauriMock.isAutostartEnabled.mockRejectedValueOnce(new Error("autostart unavailable"));
 

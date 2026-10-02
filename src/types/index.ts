@@ -227,6 +227,7 @@ export interface LlmProviderConfig {
 
 // 用户画像
 export interface UserProfile {
+  autostart_minimized?: boolean;
   r2t2?: { context: string; language: string | null };
   hot_words: HotWord[];
   correction_patterns: CorrectionPattern[];
