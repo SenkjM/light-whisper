@@ -190,12 +190,12 @@ fn codex_models_cache_key(
     )
 }
 
-fn cached_codex_models(cache_key: &str) -> Option<Vec<AiModelInfo>> {
+fn cached_codex_models(cache_key: &str, now: Instant) -> Option<Vec<AiModelInfo>> {
     let cache = codex_models_cache()
         .lock()
         .unwrap_or_else(|poisoned| poisoned.into_inner());
     let cached = cache.get(cache_key)?;
-    if cached.fetched_at.elapsed() > CODEX_MODELS_CACHE_TTL {
+    if now.duration_since(cached.fetched_at) > CODEX_MODELS_CACHE_TTL {
         return None;
     }
     Some(cached.models.clone())
@@ -366,8 +366,9 @@ fn cached_codex_fallback(
     cache_key: Option<&str>,
     source_url: &str,
     error: &str,
+    now: Instant,
 ) -> Option<AiModelListPayload> {
-    let models = cache_key.and_then(cached_codex_models)?;
+    let models = cache_key.and_then(|key| cached_codex_models(key, now))?;
     log::warn!("Codex 模型目录刷新失败，继续使用最近成功目录: {error}");
     Some(AiModelListPayload {
         models,
@@ -467,7 +468,10 @@ pub async fn list_ai_models(
         .map(|token| codex_models_cache_key(token, model_list_format));
     let codex_cache_identity = chatgpt_token.as_ref().map(codex_models_cache_identity);
     if !force_refresh {
-        if let Some(models) = codex_cache_key.as_deref().and_then(cached_codex_models) {
+        if let Some(models) = codex_cache_key
+            .as_deref()
+            .and_then(|key| cached_codex_models(key, Instant::now()))
+        {
             return Ok(AiModelListPayload { models, source_url });
         }
     }
@@ -517,18 +521,24 @@ pub async fn list_ai_models(
                 }
                 return Err(error);
             }
-            if let Some(fallback) =
-                cached_codex_fallback(codex_cache_key.as_deref(), &source_url, &error)
-            {
+            if let Some(fallback) = cached_codex_fallback(
+                codex_cache_key.as_deref(),
+                &source_url,
+                &error,
+                Instant::now(),
+            ) {
                 return Ok(fallback);
             }
             return Err(error);
         }
         Err(e) => {
             let error = format!("拉取模型列表失败: {e}");
-            if let Some(fallback) =
-                cached_codex_fallback(codex_cache_key.as_deref(), &source_url, &error)
-            {
+            if let Some(fallback) = cached_codex_fallback(
+                codex_cache_key.as_deref(),
+                &source_url,
+                &error,
+                Instant::now(),
+            ) {
                 return Ok(fallback);
             }
             return Err(error);
@@ -539,9 +549,12 @@ pub async fn list_ai_models(
         Ok(payload) => payload,
         Err(e) => {
             let error = format!("模型列表响应解析失败: {e}");
-            if let Some(fallback) =
-                cached_codex_fallback(codex_cache_key.as_deref(), &source_url, &error)
-            {
+            if let Some(fallback) = cached_codex_fallback(
+                codex_cache_key.as_deref(),
+                &source_url,
+                &error,
+                Instant::now(),
+            ) {
                 return Ok(fallback);
             }
             return Err(error);
@@ -551,9 +564,12 @@ pub async fn list_ai_models(
     let models = match parse_models_payload(&payload, model_list_format) {
         Ok(models) => models,
         Err(error) => {
-            if let Some(fallback) =
-                cached_codex_fallback(codex_cache_key.as_deref(), &source_url, &error)
-            {
+            if let Some(fallback) = cached_codex_fallback(
+                codex_cache_key.as_deref(),
+                &source_url,
+                &error,
+                Instant::now(),
+            ) {
                 return Ok(fallback);
             }
             return Err(error);
@@ -776,31 +792,36 @@ mod tests {
 
         store_codex_models(&api_key, &models);
 
-        assert_eq!(cached_codex_models(&api_key), Some(models.clone()));
-        assert_eq!(cached_codex_models(&chatgpt_key), None);
+        assert_eq!(
+            cached_codex_models(&api_key, Instant::now()),
+            Some(models.clone())
+        );
+        assert_eq!(cached_codex_models(&chatgpt_key, Instant::now()), None);
         let fallback = cached_codex_fallback(
             Some(&api_key),
             codex_oauth_service::CHATGPT_CODEX_MODELS_URL,
             "temporary failure",
+            Instant::now(),
         )
         .expect("a recent successful catalog should remain available");
         assert_eq!(fallback.models, models);
         store_codex_models(&chatgpt_key, &fallback.models);
         remove_cached_codex_models_for_identity(&codex_models_cache_identity(&token));
-        assert_eq!(cached_codex_models(&api_key), None);
-        assert_eq!(cached_codex_models(&chatgpt_key), None);
+        assert_eq!(cached_codex_models(&api_key, Instant::now()), None);
+        assert_eq!(cached_codex_models(&chatgpt_key, Instant::now()), None);
     }
 
     #[test]
     fn codex_fallback_rejects_expired_catalogs() {
         let cache_key = "codex-api:expired-cache-test";
+        let fetched_at = Instant::now();
         codex_models_cache()
             .lock()
             .unwrap_or_else(|poisoned| poisoned.into_inner())
             .insert(
                 cache_key.to_string(),
                 CachedCodexModels {
-                    fetched_at: Instant::now() - CODEX_MODELS_CACHE_TTL - Duration::from_secs(1),
+                    fetched_at,
                     models: vec![AiModelInfo {
                         id: "stale-model".to_string(),
                         owned_by: Some("openai".to_string()),
@@ -808,10 +829,19 @@ mod tests {
                 },
             );
 
+        // Advance the read clock; subtracting the TTL can underflow on fresh Windows runners.
         assert!(cached_codex_fallback(
             Some(cache_key),
             codex_oauth_service::CHATGPT_CODEX_MODELS_URL,
             "temporary failure",
+            fetched_at + CODEX_MODELS_CACHE_TTL,
+        )
+        .is_some());
+        assert!(cached_codex_fallback(
+            Some(cache_key),
+            codex_oauth_service::CHATGPT_CODEX_MODELS_URL,
+            "temporary failure",
+            fetched_at + CODEX_MODELS_CACHE_TTL + Duration::from_secs(1),
         )
         .is_none());
         codex_models_cache()
