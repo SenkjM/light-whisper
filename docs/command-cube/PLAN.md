@@ -20,7 +20,8 @@
 7. 后续功能（非主线）：
    - agent 快捷调用：需自行维护接收端插件，细节后续定。
    - 歌词 / 视频字幕：走 Qwen3 job API + VAD 句级时间，引擎拆分完成后再做。
-8. **许可证**：新写代码采用 AGPL-3.0-only，继承 / 修改的上游代码保持 GPL-3.0-only（见 §9）。
+8. **CUDA 运行时按需下载**：安装包只含 CPU 版，不捆绑 CUDA 运行时；有 NVIDIA 显卡的用户在设置中一键启用，由 Go 引擎检测、下载、校验并切换（见 §5）。
+9. **许可证**：新写代码采用 AGPL-3.0-only，继承 / 修改的上游代码保持 GPL-3.0-only（见 §10）。
 
 ### 背景与分支理由
 
@@ -106,7 +107,7 @@ flowchart TB
     SESS["R2T2 会话管理<br/>VAD 分段 + 会话状态机"]
     BATCH["Qwen3 批处理<br/>首尾裁剪 / 文件 job"]
     CFG["引擎配置存储<br/>engine.json + schema_version"]
-    MM["模型管理<br/>加载 / 卸载 / 空闲卸载 / 下载"]
+    MM["模型管理<br/>加载 / 卸载 / 空闲卸载 / 下载<br/>CUDA 运行时按需下载"]
   end
 
   subgraph NATIVE["C / C++ 原生库 · cgo"]
@@ -176,6 +177,7 @@ sequenceDiagram
 | 职责 | Go 后端 | Rust 薄壳 | 前端 |
 |------|:------:|:--------:|:----:|
 | 模型加载 / 卸载、下载、校验 | ✅ | 发起请求 | 显示 |
+| CUDA 运行时检测 / 下载 / 校验 / 加载（见 §5） | ✅ | 转发 API | 按钮与进度 |
 | 推理调度（实时优先、批处理排队、GPU 争用） | ✅ | — | — |
 | FireRedVAD、R2T2 分段与会话状态机 | ✅ | — | — |
 | Qwen3 裁剪 + 批处理 / job | ✅ | 提交 job | 文件工具 UI |
@@ -240,6 +242,7 @@ POST  /v1/engine/reload          执行待生效的 reload 项；有实时会话
 | `GET /v1/models` | 清单、已安装状态、校验结果 |
 | `POST /v1/models/{id}/download`、`DELETE /v1/models/{id}/download` | 开始 / 取消下载（进度走 `/v1/events`） |
 | `POST /v1/engine/load`、`POST /v1/engine/unload` | 显式加载 / 卸载 |
+| `GET /v1/runtimes/cuda`、`POST /v1/runtimes/cuda/download`、`DELETE /v1/runtimes/cuda/download` | CUDA 运行时状态 / 开始 / 取消下载（见 §5） |
 
 ### 4.4 实时（R2T2 only）— WebSocket
 
@@ -275,14 +278,97 @@ POST  /v1/engine/reload          执行待生效的 reload 项；有实时会话
 
 ---
 
-## 5. 前后端分离难点评估
+## 5. CUDA 运行时按需一键下载
+
+> 状态：方案已确认；下载地址、清单格式、具体版本号与体积等细节**待核实**，本节不写死。
+
+### 5.1 目标
+
+- **安装包默认只含 CPU 版**，不捆绑任何 NVIDIA CUDA 运行时文件。
+- 减小安装包体积；避免再分发 NVIDIA 专有运行时带来的授权问题（见 §10.6 中 CUDA 运行库一行）。
+- **CPU 用户无需下载**：只有检测到 NVIDIA 显卡、且用户主动启用时才下载。
+- R2T2 CUDA 版 DLL 本身（本项目构建产物）是随包分发，还是与运行时一起按需下载：**待定**。Qwen3（transcribe.cpp）若提供 CUDA 变体，沿用同一机制。
+
+### 5.2 构建期与运行期区分
+
+| 阶段 | 需要什么 | 归属 |
+|------|----------|------|
+| **构建期**（CI 产出 R2T2 CUDA 版 DLL） | 完整 CUDA Toolkit（nvcc）+ MSVC | CI 问题，**单独处理** |
+| **运行期**（用户机器） | NVIDIA 驱动 + 运行时 DLL：`cudart64_*.dll`、`cublas64_*.dll`、`cublasLt64_*.dll` | 本节方案；**不需要完整 Toolkit** |
+
+- **CI 现状**：`windows-latest` 已带 VS 2026，CUDA 12.8 的 nvcc 不接受该编译器，CUDA 构建失败。候选方案：固定 `windows-2022` 镜像，或给 nvcc 加 `-allow-unsupported-compiler`；**未定**，与本节方案互不依赖。
+
+### 5.3 流程
+
+```mermaid
+flowchart TD
+  A["检测 NVIDIA 显卡"] -->|"无"| CPU["保持 CPU 版"]
+  A -->|"有"| B["设置中提示「启用 GPU 加速」"]
+  B -->|"用户拒绝"| CPU
+  B -->|"用户启用"| C{"驱动版本满足要求？"}
+  C -->|"过旧"| D["提示更新驱动，不下载"] --> CPU
+  C -->|"满足"| E{"系统已有同主版本<br/>CUDA 运行时？"}
+  E -->|"有"| L["复用系统运行时"]
+  E -->|"无"| F["从 NVIDIA 官方 redistrib 渠道<br/>下载对应版本"]
+  F --> G{"校验哈希"}
+  G -->|"失败"| CPU
+  G -->|"通过"| H["放入应用数据目录"]
+  H --> L
+  L --> R["引擎重载，切换到 CUDA 后端"]
+  R -->|"加载失败"| CPU
+```
+
+1. **检测显卡**：Go 引擎探测是否存在 NVIDIA 显卡（现状用 `nvidia-smi` 自动探测；改用 NVML 等方式待定）。没有则不出现任何 GPU 相关提示。
+2. **提示启用**：前端设置页显示「启用 GPU 加速」；用户确认后才进入后续步骤。
+3. **检查驱动**：读取驱动版本，与该 CUDA 主版本要求的最低驱动比较（具体门槛**待核实**）。过旧则提示用户更新驱动，**不下载**。
+4. **优先复用**：先探测系统中已有的、与 R2T2 DLL **同主版本**的 CUDA 运行时（如 `CUDA_PATH`、`PATH` 中的 `cudart64_*.dll` 等），三个 DLL 齐全且版本匹配则直接复用，不再下载。
+5. **下载**：否则从 NVIDIA 官方 redistrib 渠道下载对应版本；若官方包是压缩包，只解出所需 DLL（包结构**待核实**）。
+6. **校验**：逐文件校验 SHA-256，不通过则删除并保持 CPU 版。
+7. **落盘**：放入应用数据目录（`%APPDATA%\com.light-whisper.app\` 下按版本分子目录，如 `runtimes/cuda/<版本>/`，目录名待定）。
+8. **切换**：引擎把该目录加入 DLL 搜索路径后，`LoadLibrary` 加载 CUDA 版 R2T2 DLL，执行 reload 切换到 CUDA 后端；有实时会话时等会话结束（与 `POST /v1/engine/reload` 的 409 语义一致）。
+9. **回退**：任一步失败或用户拒绝，都**保持 CPU 版**，并向 UI 报告明确原因。
+
+### 5.4 要求与约束
+
+- **主版本一致**：运行时的 CUDA 主版本必须与编译 R2T2 DLL 时的 CUDA 版本一致。建议在构建产物中写入清单（manifest），记录 CUDA 版本、所需运行时 DLL 名称及其哈希；沿用 `build_r2t2_runtime.py` 现有的 manifest 与 SHA-256 机制，引擎据此决定下载哪个版本、如何校验。
+- **大文件下载体验**：cuBLAS 体积数百 MB，必须支持**断点续传、进度显示、取消**；临时文件下载完成并校验通过后再原子替换到目标目录。
+- **待核实**：
+  - NVIDIA redistrib 的下载地址与目录结构；
+  - 官方是否提供可直接用于校验的哈希清单，以及其格式；
+  - 各 CUDA 主版本对应的最低驱动版本；
+  - 三个 DLL 的确切文件名与体积。
+
+  以上均不在本文写死，实现前逐项确认。
+
+### 5.5 职责边界与 API
+
+| 职责 | Go 后端 | Rust 薄壳 | 前端 |
+|------|:------:|:--------:|:----:|
+| 显卡 / 驱动检测、系统运行时探测 | ✅ | — | — |
+| 下载、断点续传、取消、哈希校验、落盘 | ✅（模型管理） | 转发 API | 进度展示 |
+| 加载 CUDA 版 DLL、reload 切换后端、失败回退 CPU | ✅ | — | 状态展示 |
+| 「启用 GPU 加速」按钮与提示 | — | 转发 API | ✅ |
+
+沿用 §4.3 模型下载的接口风格（草案，路径名待契约冻结时确定）：
+
+| 方法 / 路径 | 说明 |
+|-------------|------|
+| `GET /v1/runtimes/cuda` | 状态：是否检测到 NVIDIA 显卡、驱动版本是否满足、需要的 CUDA 主版本、来源（系统复用 / 已下载 / 未安装）、校验结果、当前是否已在 CUDA 后端 |
+| `POST /v1/runtimes/cuda/download`、`DELETE /v1/runtimes/cuda/download` | 开始（或续传）/ 取消下载；进度走 `WS /v1/events` 的 `download_progress`（以 `target` 区分模型与运行时） |
+| `PATCH /v1/config`（设备偏好）+ `POST /v1/engine/reload` | 切换到 CUDA 后端；失败时保持 CPU，并经 `engine_status` 事件上报原因 |
+
+- Rust **只转发 API 调用**，不检测显卡、不下载、不加载 DLL；前端只负责按钮和进度展示。
+
+---
+
+## 6. 前后端分离难点评估
 
 严重度：🔴 高 / 🟠 中 / 🟢 低。
 
 | # | 难点 | 严重度 | 说明 | 缓解 |
 |---|------|:------:|------|------|
 | 1 | **R2T2 分段 / 会话逻辑忠实移植** | 🔴 | 需要逐项对齐 `SegmentedR2T2` / `R2T2StreamSession` / `NativeRuntime` 的细节：offset 校验、committed 只增不减、preview 前缀校验、finish 补 320ms 零音频、ABI 0.4 首段前缀一次解码、chunk 160/320ms、每段重启原生会话、段间补空格、出错 reset。语义稍有偏差就会出现丢句尾或字幕回退 | 把 Python 测例改写为 Go 表驱动测试；用同一批 PCM 夹具对比 Python 与 Go 的 committed 轨迹和最终文本，逐字一致才算通过；分段策略的取舍放到之后 |
-| 2 | **Windows 上的 cgo 与原生依赖打包** | 🔴 | Go cgo 在 Windows 上需要 MinGW gcc；而 audio.cpp / transcribe.cpp 的 CUDA 构建基于 MSVC（CUDA 12.9、MSVC 14.44）。走纯 C ABI 一般可行，但不能跨 ABI 传 C++ 对象或 CRT 资源；还要打包 CUDA / CRT DLL，以及 CPU、Vulkan、CUDA 多种变体 | 只经 C ABI 调用，按需 `LoadLibrary` 动态加载（cgo 或 `syscall`/purego 风格）；内存由库自己分配和释放；沿用 `build_r2t2_runtime.py` / `build_engine.py` 的 manifest 与 SHA-256 校验；transcribe.cpp 需确认有稳定的 C 头文件，必要时写一层薄 C 封装 |
+| 2 | **Windows 上的 cgo 与原生依赖打包** | 🔴 | Go cgo 在 Windows 上需要 MinGW gcc；而 audio.cpp / transcribe.cpp 的 CUDA 构建基于 MSVC（CUDA 12.9、MSVC 14.44）。走纯 C ABI 一般可行，但不能跨 ABI 传 C++ 对象或 CRT 资源；还要打包 CRT DLL（CUDA 运行时改为按需下载，见 §5），以及 CPU、Vulkan、CUDA 多种变体 | 只经 C ABI 调用，按需 `LoadLibrary` 动态加载（cgo 或 `syscall`/purego 风格）；内存由库自己分配和释放；沿用 `build_r2t2_runtime.py` / `build_engine.py` 的 manifest 与 SHA-256 校验；transcribe.cpp 需确认有稳定的 C 头文件，必要时写一层薄 C 封装 |
 | 3 | **进程生命周期与版本兼容** | 🟠 | Rust 需要拉起和监管后端、崩溃后重启、交接端口与 token、处理壳与后端版本不匹配、处理实时会话中途后端崩溃（现有 `ipc_recovery_tests.rs` 的语义） | `/health` 返回 `api_version`，Rust 校验兼容范围；用 Job Object 绑定子进程生命周期；指数退避重启；会话中断时向 UI 发明确错误，并保留已 committed 的文本 |
 | 4 | **性能** | 🟠 | ①本地 WS 推流：160ms 一帧，回环延迟通常小于 1ms，不是瓶颈，但要避免 base64 和 JSON 封装；②cgo 每次调用约 50–100ns，可忽略；但单次 `stream_push` / `run` 是长时间 C 调用，会占住 OS 线程；③缓冲区复用与 GC 抖动；④实时与批处理争用唯一的推理线程 / GPU；⑤冷启动、模型加载、空闲卸载后的预热（现状初始化约 5 秒） | 二进制帧；单一推理线程 `LockOSThread`，会话内串行；用 `sync.Pool` 复用 PCM 缓冲，传给 C 的内存固定或由 C 侧分配；按 §4.6 实时优先调度；模型加载后预热并报告 ready；空闲卸载阈值可配，重新加载时 UI 显示加载状态 |
 | 5 | **FireRedVAD 移植** | 🟠 | 关键在 fbank 特征一致性：`kaldi-native-fbank` 是 C++，Go 端要么用 C 封装调用它，要么用 Go 重写（帧长、窗函数、mel、CMVN 都要逐项一致）；onnxruntime 可用 `onnxruntime_go`（cgo 动态加载） | 优先封装原 C++ fbank 库保证一致；与 Python 输出逐帧对比概率（误差 < 1e-4）和区间 |
@@ -296,7 +382,7 @@ POST  /v1/engine/reload          执行待生效的 reload 项；有实时会话
 
 ---
 
-## 6. 迁移步骤与完成标准
+## 7. 迁移步骤与完成标准
 
 ### 步骤 0：契约冻结
 
@@ -340,53 +426,54 @@ POST  /v1/engine/reload          执行待生效的 reload 项；有实时会话
 
 ---
 
-## 7. 风险与待定问题
+## 8. 风险与待定问题
 
 | 风险 / 待定 | 说明 |
 |-------------|------|
 | 外层分段取舍 | 保留 8 秒 + 静音分段，还是只用 C++ 16 秒滚动窗口？原样移植后用测例对比决定 |
 | transcribe.cpp C 接口稳定性 | 需确认公开 C ABI 是否覆盖所需功能（会话、取消、能力查询） |
 | CUDA 变体与显存 | 两套原生库与模型同时驻留的显存成本；CPU、Vulkan、CUDA 回退顺序 |
+| CUDA 运行时按需下载 | 运行时主版本须与 R2T2 DLL 构建版本一致；NVIDIA redistrib 地址、清单格式、最低驱动版本待核实；CI 的 VS 2026 / CUDA 12.8 不兼容问题方案未定（见 §5） |
 | 上游合并 | 引擎边界大改，cherry-pick 上游的成本上升；尽量保持听写产品行为兼容 |
 | Rust 工具链 | 调研环境 `rustc 1.85.1` 无法 `cargo check`；需钉 ≥1.88 |
 | 时间戳精度 | 文件工具只有句级时间；词级需对齐器 |
 
 ---
 
-## 8. 非目标（本阶段）
+## 9. 非目标（本阶段）
 
 - 设计 agent 接收端插件协议或内置 Agent 运行时。
 - 实现歌词 / 字幕完整产品流程。
 - 用 Qwen3 伪流式替代 R2T2 实时路径。
 - 后端持有密钥或做 OS 集成。
 - 重写为 Electron / 纯 C++ GUI；强制换成 whisper.cpp。
-- 重新授权继承自上游的 GPL-3.0-only 代码（许可证策略见 §9）。
+- 重新授权继承自上游的 GPL-3.0-only 代码（许可证策略见 §10）。
 
 ---
 
-## 9. 许可证策略
+## 10. 许可证策略
 
 > **说明**：本节是工程规划，不构成法律意见；正式发布前应由熟悉开源许可证的人士审阅。
 
-### 9.1 现状
+### 10.1 现状
 
 - 上游 `sypsyp97/light-whisper` 与本仓库均为 **GPL-3.0-only**：见 `LICENSE`、`NOTICE`；`package.json`、`src-tauri/Cargo.toml`、`pyproject.toml` 的 license 字段同为 `GPL-3.0-only`。
 - 第三方材料在 `THIRD_PARTY_NOTICES.md` 中单独列明，并保留各自的许可证。
 
-### 9.2 决策与理由
+### 10.2 决策与理由
 
 - **新写代码采用 AGPL-3.0-only；继承自上游、或在上游基础上修改的代码保持 GPL-3.0-only。**
 - **理由**：新架构把识别能力做成独立进程，对外暴露本地 HTTP / WebSocket 网络 API。AGPL 在 GPL 之外加了 §13，要求向通过网络与修改版交互的用户提供对应源码，更贴合「服务化引擎」的形态，能防止有人修改后只以网络服务形式提供而不公开源码。
 
-### 9.3 法律依据
+### 10.3 法律依据
 
 - **可以组合**：GPLv3 §13 与 AGPLv3 §13 都明确允许把 GPLv3 作品与 AGPLv3 作品链接或组合成一个作品并一起传递。
 - **各部分保留各自许可证**：GPL 部分仍按 GPLv3 授权，AGPL 部分仍按 AGPLv3 授权，互不改写。
 - **组合作品整体受 AGPL §13 约束**：组合作品中涉及网络交互的部分，需要满足 AGPLv3 §13 的「向远程交互用户提供源码」要求。
 - **继承代码不能改许可证**：未经全部相关版权人同意，不能把上游的 GPL-3.0-only 代码改成 AGPL-3.0-only（也不能改成其他许可证）。所以只有新写的代码能用 AGPL。
-- **§13 的适用面**：它针对的是「修改后的版本」且「用户通过网络与之远程交互」的情形。默认只绑 `127.0.0.1`、只给本机使用时，实际影响有限；但一旦有人把修改版暴露给远程用户，就必须提供源码。因此仍应内置源码获取入口（见 9.5）。
+- **§13 的适用面**：它针对的是「修改后的版本」且「用户通过网络与之远程交互」的情形。默认只绑 `127.0.0.1`、只给本机使用时，实际影响有限；但一旦有人把修改版暴露给远程用户，就必须提供源码。因此仍应内置源码获取入口（见 10.5）。
 
-### 9.4 适用范围
+### 10.4 适用范围
 
 | 范围 | 许可证 | 说明 |
 |------|--------|------|
@@ -397,7 +484,7 @@ POST  /v1/engine/reload          执行待生效的 reload 项；有实时会话
 | 现有 `src-tauri/` 下继承的文件 | GPL-3.0-only | 即使大幅修改也保持 GPL |
 | 现有 `src/` 下继承的文件 | GPL-3.0-only | 同上 |
 | 现有 `scripts/`、`formal/`、`src-tauri/resources/` 下继承的文件 | GPL-3.0-only | 同上；从 Python 移植到 Go 的逻辑见下方规则 |
-| 第三方代码、模型与运行库 | 各自许可证 | 见 9.6，不被重新授权 |
+| 第三方代码、模型与运行库 | 各自许可证 | 见 10.6，不被重新授权 |
 
 **混合文件规则：**
 
@@ -407,7 +494,7 @@ POST  /v1/engine/reload          执行待生效的 reload 项；有实时会话
 - **从上游 GPL 代码翻译 / 移植的逻辑**（例如把 `r2t2_segmented.py`、`r2t2_stream.py`、`r2t2_native.py`、`firered_vad.py` 移植到 Go）：移植后的代码很可能被视为上游作品的衍生作品，**不能当作「完全新写」直接标 AGPL**。可选做法：这类文件标 GPL-3.0-only；或取得上游版权人同意后再标 AGPL。**待核实，发布前确定。**
   - 其中 `firered_vad.py` 还包含 Apache-2.0 的上游改编部分，需一并保留 Apache 声明。
 
-### 9.5 后续落地步骤（本次不执行）
+### 10.5 后续落地步骤（本次不执行）
 
 1. 采用 REUSE 规范：新增 `LICENSES/AGPL-3.0-only.txt`，并把 GPL 文本放到 `LICENSES/GPL-3.0-only.txt`（根目录 `LICENSE` 保留）；第三方许可证按需放入 `LICENSES/`。
 2. 逐文件加 SPDX 头：新文件 `SPDX-License-Identifier: AGPL-3.0-only`，继承文件 `SPDX-License-Identifier: GPL-3.0-only`，附 `SPDX-FileCopyrightText`。
@@ -416,7 +503,7 @@ POST  /v1/engine/reload          执行待生效的 reload 项；有实时会话
 5. 为网络用户提供源码入口：后端提供 `GET /v1/source`（返回源码仓库地址与确切的 commit / 版本），前端「关于」页面同时给出链接；修改版必须指向修改后的源码。
 6. CI 增加 `reuse lint`，检查每个文件都有许可证与版权声明，并用 Go 依赖许可证扫描（如 `go-licenses`）阻止不兼容的依赖。
 
-### 9.6 第三方依赖许可证审查
+### 10.6 第三方依赖许可证审查
 
 | 组件 | 许可证 | 与 AGPL / GPL 组合 | 备注 |
 |------|--------|--------------------|------|
@@ -444,11 +531,11 @@ POST  /v1/engine/reload          执行待生效的 reload 项；有实时会话
   - 其对「Derivative Work」的定义包含「model outputs」。
   - 结论：模型应继续单独下载、单独声明，**不得**写成被 AGPL / GPL 覆盖。「输出算衍生作品」对转写文本的影响**待核实**。
 - **CUDA 运行库**：与 GPL / AGPL 一起分发时的兼容性依赖「系统库」例外的解释，属于上游已有问题，AGPL 不会让它变好；**待专业审阅**。
-- **从 GPL 代码移植的逻辑**（见 9.4）：是本节最主要的不确定项。
+- **从 GPL 代码移植的逻辑**（见 10.4）：是本节最主要的不确定项。
 
 ---
 
-## 10. 参考路径速查
+## 11. 参考路径速查
 
 ```text
 docs/command-cube/PLAN.md                         ← 本文件
