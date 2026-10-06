@@ -81,7 +81,17 @@ Rust 壳拉起 `lw-engine`（默认 `--listen 127.0.0.1:0`），读取 **stdout 
 | 新增设置键 | `device`（auto/cpu/cuda/vulkan，reload）、`default_language`、`log_level`（live），对应 PLAN §3.2；缺省时与现状行为一致 |
 | PATCH 语义 | JSON merge patch：`null` 恢复默认并删除该键；`models_dir: ""` 同样删除（与 `write_models_dir(None)` 一致）；缺 `If-Match` 返回 428 |
 | `/v1/asr/transcribe` 的引擎 | **已定（用户决定）**：Qwen3 与 R2T2 都可用，走当前本地引擎的 `Backend.Transcribe`；R2T2 把整段音频按块送入新建分段会话再结束（同 Python `transcribe_audio`）。Qwen3 仍是非实时与小工具的推荐 / 回退选择；云端引擎返回 409 `no_local_engine` |
-| R2T2 批处理与实时会话 | 两者共用唯一推理线程和同一个已加载的 R2T2 模型。调度语义不变（实时优先、运行中的任务不抢占）：整段 R2T2 识别是一个调度任务，执行期间开始的实时会话等它结束；实时会话进行中提交 R2T2 批处理返回 409 `realtime_session_active`（同 Python `stream_busy`，在排队时与推理线程上各检查一次）。Qwen3 批处理照常排队 |
+| R2T2 批处理与实时会话 | 两者共用唯一推理线程和同一个已加载的 R2T2 模型。现有调度为两级（实时优先、运行中的任务不抢占）：整段 R2T2 识别是一个调度任务，执行期间开始的实时会话等它结束；实时会话进行中提交 R2T2 批处理返回 409 `realtime_session_active`（同 Python `stream_busy`，在排队时与推理线程上各检查一次）。Qwen3 批处理照常排队。**409 规则保持现状**（用户决定），三级优先级实现后只适用于这条未分段的整段路径，步骤 4 再评估 |
 | GPU 空闲卸载 | 与 Python `gpu_idle_should_unload` 一致：只在设备不是 CPU、无实时会话、调度队列为空、超时后卸载；下一次请求自动重新加载 |
 | 启动时加载 | 默认在启动后立即加载当前本地引擎（与 Python 一致），`--no-autoload` 关闭 |
 | WS 鉴权 | 只接受 `Authorization` 头。浏览器无法给 WebSocket 设置该头，开发模式前端直连 WS 的方案留待步骤 6 |
+
+## 已定设计、尚未实现（PLAN §1、§4.4–§4.6，步骤 4）
+
+| 主题 | 决定 | 契约中的体现 |
+|------|------|--------------|
+| 请求模型 | 前端 / Rust 只发**语音转录**（`WS /v1/asr/stream` 实时、`POST /v1/asr/transcribe` 整段）和**文件转录**（`POST /v1/jobs`）两类请求，每个带优先级；引擎由后端按设置决定，请求不指定引擎 | 各端点都没有 engine 参数 |
+| 三级优先级 | 字段名 `priority`，取值 `realtime` / `high` / `normal` = **实时 / 优先 / 普通**（沿用 `live` / `reload` 这类小写英文枚举，中文名用于文档与 UI）。实时 = 实时听写，可抢占；优先 = 普通按键听写的缺省；普通 = 文件转录的缺省；缺省值后续开放为用户设置 | `components/schemas/Priority`、`/v1/asr/transcribe` 的 `priority` 参数（均 `x-status: planned`）；实时会话固定 `realtime` |
+| 抢占与重排 | 实时请求到来时打断并丢弃正在运行的任务、立即执行；被打断的任务从中断的段重新排队（保持原优先级、排同级队首），不判失败；有 VAD 分段时损失至多一段。单段 C 调用能否中途取消待核实，不能时在段结束后让出 | 现有调度器为两级、run-to-completion（`SchedulerStats` 说明） |
+| 大文件转录 | Go 先 VAD 分段，每段作为一个任务按 job 优先级入队；两种引擎都按段让出（解决此前 R2T2 长文件 job 的待定项） | `/v1/jobs`（planned） |
+| Qwen3 整句实时 | Qwen3 无原生流式，实时听写时 VAD 切句、逐句识别，整句字幕（`committed` 按句追加、`tentative` 为空）；R2T2 仍是原生流式实时引擎 | `ws-protocol.md`「计划中」；现有实现对 Qwen3 返回 409 `wrong_engine` |

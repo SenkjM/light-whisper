@@ -29,9 +29,13 @@
 
 **慢消费者**：每个连接有 256 条缓冲；缓冲满时服务端以关闭码 `1008`（policy violation）断开该连接，不会阻塞引擎。客户端应重新 `GET /v1/engine/status`、`GET /v1/config` 后重连。引擎退出时以 `1001` 关闭。
 
-## `WS /v1/asr/stream`（仅 R2T2）
+## `WS /v1/asr/stream`（语音转录 · 实时）
 
-握手前检查：当前生效引擎不是 `confucius4-r2t2`（或为云端引擎）时返回 HTTP 409，**不降级到 Qwen3**；已有实时会话时同样返回 409（`realtime_session_active`）。
+实时会话的优先级固定为 `realtime`（实时，PLAN §4.6），客户端不需要也不能指定；引擎由后端按设置决定，客户端不指定。
+
+握手前检查（**现有实现**）：当前生效引擎不是 `confucius4-r2t2`（或为云端引擎）时返回 HTTP 409，**不静默更换引擎**；已有实时会话时同样返回 409（`realtime_session_active`）。
+
+**计划中（PLAN §3.0.2 / §4.4，步骤 4）**：当前引擎为 Qwen3 时，同一端点改为 VAD 整句模式——消息格式不变，`partial` 只在 VAD 切出一句并识别完成时发送，`committed` 按整句追加，`tentative` 恒为空串；届时只有云端引擎或已有会话才返回 409。
 
 一条连接上可以先后进行多个会话，但同一时间全局只允许一个会话。
 
@@ -60,7 +64,7 @@
 | type | 字段 | 说明 |
 |------|------|------|
 | `started` | `session_id` | `start` 成功 |
-| `partial` | `session_id`、`committed`、`tentative` | 每个音频帧一条；`committed` 只增不减 |
+| `partial` | `session_id`、`committed`、`tentative` | R2T2：每个音频帧一条；`committed` 只增不减。Qwen3 整句模式（计划中）：每切出一句一条，`tentative` 为空 |
 | `result` | `session_id`、`text`、`language`、`sample_count` | `finish` 的结果；之后会话结束、全局会话槽释放 |
 | `cancelled` | `session_id` | `cancel` 确认 |
 | `error` | `session_id?`、`code`、`message`、`expected_offset?` | 见下表 |

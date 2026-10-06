@@ -69,8 +69,16 @@ components:
         revision: { type: string }
         applied: { type: array, items: { type: string }, description: 本次已立即生效的 live 键 }
         pending_reload: { type: array, items: { type: string } }
+    Priority:
+      x-status: planned
+      type: string
+      enum: [realtime, high, normal]
+      description: |
+        请求优先级（PLAN §4.6，步骤 4 实现）：realtime = 实时（实时听写，可抢占：打断并丢弃正在运行的任务），
+        high = 优先（普通按键听写的缺省），normal = 普通（文件转录的缺省）。同级 FIFO；被抢占的任务从中断的段重新排队。
     SchedulerStats:
       type: object
+      description: 现有实现为两级（realtime / batch）、运行中的任务不打断；步骤 4 起按 Priority 三级计数（planned）
       properties:
         realtime_queued: { type: integer }
         batch_queued: { type: integer }
@@ -216,24 +224,35 @@ paths:
   /v1/asr/stream:
     get:
       x-status: implemented
-      summary: R2T2 实时会话 WebSocket，见 ws-protocol.md；当前引擎不是 R2T2 或已有会话时返回 409（不降级到 Qwen3）
+      summary: 语音转录 · 实时会话 WebSocket（优先级固定为 realtime），见 ws-protocol.md
+      description: |
+        已实现：当前引擎为 R2T2 时的原生流式会话；当前引擎不是 R2T2 或已有会话时返回 409（不静默更换引擎）。
+        planned（PLAN §3.0.2 / §4.4，步骤 4）：当前引擎为 Qwen3 时改为 VAD 整句模式（committed 按整句追加、tentative 为空），
+        届时只有云端引擎或已有会话才返回 409。
       responses:
         "101": { description: Switching Protocols }
         "409": { $ref: "#/components/responses/Conflict" }
   /v1/asr/transcribe:
     post:
       x-status: implemented
-      summary: 短音频同步整段识别（批处理优先级），使用当前本地引擎（Qwen3 或 R2T2）
+      summary: 语音转录（整段）：短音频同步识别，引擎由设置决定（Qwen3 或 R2T2），请求不指定引擎
       description: |
-        Qwen3：VAD 裁首尾后整段识别（非实时与小工具的推荐选择）。
+        Qwen3：VAD 裁首尾后整段识别（非实时场景的推荐 / 回退选择）。
         R2T2：整段音频按块送入新建的分段会话再结束（与 Python transcribe_audio 一致）。
-        R2T2 批处理与实时会话共用唯一推理线程和同一个已加载模型：实时会话进行中返回 409
-        realtime_session_active；整段作为一个任务执行，期间开始的实时会话等待其结束。
+        R2T2 整段识别与实时会话共用唯一推理线程和同一个已加载模型：实时会话进行中返回 409
+        realtime_session_active；整段作为一个未分段任务执行，期间开始的实时会话等待其结束。
+        该 409 规则保持现状，只适用于这条未分段的整段路径；三级优先级实现时（步骤 4）重新评估。
         配置为云端引擎时返回 409 no_local_engine。
+        现有实现一律按批处理级（scheduler 的 batch）排队；priority 参数为 planned。
       parameters:
         - { in: query, name: language, schema: { type: string }, description: 缺省时用 default_language }
         - { in: query, name: context, schema: { type: string } }
         - { in: query, name: hot_word, schema: { type: array, items: { type: string } }, style: form, explode: true }
+        - in: query
+          name: priority
+          x-status: planned
+          schema: { $ref: "#/components/schemas/Priority" }
+          description: 缺省为 high（优先），默认值后续可由用户设置调整（PLAN §4.6）；现有实现忽略此参数
       requestBody:
         required: true
         content:
@@ -258,7 +277,14 @@ paths:
     post: { x-status: planned, summary: 开始下载（进度走 /v1/events 的 download_progress）, responses: { "202": { description: Accepted } } }
     delete: { x-status: planned, summary: 取消下载, responses: { "204": { description: Cancelled } } }
   /v1/jobs:
-    post: { x-status: planned, summary: 文件转录 job（PLAN §4.5）, responses: { "202": { description: Accepted } } }
+    post:
+      x-status: planned
+      summary: 文件转录 job（PLAN §4.5）
+      description: |
+        请求体（待定）携带文件与可选 priority（Priority，缺省 normal / 普通）；不指定引擎，由后端按设置选择。
+        Go 先用 VAD 分段，再把每段作为一个任务按 job 优先级入队；实时请求可在段间插入或打断当前段，
+        被打断的段连同其后各段重新排队（PLAN §4.6）。
+      responses: { "202": { description: Accepted } }
   /v1/jobs/{id}:
     parameters: [{ in: path, name: id, required: true, schema: { type: string } }]
     get: { x-status: planned, summary: 查询 job, responses: { "200": { description: OK } } }
