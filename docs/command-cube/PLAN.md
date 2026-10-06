@@ -20,6 +20,7 @@
 7. 后续功能（非主线）：
    - agent 快捷调用：需自行维护接收端插件，细节后续定。
    - 歌词 / 视频字幕：走 Qwen3 job API + VAD 句级时间，引擎拆分完成后再做。
+8. **许可证**：新写代码采用 AGPL-3.0-only，继承 / 修改的上游代码保持 GPL-3.0-only（见 §9）。
 
 ### 背景与分支理由
 
@@ -359,11 +360,95 @@ POST  /v1/engine/reload          执行待生效的 reload 项；有实时会话
 - 用 Qwen3 伪流式替代 R2T2 实时路径。
 - 后端持有密钥或做 OS 集成。
 - 重写为 Electron / 纯 C++ GUI；强制换成 whisper.cpp。
-- 变更 GPL-3.0-only。
+- 重新授权继承自上游的 GPL-3.0-only 代码（许可证策略见 §9）。
 
 ---
 
-## 9. 参考路径速查
+## 9. 许可证策略
+
+> **说明**：本节是工程规划，不构成法律意见；正式发布前应由熟悉开源许可证的人士审阅。
+
+### 9.1 现状
+
+- 上游 `sypsyp97/light-whisper` 与本仓库均为 **GPL-3.0-only**：见 `LICENSE`、`NOTICE`；`package.json`、`src-tauri/Cargo.toml`、`pyproject.toml` 的 license 字段同为 `GPL-3.0-only`。
+- 第三方材料在 `THIRD_PARTY_NOTICES.md` 中单独列明，并保留各自的许可证。
+
+### 9.2 决策与理由
+
+- **新写代码采用 AGPL-3.0-only；继承自上游、或在上游基础上修改的代码保持 GPL-3.0-only。**
+- **理由**：新架构把识别能力做成独立进程，对外暴露本地 HTTP / WebSocket 网络 API。AGPL 在 GPL 之外加了 §13，要求向通过网络与修改版交互的用户提供对应源码，更贴合「服务化引擎」的形态，能防止有人修改后只以网络服务形式提供而不公开源码。
+
+### 9.3 法律依据
+
+- **可以组合**：GPLv3 §13 与 AGPLv3 §13 都明确允许把 GPLv3 作品与 AGPLv3 作品链接或组合成一个作品并一起传递。
+- **各部分保留各自许可证**：GPL 部分仍按 GPLv3 授权，AGPL 部分仍按 AGPLv3 授权，互不改写。
+- **组合作品整体受 AGPL §13 约束**：组合作品中涉及网络交互的部分，需要满足 AGPLv3 §13 的「向远程交互用户提供源码」要求。
+- **继承代码不能改许可证**：未经全部相关版权人同意，不能把上游的 GPL-3.0-only 代码改成 AGPL-3.0-only（也不能改成其他许可证）。所以只有新写的代码能用 AGPL。
+- **§13 的适用面**：它针对的是「修改后的版本」且「用户通过网络与之远程交互」的情形。默认只绑 `127.0.0.1`、只给本机使用时，实际影响有限；但一旦有人把修改版暴露给远程用户，就必须提供源码。因此仍应内置源码获取入口（见 9.5）。
+
+### 9.4 适用范围
+
+| 范围 | 许可证 | 说明 |
+|------|--------|------|
+| 新建的 Go 引擎服务目录（建议 `engine/`） | **AGPL-3.0-only** | 全部为新写代码：API 层、调度器、R2T2 会话 / 分段、Qwen3 批处理、配置存储、cgo 封装 |
+| 新写的 Rust 引擎 API 客户端 / 协议代码（建议放在新文件中，如 `src-tauri/src/engine_client/`） | **AGPL-3.0-only** | 只适用于从零新建的文件 |
+| 新写的前端模块（如独立前端新增的页面、组件、API 客户端，均为新建文件） | **AGPL-3.0-only** | 同上 |
+| 新写的契约文档、OpenAPI / WS schema、测试夹具与脚本 | **AGPL-3.0-only** | 新建文件 |
+| 现有 `src-tauri/` 下继承的文件 | GPL-3.0-only | 即使大幅修改也保持 GPL |
+| 现有 `src/` 下继承的文件 | GPL-3.0-only | 同上 |
+| 现有 `scripts/`、`formal/`、`src-tauri/resources/` 下继承的文件 | GPL-3.0-only | 同上；从 Python 移植到 Go 的逻辑见下方规则 |
+| 第三方代码、模型与运行库 | 各自许可证 | 见 9.6，不被重新授权 |
+
+**混合文件规则：**
+
+- 从上游文件修改而来的文件 → **保持 GPL-3.0-only**。
+- 完全新建的文件 → **AGPL-3.0-only**。
+- 一个文件里不混用两种许可证；需要两者兼有时，拆成独立文件。
+- **从上游 GPL 代码翻译 / 移植的逻辑**（例如把 `r2t2_segmented.py`、`r2t2_stream.py`、`r2t2_native.py`、`firered_vad.py` 移植到 Go）：移植后的代码很可能被视为上游作品的衍生作品，**不能当作「完全新写」直接标 AGPL**。可选做法：这类文件标 GPL-3.0-only；或取得上游版权人同意后再标 AGPL。**待核实，发布前确定。**
+  - 其中 `firered_vad.py` 还包含 Apache-2.0 的上游改编部分，需一并保留 Apache 声明。
+
+### 9.5 后续落地步骤（本次不执行）
+
+1. 采用 REUSE 规范：新增 `LICENSES/AGPL-3.0-only.txt`，并把 GPL 文本放到 `LICENSES/GPL-3.0-only.txt`（根目录 `LICENSE` 保留）；第三方许可证按需放入 `LICENSES/`。
+2. 逐文件加 SPDX 头：新文件 `SPDX-License-Identifier: AGPL-3.0-only`，继承文件 `SPDX-License-Identifier: GPL-3.0-only`，附 `SPDX-FileCopyrightText`。
+3. 新组件元数据：在 `engine/` 的 Go 模块目录放置 `LICENSE`，并在 README 写明 AGPL-3.0-only（`go.mod` 没有 license 字段）；新的 npm / crate 包用 SPDX 表达式标明。整体组合作品可标为 `GPL-3.0-only AND AGPL-3.0-only`（待审阅后定）。
+4. 更新 `NOTICE` 与 README 的许可证说明，写清两种许可证各自的范围，以及组合作品受 AGPL §13 约束。
+5. 为网络用户提供源码入口：后端提供 `GET /v1/source`（返回源码仓库地址与确切的 commit / 版本），前端「关于」页面同时给出链接；修改版必须指向修改后的源码。
+6. CI 增加 `reuse lint`，检查每个文件都有许可证与版权声明，并用 Go 依赖许可证扫描（如 `go-licenses`）阻止不兼容的依赖。
+
+### 9.6 第三方依赖许可证审查
+
+| 组件 | 许可证 | 与 AGPL / GPL 组合 | 备注 |
+|------|--------|--------------------|------|
+| audio.cpp（含项目补丁） | Apache-2.0（`THIRD_PARTY_NOTICES.md`） | 兼容（Apache-2.0 可并入 GPLv3 / AGPLv3） | 保留 NOTICE；ggml、SentencePiece 声明随 DLL 保留 |
+| ggml | MIT（随 audio.cpp / transcribe.cpp 分发） | 兼容 | 具体版本的 LICENSE 文件待核对 |
+| SentencePiece | Apache-2.0 | 兼容 | 同上 |
+| transcribe.cpp | MIT（`THIRD_PARTY_NOTICES.md`） | 兼容 | — |
+| NetEase Youdao R2T2 参考实现 | Apache-2.0（`R2T2-CODE-LICENSE.txt`） | 兼容 | 滚动推理的改编参考了它，需保留声明 |
+| onnxruntime | MIT（上游许可证） | 兼容 | 随包 DLL 的版本待核对 |
+| FireRedVAD 模型 + CMVN + 改编代码 | Apache-2.0（`FireRedVAD-LICENSE.txt`） | 兼容 | 原创集成部分现为 GPL-3.0-only |
+| kaldi-native-fbank | Apache-2.0（上游许可证） | 兼容 | Go 侧若封装其 C++ 代码需随附声明；**待核实版本** |
+| Go 依赖（如 onnxruntime_go、WebSocket / HTTP 库） | **待核实** | 待核实 | Go 标准库为 BSD-3-Clause（兼容）；第三方模块逐个用 `go-licenses` 审查 |
+| NVIDIA CUDA 运行库（随 CUDA 包分发） | NVIDIA 专有再分发许可 | **需审阅** | 不是自由软件；能否援引 GPL / AGPL 的「系统库」例外**待核实**（上游 GPL 发行版已有同样问题） |
+| Microsoft VC++ 运行库 | 微软再分发条款 | 通常按「系统库」处理 | **待核实** |
+| Qwen3-ASR 模型权重 | Apache-2.0（据 transcribe.cpp 的 family 文档；上游 HF 页面待核实） | 单独下载，不并入代码 | 不随代码分发，不受 AGPL 影响 |
+| Confucius4-R2T2 模型权重（Q8 GGUF） | **NetEase Youdao Model Use License Agreement**（`R2T2-MODEL-LICENSE.txt`） | **非 OSI 开源许可证；不能、也不应被 GPL / AGPL 覆盖** | 有使用限制，见下 |
+
+**需要关注的问题：**
+
+- **R2T2 模型许可证限制较多**：
+  - 月活超过 1 亿需单独申请商用许可。
+  - 禁止高风险场景（医疗诊断、自动驾驶、军事等）。
+  - 下游接收者必须同样遵守。
+  - 禁止用于改进其他 AI 模型（非商业模型等例外）。
+  - 其对「Derivative Work」的定义包含「model outputs」。
+  - 结论：模型应继续单独下载、单独声明，**不得**写成被 AGPL / GPL 覆盖。「输出算衍生作品」对转写文本的影响**待核实**。
+- **CUDA 运行库**：与 GPL / AGPL 一起分发时的兼容性依赖「系统库」例外的解释，属于上游已有问题，AGPL 不会让它变好；**待专业审阅**。
+- **从 GPL 代码移植的逻辑**（见 9.4）：是本节最主要的不确定项。
+
+---
+
+## 10. 参考路径速查
 
 ```text
 docs/command-cube/PLAN.md                         ← 本文件
