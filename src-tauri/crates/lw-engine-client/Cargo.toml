@@ -1,0 +1,27 @@
+# SPDX-FileCopyrightText: 2026 SenkjM
+# SPDX-License-Identifier: AGPL-3.0-only
+
+[package]
+name = "lw-engine-client"
+version = "0.1.0"
+description = "Client and process supervisor for the light-whisper Go engine (lw-engine) local HTTP/WebSocket API"
+license = "AGPL-3.0-only"
+edition = "2021"
+publish = false
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+log = "0.4"
+thiserror = "2"
+futures-util = { version = "0.3", default-features = false, features = ["sink", "std"] }
+tokio = { version = "1", features = ["rt", "io-util", "sync", "time", "process", "macros"] }
+# Same reqwest line as the app (0.12, no default features): plain HTTP to 127.0.0.1 needs no TLS.
+reqwest = { version = "0.12", default-features = false, features = ["json"] }
+# No WebSocket client exists in the dependency tree; tokio-tungstenite without TLS features
+# (ws:// to 127.0.0.1 only). 0.28 reuses rand 0.9 / sha1 0.10 already in Cargo.lock; 0.30
+# would add duplicate rand 0.10 / sha1 0.11 trees for no functional gain.
+tokio-tungstenite = { version = "0.28", default-features = false, features = ["connect", "handshake"] }
+
+[dev-dependencies]
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "time", "process", "io-util"] }
