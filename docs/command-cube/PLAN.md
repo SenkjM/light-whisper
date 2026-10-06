@@ -11,10 +11,10 @@
 
 1. **Python 编排层 → 独立 Go 后端服务（引擎）**：以独立进程运行，通过 cgo 调用 C++ 库（R2T2 走 audio.cpp C ABI，Qwen3 走 transcribe.cpp），FireRedVAD 走 onnxruntime；对外提供完整的本地 HTTP + WebSocket API。
 2. **双引擎分工保留**：
-   - **R2T2（audio.cpp）= 实时模式，有直播字幕**：原生流式 delta 拼接 + preview/committed 状态机 + 标点回滚（C++ 内）。
-   - **Qwen3（transcribe.cpp）= 回退 / 非实时模式，无直播字幕**：整段识别；也供文件类工具（歌词、字幕）批处理。
+   - **R2T2（audio.cpp）= 实时模式，有直播字幕**：原生流式 delta 拼接 + preview/committed 状态机 + 标点回滚（C++ 内）；也支持整段识别（批处理），与现 Python R2T2 服务一致。
+   - **Qwen3（transcribe.cpp）= 回退 / 非实时模式，无直播字幕**：整段识别，是非实时听写与小工具的推荐选择；也供文件类工具（歌词、字幕）批处理。
 3. **Rust 只经 API 管理后端**：可以拉起 / 监管 / 重启进程，但不再走 stdio JSON，不直接链接推理库。
-4. **调度保持串行**：单推理线程顺序调用 C 库，会话内先 VAD 再推理，与现有 Python 语义一致；R2T2 与 Qwen3 之间实时优先排队。
+4. **调度保持串行**：单推理线程顺序调用 C 库，会话内先 VAD 再推理，与现有 Python 语义一致；实时会话与批处理之间实时优先排队。
 5. **删除 Rust `interim.rs` 的 12 秒窗口伪实时**（Qwen3 不提供直播字幕）。
 6. **前端**只与 Rust / API 通信，只保留纯 UI 偏好。
 7. 后续功能（非主线）：
@@ -105,7 +105,7 @@ flowchart TB
     API["API 层<br/>127.0.0.1 + 启动 token"]
     SCHED["串行调度器<br/>单推理线程 · 实时优先"]
     SESS["R2T2 会话管理<br/>VAD 分段 + 会话状态机"]
-    BATCH["Qwen3 批处理<br/>首尾裁剪 / 文件 job"]
+    BATCH["批处理 · 整段识别<br/>Qwen3（推荐）或 R2T2 / 文件 job"]
     CFG["引擎配置存储<br/>engine.json + schema_version"]
     MM["模型管理<br/>加载 / 卸载 / 空闲卸载 / 下载<br/>CUDA 运行时按需下载"]
   end
@@ -126,7 +126,7 @@ flowchart TB
   SUP -.->|"spawn / supervise / restart"| GO
   CLI ==>|"WS /v1/asr/stream<br/>PCM 二进制帧"| API
   API ==>|"字幕事件<br/>stable / tentative / result"| CLI
-  CLI -->|"HTTP：Qwen3 同步识别 / 文件 job<br/>config API · /v1/events"| API
+  CLI -->|"HTTP：同步整段识别（Qwen3 / R2T2）/ 文件 job<br/>config API · /v1/events"| API
 
   API --> SCHED
   API --> CFG
@@ -137,6 +137,7 @@ flowchart TB
   SESS -->|"2. 再原生推理"| R2
   BATCH --> VAD
   BATCH --> QW
+  BATCH -.->|"R2T2 为当前引擎时"| R2
   MM --> R2
   MM --> QW
   R2 --> HW
@@ -180,7 +181,7 @@ sequenceDiagram
 | CUDA 运行时检测 / 下载 / 校验 / 加载（见 §5） | ✅ | 转发 API | 按钮与进度 |
 | 推理调度（实时优先、批处理排队、GPU 争用） | ✅ | — | — |
 | FireRedVAD、R2T2 分段与会话状态机 | ✅ | — | — |
-| Qwen3 裁剪 + 批处理 / job | ✅ | 提交 job | 文件工具 UI |
+| 批处理整段识别（Qwen3 或 R2T2）/ job | ✅ | 提交 job | 文件工具 UI |
 | 引擎设置（引擎 / 模型 / 目录 / GPU 空闲 / 设备 / 默认语言） | ✅（持有并持久化） | 代理 | 编辑 |
 | 音频采集（cpal）+ 经 WS 推流 | — | ✅ | — |
 | 热键 / 托盘 / 自启 / 文本注入 / 前台应用识别 | — | ✅ | — |
@@ -256,13 +257,17 @@ POST  /v1/engine/reload          执行待生效的 reload 项；有实时会话
   - 音频用二进制帧，不用 base64。
   - **会话内严格串行**：后端按到达顺序逐块处理，每块先 VAD 再原生推理，结束段（补 320ms + `stream_finish`）在该块内同步完成；与现有 Python 语义一致。WS 只是传输通道，帧在后端有界队列中等待，不与推理重叠。
 
-### 4.5 批处理（Qwen3）— HTTP
+### 4.5 批处理（Qwen3 / R2T2）— HTTP
 
 | 方法 / 路径 | 说明 |
 |-------------|------|
-| `POST /v1/asr/transcribe` | 短音频同步整段识别（Rust 回退听写用），body 为 PCM 或 WAV |
+| `POST /v1/asr/transcribe` | 短音频同步整段识别（Rust 回退听写用），使用当前本地引擎（Qwen3 或 R2T2），body 为 PCM 或 WAV |
 | `POST /v1/jobs` | 文件转录 job（路径或上传），可选 `segments: true`（句级时间来自 VAD） |
 | `GET /v1/jobs/{id}`、`DELETE /v1/jobs/{id}` | 查询 / 取消 |
+
+- **两种引擎都可做批处理**：Qwen3 用 VAD 裁首尾后整段识别；R2T2 把整段音频按块送入新建的分段会话再结束（与现 Python `r2t2_asr_server.py` 的 `transcribe_audio` 一致）。非实时听写与小工具（文件转录、歌词 / 字幕）仍**推荐 Qwen3**，它也是回退选择；配置为云端引擎时返回 409。
+- **R2T2 批处理与实时会话共用唯一的推理线程和同一个已加载的 R2T2 模型**：实时会话进行中提交 R2T2 批处理直接返回 409（与 Python 的 `stream_busy` 一致）；R2T2 批处理作为一个整体任务执行、不按段让出，执行期间开始的实时会话要等它结束。Qwen3 批处理照常排在实时会话之后（见 §4.6）。
+- `/v1/jobs` 使用当前引擎；R2T2 下长文件 job 能否按段让出给实时会话**待定**，文件类工具建议用 Qwen3。
 
 两引擎**都不原生输出时间戳**（transcribe.cpp 为 `TIMESTAMPS_NONE`；R2T2 只输出文本 delta）。句级时间 = VAD 分段边界；词级需后续接入对齐器（如 Qwen3-ForcedAligner）。
 
@@ -270,7 +275,7 @@ POST  /v1/engine/reload          执行待生效的 reload 项；有实时会话
 
 - **单推理线程**：所有对 C 库的调用（audio.cpp、transcribe.cpp、onnxruntime VAD）都在一个固定的推理线程上顺序执行（`LockOSThread`），与现有 Python 单线程语义一致。
 - **会话内串行**：R2T2 每块先 VAD（CPU）再原生推理，结束段在块内同步完成；Qwen3 先 VAD 裁剪再整段识别。**不做 VAD 与推理并行，不做流水线。**
-- **实时优先排队**：R2T2 实时会话与 Qwen3 job 共用同一个推理线程。实时会话进行时 job 排队等待；job 按 VAD 段逐段执行，段与段之间让出给实时会话。单段执行中途是否可取消，取决于 transcribe.cpp 的取消接口（待核实），否则等该段结束。
+- **实时优先排队**：R2T2 实时会话与批处理（Qwen3 job，或 R2T2 为当前引擎时的整段识别）共用同一个推理线程。实时会话进行时 job 排队等待；job 按 VAD 段逐段执行，段与段之间让出给实时会话。单段执行中途是否可取消，取决于 transcribe.cpp 的取消接口（待核实），否则等该段结束。R2T2 批处理还与实时会话共用同一个模型：整段作为一个任务执行、不让出，实时会话进行中直接拒绝（见 §4.5）。
 - **非推理请求不进推理线程**：status、config、events、下载进度由独立的 goroutine 处理，不排在推理后面。
 - GPU 空闲卸载只在没有实时会话、job 队列为空时触发；重新加载时预热一次。队列长度与等待时间通过 status / events 暴露。
 
@@ -405,8 +410,8 @@ flowchart TD
 
 ### 步骤 3：R2T2 会话与分段（cgo → audio.cpp）
 
-- 原样移植 `NativeRuntime` / `SegmentedR2T2` / `R2T2StreamSession`（含串行的「先 VAD 再推理、块内结束段」顺序），暴露 `WS /v1/asr/stream`。
-- **完成标准**：同一批 PCM 夹具与 Python 的 committed 轨迹和最终文本逐字一致；首字幕延迟不劣于 `docs/r2t2-native.md` 中的基线；取消 / 错误 / 重启语义通过；之后再评估是否保留 8 秒 + 静音外层分段。
+- 原样移植 `NativeRuntime` / `SegmentedR2T2` / `R2T2StreamSession`（含串行的「先 VAD 再推理、块内结束段」顺序），暴露 `WS /v1/asr/stream`；同时实现 R2T2 整段识别（`POST /v1/asr/transcribe`，对应 `transcribe_audio`）。
+- **完成标准**：同一批 PCM 夹具与 Python 的 committed 轨迹和最终文本逐字一致，R2T2 整段识别结果与 Python 一致；首字幕延迟不劣于 `docs/r2t2-native.md` 中的基线；取消 / 错误 / 重启语义通过；之后再评估是否保留 8 秒 + 静音外层分段。
 
 ### 步骤 4：Qwen3 批处理（cgo → transcribe.cpp）+ 调度
 

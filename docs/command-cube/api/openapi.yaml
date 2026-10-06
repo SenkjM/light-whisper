@@ -223,7 +223,13 @@ paths:
   /v1/asr/transcribe:
     post:
       x-status: implemented
-      summary: Qwen3 短音频同步整段识别（批处理优先级）
+      summary: 短音频同步整段识别（批处理优先级），使用当前本地引擎（Qwen3 或 R2T2）
+      description: |
+        Qwen3：VAD 裁首尾后整段识别（非实时与小工具的推荐选择）。
+        R2T2：整段音频按块送入新建的分段会话再结束（与 Python transcribe_audio 一致）。
+        R2T2 批处理与实时会话共用唯一推理线程和同一个已加载模型：实时会话进行中返回 409
+        realtime_session_active；整段作为一个任务执行，期间开始的实时会话等待其结束。
+        配置为云端引擎时返回 409 no_local_engine。
       parameters:
         - { in: query, name: language, schema: { type: string }, description: 缺省时用 default_language }
         - { in: query, name: context, schema: { type: string } }
@@ -237,7 +243,9 @@ paths:
             schema: { type: string, format: binary, description: 仅 PCM 16-bit、单声道、16 kHz }
       responses:
         "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/TranscribeResult" } } } }
-        "409": { $ref: "#/components/responses/Conflict" }
+        "409":
+          description: no_local_engine（云端引擎）或 realtime_session_active（R2T2 实时会话进行中）
+          content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
         "413": { description: 超过大小上限（默认 64 MiB） }
         "415": { description: 音频格式不支持 }
   /v1/models:

@@ -61,7 +61,8 @@ Rust 壳拉起 `lw-engine`（默认 `--listen 127.0.0.1:0`），读取 **stdout 
 | `engine` 键的取值 | 与现有应用一致，含云端引擎 `glm-asr` / `alibaba-asr`：此时引擎不加载本地模型（`local_engine: false`），流式 / 识别返回 409 `no_local_engine`。旧值 `qwen3-asr-1.7b` 按 `confucius4-r2t2` 读取，但不改写文件 |
 | 新增设置键 | `device`（auto/cpu/cuda/vulkan，reload）、`default_language`、`log_level`（live），对应 PLAN §3.2；缺省时与现状行为一致 |
 | PATCH 语义 | JSON merge patch：`null` 恢复默认并删除该键；`models_dir: ""` 同样删除（与 `write_models_dir(None)` 一致）；缺 `If-Match` 返回 428 |
-| `/v1/asr/transcribe` 的引擎 | 只在当前引擎为 Qwen3 时可用（PLAN §4.5 标题为「批处理（Qwen3）」），R2T2 时返回 409 `wrong_engine`。若需要 R2T2 也支持整段识别（现 Python R2T2 服务支持 `transcribe`），后续再放开 |
+| `/v1/asr/transcribe` 的引擎 | **已定（用户决定）**：Qwen3 与 R2T2 都可用，走当前本地引擎的 `Backend.Transcribe`；R2T2 把整段音频按块送入新建分段会话再结束（同 Python `transcribe_audio`）。Qwen3 仍是非实时与小工具的推荐 / 回退选择；云端引擎返回 409 `no_local_engine` |
+| R2T2 批处理与实时会话 | 两者共用唯一推理线程和同一个已加载的 R2T2 模型。调度语义不变（实时优先、运行中的任务不抢占）：整段 R2T2 识别是一个调度任务，执行期间开始的实时会话等它结束；实时会话进行中提交 R2T2 批处理返回 409 `realtime_session_active`（同 Python `stream_busy`，在排队时与推理线程上各检查一次）。Qwen3 批处理照常排队 |
 | GPU 空闲卸载 | 与 Python `gpu_idle_should_unload` 一致：只在设备不是 CPU、无实时会话、调度队列为空、超时后卸载；下一次请求自动重新加载 |
 | 启动时加载 | 默认在启动后立即加载当前本地引擎（与 Python 一致），`--no-autoload` 关闭 |
 | WS 鉴权 | 只接受 `Authorization` 头。浏览器无法给 WebSocket 设置该头，开发模式前端直连 WS 的方案留待步骤 6 |
