@@ -4,13 +4,13 @@
 // Package asr defines the seam between the Go engine and the native
 // inference libraries.
 //
-// Backend is implemented today by Mock (deterministic, no native code). The
-// real implementation will live behind the "lwnative" build tag and bind via
-// cgo / LoadLibrary to:
-//   - audio.cpp C ABI for Confucius4-R2T2 (streaming, PLAN §2.1 / migration step 3),
-//     (also whole-clip batch transcription when R2T2 is the active engine),
-//   - transcribe.cpp for Qwen3-ASR (batch, migration step 4),
-//   - onnxruntime for FireRedVAD (migration step 2).
+// Backend is implemented by Mock (deterministic, no native code) and by the
+// native backend (package internal/native, cgo behind the "lwnative" build
+// tag), which binds to:
+//   - audio.cpp C ABI for Confucius4-R2T2 (streaming and whole-clip
+//     transcription, internal/r2t2, migration step 3),
+//   - onnxruntime for FireRedVAD (internal/vad, migration step 2),
+//   - transcribe.cpp for Qwen3-ASR (migration step 4, not yet).
 //
 // Threading contract: every Backend and Stream method is called only from the
 // scheduler's single inference goroutine (locked OS thread), never
@@ -112,7 +112,7 @@ type Backend interface {
 var (
 	ErrNotLoaded         = errors.New("model not loaded")
 	ErrWrongKind         = errors.New("operation not supported by the loaded engine")
-	ErrNativeUnavailable = errors.New("native backend not compiled in (build with -tags lwnative)")
+	ErrNativeUnavailable = errors.New("native backend not compiled in (build with -tags lwnative and CGO_ENABLED=1)")
 )
 
 // KindForEngine maps a config engine id to a local engine kind.

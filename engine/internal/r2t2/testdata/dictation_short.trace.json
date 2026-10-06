@@ -1,0 +1,470 @@
+{
+ "source": {
+  "wav": "dictation_short.wav"
+ },
+ "samples": 50868,
+ "backend": "cpu",
+ "chunk_samples": 5120,
+ "feed_samples": 2560,
+ "threads": 4,
+ "context": "Topic: travel and office",
+ "hot_words": [
+  "机场",
+  "quarterly report"
+ ],
+ "stream": {
+  "responses": [
+   {
+    "samples": 2560,
+    "text": "",
+    "tentative": ""
+   },
+   {
+    "samples": 5120,
+    "text": "",
+    "tentative": ""
+   },
+   {
+    "samples": 7680,
+    "text": "",
+    "tentative": ""
+   },
+   {
+    "samples": 10240,
+    "text": "",
+    "tentative": ""
+   },
+   {
+    "samples": 12800,
+    "text": "",
+    "tentative": ""
+   },
+   {
+    "samples": 15360,
+    "text": "",
+    "tentative": ""
+   },
+   {
+    "samples": 17920,
+    "text": "",
+    "tentative": ""
+   },
+   {
+    "samples": 20480,
+    "text": "",
+    "tentative": "hello world"
+   },
+   {
+    "samples": 23040,
+    "text": "",
+    "tentative": "hello world"
+   },
+   {
+    "samples": 25600,
+    "text": "Hello world,",
+    "tentative": ""
+   },
+   {
+    "samples": 28160,
+    "text": "Hello world,",
+    "tentative": ""
+   },
+   {
+    "samples": 30720,
+    "text": "Hello world,",
+    "tentative": " this is a"
+   },
+   {
+    "samples": 33280,
+    "text": "Hello world,",
+    "tentative": " this is a"
+   },
+   {
+    "samples": 35840,
+    "text": "Hello world,",
+    "tentative": " this is a"
+   },
+   {
+    "samples": 38400,
+    "text": "Hello world,",
+    "tentative": " this is a"
+   },
+   {
+    "samples": 40960,
+    "text": "Hello world,",
+    "tentative": " this is a short"
+   },
+   {
+    "samples": 43520,
+    "text": "Hello world,",
+    "tentative": " this is a short"
+   },
+   {
+    "samples": 46080,
+    "text": "Hello world, this is a short test.",
+    "tentative": ""
+   },
+   {
+    "samples": 48640,
+    "text": "Hello world, this is a short test.",
+    "tentative": ""
+   },
+   {
+    "samples": 50868,
+    "text": "Hello world, this is a short test.",
+    "tentative": ""
+   }
+  ],
+  "final": {
+   "text": "Hello world, this is a short test.",
+   "language": "",
+   "sample_count": 50868
+  },
+  "log": [
+   {
+    "op": "vad",
+    "n": 5120,
+    "sha": "40fc7e4c06c1e27f94c9120e925f2df9cff3c8db41b24e8e38dfdd4ce76a09bf",
+    "regions": []
+   },
+   {
+    "op": "vad",
+    "n": 10240,
+    "sha": "824569603ade012e898199ad8240f0c965605c6d399b72158d92473f5cb3b596",
+    "regions": [
+     {
+      "start": 4960,
+      "end": 10240
+     }
+    ]
+   },
+   {
+    "op": "start",
+    "context": "Topic: travel and office\nHotwords: 机场, quarterly report",
+    "language": null
+   },
+   {
+    "op": "push",
+    "offset": 0,
+    "n": 5120,
+    "sha": "40fc7e4c06c1e27f94c9120e925f2df9cff3c8db41b24e8e38dfdd4ce76a09bf",
+    "status": 0,
+    "event": true,
+    "text_status": 0,
+    "text": "",
+    "language": "",
+    "preview_status": 0,
+    "preview": ""
+   },
+   {
+    "op": "push",
+    "offset": 5120,
+    "n": 5120,
+    "sha": "639271ea68566c1d7be798e83b26bf4f40386d4dafef52d9015297b335562175",
+    "status": 0,
+    "event": true,
+    "text_status": 0,
+    "text": "",
+    "language": "",
+    "preview_status": 0,
+    "preview": ""
+   },
+   {
+    "op": "push",
+    "offset": 10240,
+    "n": 5120,
+    "sha": "b6434b8b5122d5f5444f08d624197ba30cfb987f29c26d01bcbbfa8835f06399",
+    "status": 0,
+    "event": true,
+    "text_status": 0,
+    "text": "",
+    "language": "",
+    "preview_status": 0,
+    "preview": ""
+   },
+   {
+    "op": "push",
+    "offset": 15360,
+    "n": 5120,
+    "sha": "d0a268041496f1af3807f5dc35fd62af5d7d6843ef975b602f165c8f5fbe2bc8",
+    "status": 0,
+    "event": true,
+    "text_status": 0,
+    "text": "",
+    "language": "",
+    "preview_status": 0,
+    "preview": "hello world"
+   },
+   {
+    "op": "push",
+    "offset": 20480,
+    "n": 5120,
+    "sha": "cd27224504733c2754fbcf74dd82a597bc0f6f609c93a2694dac0619703490dc",
+    "status": 0,
+    "event": true,
+    "text_status": 0,
+    "text": "Hello world,",
+    "language": "",
+    "preview_status": 0,
+    "preview": "Hello world,"
+   },
+   {
+    "op": "push",
+    "offset": 25600,
+    "n": 5120,
+    "sha": "6f185d7faf5dac583e8d3e4aae14f5d3d0fa4e82e689e6a7015af6b08c31ab86",
+    "status": 0,
+    "event": true,
+    "text_status": 0,
+    "text": "",
+    "language": "",
+    "preview_status": 0,
+    "preview": "Hello world, this is a"
+   },
+   {
+    "op": "push",
+    "offset": 30720,
+    "n": 5120,
+    "sha": "221e9f9a23f8b3a766097cbf486bc8a317a997d5a26474e911fc8eec2a320a3f",
+    "status": 0,
+    "event": true,
+    "text_status": 0,
+    "text": "",
+    "language": "",
+    "preview_status": 0,
+    "preview": "Hello world, this is a"
+   },
+   {
+    "op": "push",
+    "offset": 35840,
+    "n": 5120,
+    "sha": "d84882565fbd600b6a49b89f4bdeed54755c43fecaa26f45d5bc5274dfcd64ca",
+    "status": 0,
+    "event": true,
+    "text_status": 0,
+    "text": "",
+    "language": "",
+    "preview_status": 0,
+    "preview": "Hello world, this is a short"
+   },
+   {
+    "op": "push",
+    "offset": 40960,
+    "n": 5120,
+    "sha": "c9866706830ddff78f98fae836a339f440926029b411ff14816dedbe827cbf15",
+    "status": 0,
+    "event": true,
+    "text_status": 0,
+    "text": " this is a short test.",
+    "language": "",
+    "preview_status": 0,
+    "preview": "Hello world, this is a short test."
+   },
+   {
+    "op": "push",
+    "offset": 46080,
+    "n": 4788,
+    "sha": "bb821a533ac0d3c0f21c6b9db7618873d72e253e33bb97eb712ddbf6e3d91bac",
+    "status": 0,
+    "event": true,
+    "text_status": 7,
+    "preview_status": 7
+   },
+   {
+    "op": "push",
+    "offset": 50868,
+    "n": 5120,
+    "sha": "cc61635da46b2c9974335ea37e0b5fd660a5c8a42a89b271fa7ec2ac4b8b26f6",
+    "status": 0,
+    "event": true,
+    "text_status": 0,
+    "text": "",
+    "language": "",
+    "preview_status": 0,
+    "preview": "Hello world, this is a short test."
+   },
+   {
+    "op": "finish",
+    "status": 0,
+    "text_status": 0,
+    "text": "Hello world, this is a short test.",
+    "language": ""
+   }
+  ]
+ },
+ "transcribe": {
+  "text": "Hello world, this is a short test.",
+  "language": "",
+  "log": [
+   {
+    "op": "vad",
+    "n": 5120,
+    "sha": "40fc7e4c06c1e27f94c9120e925f2df9cff3c8db41b24e8e38dfdd4ce76a09bf",
+    "regions": []
+   },
+   {
+    "op": "vad",
+    "n": 10240,
+    "sha": "824569603ade012e898199ad8240f0c965605c6d399b72158d92473f5cb3b596",
+    "regions": [
+     {
+      "start": 4960,
+      "end": 10240
+     }
+    ]
+   },
+   {
+    "op": "start",
+    "context": "Topic: travel and office\nHotwords: 机场, quarterly report",
+    "language": null
+   },
+   {
+    "op": "push",
+    "offset": 0,
+    "n": 5120,
+    "sha": "40fc7e4c06c1e27f94c9120e925f2df9cff3c8db41b24e8e38dfdd4ce76a09bf",
+    "status": 0,
+    "event": true,
+    "text_status": 0,
+    "text": "",
+    "language": "",
+    "preview_status": 0,
+    "preview": ""
+   },
+   {
+    "op": "push",
+    "offset": 5120,
+    "n": 5120,
+    "sha": "639271ea68566c1d7be798e83b26bf4f40386d4dafef52d9015297b335562175",
+    "status": 0,
+    "event": true,
+    "text_status": 0,
+    "text": "",
+    "language": "",
+    "preview_status": 0,
+    "preview": ""
+   },
+   {
+    "op": "push",
+    "offset": 10240,
+    "n": 5120,
+    "sha": "b6434b8b5122d5f5444f08d624197ba30cfb987f29c26d01bcbbfa8835f06399",
+    "status": 0,
+    "event": true,
+    "text_status": 0,
+    "text": "",
+    "language": "",
+    "preview_status": 0,
+    "preview": ""
+   },
+   {
+    "op": "push",
+    "offset": 15360,
+    "n": 5120,
+    "sha": "d0a268041496f1af3807f5dc35fd62af5d7d6843ef975b602f165c8f5fbe2bc8",
+    "status": 0,
+    "event": true,
+    "text_status": 0,
+    "text": "",
+    "language": "",
+    "preview_status": 0,
+    "preview": "hello world"
+   },
+   {
+    "op": "push",
+    "offset": 20480,
+    "n": 5120,
+    "sha": "cd27224504733c2754fbcf74dd82a597bc0f6f609c93a2694dac0619703490dc",
+    "status": 0,
+    "event": true,
+    "text_status": 0,
+    "text": "Hello world,",
+    "language": "",
+    "preview_status": 0,
+    "preview": "Hello world,"
+   },
+   {
+    "op": "push",
+    "offset": 25600,
+    "n": 5120,
+    "sha": "6f185d7faf5dac583e8d3e4aae14f5d3d0fa4e82e689e6a7015af6b08c31ab86",
+    "status": 0,
+    "event": true,
+    "text_status": 0,
+    "text": "",
+    "language": "",
+    "preview_status": 0,
+    "preview": "Hello world, this is a"
+   },
+   {
+    "op": "push",
+    "offset": 30720,
+    "n": 5120,
+    "sha": "221e9f9a23f8b3a766097cbf486bc8a317a997d5a26474e911fc8eec2a320a3f",
+    "status": 0,
+    "event": true,
+    "text_status": 0,
+    "text": "",
+    "language": "",
+    "preview_status": 0,
+    "preview": "Hello world, this is a"
+   },
+   {
+    "op": "push",
+    "offset": 35840,
+    "n": 5120,
+    "sha": "d84882565fbd600b6a49b89f4bdeed54755c43fecaa26f45d5bc5274dfcd64ca",
+    "status": 0,
+    "event": true,
+    "text_status": 0,
+    "text": "",
+    "language": "",
+    "preview_status": 0,
+    "preview": "Hello world, this is a short"
+   },
+   {
+    "op": "push",
+    "offset": 40960,
+    "n": 5120,
+    "sha": "c9866706830ddff78f98fae836a339f440926029b411ff14816dedbe827cbf15",
+    "status": 0,
+    "event": true,
+    "text_status": 0,
+    "text": " this is a short test.",
+    "language": "",
+    "preview_status": 0,
+    "preview": "Hello world, this is a short test."
+   },
+   {
+    "op": "push",
+    "offset": 46080,
+    "n": 4788,
+    "sha": "bb821a533ac0d3c0f21c6b9db7618873d72e253e33bb97eb712ddbf6e3d91bac",
+    "status": 0,
+    "event": true,
+    "text_status": 7,
+    "preview_status": 7
+   },
+   {
+    "op": "push",
+    "offset": 50868,
+    "n": 5120,
+    "sha": "cc61635da46b2c9974335ea37e0b5fd660a5c8a42a89b271fa7ec2ac4b8b26f6",
+    "status": 0,
+    "event": true,
+    "text_status": 0,
+    "text": "",
+    "language": "",
+    "preview_status": 0,
+    "preview": "Hello world, this is a short test."
+   },
+   {
+    "op": "finish",
+    "status": 0,
+    "text_status": 0,
+    "text": "Hello world, this is a short test.",
+    "language": ""
+   }
+  ]
+ }
+}

@@ -1,0 +1,181 @@
+{
+ "source": {
+  "zeros": 32000
+ },
+ "samples": 32000,
+ "backend": "cpu",
+ "chunk_samples": 5120,
+ "feed_samples": 2560,
+ "threads": 4,
+ "context": "Topic: travel and office",
+ "hot_words": [
+  "机场",
+  "quarterly report"
+ ],
+ "stream": {
+  "responses": [
+   {
+    "samples": 2560,
+    "text": "",
+    "tentative": ""
+   },
+   {
+    "samples": 5120,
+    "text": "",
+    "tentative": ""
+   },
+   {
+    "samples": 7680,
+    "text": "",
+    "tentative": ""
+   },
+   {
+    "samples": 10240,
+    "text": "",
+    "tentative": ""
+   },
+   {
+    "samples": 12800,
+    "text": "",
+    "tentative": ""
+   },
+   {
+    "samples": 15360,
+    "text": "",
+    "tentative": ""
+   },
+   {
+    "samples": 17920,
+    "text": "",
+    "tentative": ""
+   },
+   {
+    "samples": 20480,
+    "text": "",
+    "tentative": ""
+   },
+   {
+    "samples": 23040,
+    "text": "",
+    "tentative": ""
+   },
+   {
+    "samples": 25600,
+    "text": "",
+    "tentative": ""
+   },
+   {
+    "samples": 28160,
+    "text": "",
+    "tentative": ""
+   },
+   {
+    "samples": 30720,
+    "text": "",
+    "tentative": ""
+   },
+   {
+    "samples": 32000,
+    "text": "",
+    "tentative": ""
+   }
+  ],
+  "final": {
+   "text": "",
+   "language": "",
+   "sample_count": 32000
+  },
+  "log": [
+   {
+    "op": "vad",
+    "n": 5120,
+    "sha": "cc61635da46b2c9974335ea37e0b5fd660a5c8a42a89b271fa7ec2ac4b8b26f6",
+    "regions": []
+   },
+   {
+    "op": "vad",
+    "n": 10240,
+    "sha": "02b1c2234680617802901a77eae606ad02e4ddb4282ccbc60061eac5b2d90bba",
+    "regions": []
+   },
+   {
+    "op": "vad",
+    "n": 15360,
+    "sha": "0693f6bfa2117a9b14f9ceca13d3a5611de5dca226bf999f20a7f615fbd08dff",
+    "regions": []
+   },
+   {
+    "op": "vad",
+    "n": 16000,
+    "sha": "4f7988030a00d082fe445e00a2ac5dab502300ff1b80e8592dd569867b60ef74",
+    "regions": []
+   },
+   {
+    "op": "vad",
+    "n": 16000,
+    "sha": "4f7988030a00d082fe445e00a2ac5dab502300ff1b80e8592dd569867b60ef74",
+    "regions": []
+   },
+   {
+    "op": "vad",
+    "n": 16000,
+    "sha": "4f7988030a00d082fe445e00a2ac5dab502300ff1b80e8592dd569867b60ef74",
+    "regions": []
+   },
+   {
+    "op": "vad",
+    "n": 16000,
+    "sha": "4f7988030a00d082fe445e00a2ac5dab502300ff1b80e8592dd569867b60ef74",
+    "regions": []
+   }
+  ]
+ },
+ "transcribe": {
+  "text": "",
+  "language": "",
+  "log": [
+   {
+    "op": "vad",
+    "n": 5120,
+    "sha": "cc61635da46b2c9974335ea37e0b5fd660a5c8a42a89b271fa7ec2ac4b8b26f6",
+    "regions": []
+   },
+   {
+    "op": "vad",
+    "n": 10240,
+    "sha": "02b1c2234680617802901a77eae606ad02e4ddb4282ccbc60061eac5b2d90bba",
+    "regions": []
+   },
+   {
+    "op": "vad",
+    "n": 15360,
+    "sha": "0693f6bfa2117a9b14f9ceca13d3a5611de5dca226bf999f20a7f615fbd08dff",
+    "regions": []
+   },
+   {
+    "op": "vad",
+    "n": 16000,
+    "sha": "4f7988030a00d082fe445e00a2ac5dab502300ff1b80e8592dd569867b60ef74",
+    "regions": []
+   },
+   {
+    "op": "vad",
+    "n": 16000,
+    "sha": "4f7988030a00d082fe445e00a2ac5dab502300ff1b80e8592dd569867b60ef74",
+    "regions": []
+   },
+   {
+    "op": "vad",
+    "n": 16000,
+    "sha": "4f7988030a00d082fe445e00a2ac5dab502300ff1b80e8592dd569867b60ef74",
+    "regions": []
+   },
+   {
+    "op": "vad",
+    "n": 16000,
+    "sha": "4f7988030a00d082fe445e00a2ac5dab502300ff1b80e8592dd569867b60ef74",
+    "regions": []
+   }
+  ]
+ }
+}

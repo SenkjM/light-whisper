@@ -36,6 +36,7 @@ import (
 	"github.com/SenkjM/light-whisper/engine/internal/config"
 	"github.com/SenkjM/light-whisper/engine/internal/events"
 	"github.com/SenkjM/light-whisper/engine/internal/manager"
+	"github.com/SenkjM/light-whisper/engine/internal/native"
 	"github.com/SenkjM/light-whisper/engine/internal/server"
 	"github.com/SenkjM/light-whisper/engine/internal/version"
 )
@@ -97,6 +98,18 @@ func checkLoopback(addr string) error {
 	return nil
 }
 
+// executableDir is the directory of the running binary ("" if unknown).
+func executableDir() string {
+	exe, err := os.Executable()
+	if err != nil {
+		return ""
+	}
+	if resolved, err := filepath.EvalSymlinks(exe); err == nil {
+		exe = resolved
+	}
+	return filepath.Dir(exe)
+}
+
 func newToken() (string, error) {
 	b := make([]byte, 32)
 	if _, err := rand.Read(b); err != nil {
@@ -143,7 +156,7 @@ func run(ctx context.Context, args []string, stdin io.Reader, stdout, stderr io.
 	case "mock":
 		backend = asr.NewMock()
 	case "native":
-		if backend, err = asr.NewNative(); err != nil {
+		if backend, err = native.New(native.OptionsFromEnv(executableDir())); err != nil {
 			return err
 		}
 	default:

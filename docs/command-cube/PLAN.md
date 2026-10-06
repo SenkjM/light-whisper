@@ -1,7 +1,7 @@
 # Command-Cube 规划：前后端分离（Go 引擎后端 + Rust 薄壳 + 独立前端）
 
 > 分支：`Command-Cube`  
-> 状态：规划文档；实施进度见 §7 各步骤的「进度」（步骤 1 已完成，推理为 mock；步骤 2 FireRedVAD 的 Go 移植已完成并与 Python 对齐，尚未接入会话）  
+> 状态：规划文档；实施进度见 §7 各步骤的「进度」（步骤 1 已完成；步骤 2 FireRedVAD 的 Go 移植已完成并与 Python 对齐；步骤 3 R2T2 会话与分段已移植，在 Linux CPU 上与 Python 逐调用、逐字一致，Windows / CUDA 与延迟基线未实测；Qwen3 推理仍为 mock）  
 > 基于：对 `main` @ `151a61c` 的只读调研  
 > **本文主线**：用独立 Go 后端服务取代 Python 编排层；Rust（Tauri）只做系统集成与应用层；前端独立。
 
@@ -483,6 +483,14 @@ flowchart TD
 
 - 原样移植 `NativeRuntime` / `SegmentedR2T2` / `R2T2StreamSession`（含串行的「先 VAD 再推理、块内结束段」顺序），暴露 `WS /v1/asr/stream`；同时实现 R2T2 整段识别（`POST /v1/asr/transcribe`，对应 `transcribe_audio`）。
 - **完成标准**：同一批 PCM 夹具与 Python 的 committed 轨迹和最终文本逐字一致，R2T2 整段识别结果与 Python 一致；首字幕延迟不劣于 `docs/r2t2-native.md` 中的基线；取消 / 错误 / 重启语义通过；之后再评估是否保留 8 秒 + 静音外层分段。
+- **进度（移植与 Linux CPU 对齐已完成；Windows / CUDA 实测与延迟基线未做）**：
+  - 代码：`engine/internal/r2t2`（见 `engine/README.md`）+ `engine/internal/native`（组装 R2T2 + FireRedVAD，`--backend native`）。`runtime.go` ← `r2t2_native.py`，`segmented.go` ← `r2t2_segmented.py`，`session.go` ← `r2t2_stream.py`，`backend.go` ← `r2t2_asr_server.py` / `hf_cache_utils.py` 的 R2T2 部分，均按 §10.4 标 GPL-3.0-only；C ABI 绑定与测试工具为 AGPL-3.0-only。实现 `asr.Backend`：`WS /v1/asr/stream` 与 `POST /v1/asr/transcribe` 经已有的 manager / 调度器走真实推理。
+  - 照搬的语义：CUDA 160 ms / CPU 320 ms 分块推送，committed delta 拼接、preview 必须以 committed 开头，tentative = preview − committed；ABI 0.3 起可用、0.4 + CUDA + rolling 时首个对齐的 ≤1 s VAD 前缀一次推送；结束前补 320 ms 静音（只进解码器，不计入样本数）；外层分段原样保留（16000 样本 VAD 窗、最短 8 s、尾部静音 ≥ 300 ms 才结束段、无上限、先 VAD 再推理、块内结束段），留待与 audio.cpp 的 16 s 滚动窗比较；整段识别 = 共享常驻运行时的新分段会话，按原生块送入再结束；空会话结束不调用原生 finish；任何运行时错误后 reset 并作废会话；CUDA 失败回退 CPU，CUDA 先解一块静音再 reset 作为预热；固定模型按大小 + SHA-256 校验。实时会话期间 R2T2 整段识别返回 409 的规则不变（manager 先拦，后端自身也返回 busy）。
+  - 与 Python 的差异：`device=cpu` 时不尝试 CUDA；`LW_R2T2_MODEL` 可指定开发用模型并跳过校验；卸载时 VAD 也一并释放（Python 的 GPU 挂起保留 VAD，重新加载的代价很小）。
+  - C ABI：自带 typedef，不需要 `audiocpp.h`；Linux `dlopen`，Windows `LoadLibraryExW` + `AddDllDirectory`（库目录与资源目录）。不链接导入库，只走 C 调用约定，内存由库分配和释放，模块不卸载。MinGW 交叉编译的 `lw-engine.exe`（`-tags lwnative`）已在 Linux 上构建通过、只导入 `KERNEL32` / `msvcrt`，但尚未在 Windows 上加载 MSVC + CUDA 12.9 构建的 `audiocpp.dll` 实测。
+  - 对齐方法：`engine/internal/r2t2/testdata/gen_reference.py` 用真实 Python 代码（`handle_stream_command` 以 160 ms PCM16 块推流、`transcribe_audio`）+ audio.cpp 记录轨迹：每次原生调用（start 的上下文 / 语言，push 的 offset、长度、float32 样本 SHA-256 与事件 delta / preview，finish，reset）、每次 VAD 调用（窗口长度、哈希、区间）、每个流式响应与最终文本。默认构建的回放测试要求 Go 发出完全相同的调用序列并得到相同响应；`lwnative` 的 Live 测试用真实 audio.cpp、模型和 Go FireRedVAD 逐调用比较真实输出。另将 Python 的 R2T2 单测（segmented、rolling、spacing、preview、native_preview、startup、stream、asr_server、server_wiring）移植为 Go 单测。
+  - 对齐结果（Linux x86-64，Q8 模型，CPU 4 线程；`build_r2t2_runtime.py` 依赖 vcvars / MSVC，只能在 Windows 上运行，故按它的固定修订、补丁与 CMake 选项在 Linux 上用 GCC 手工构建 CPU 版，唯一差别是 `ENGINE_ENABLE_NATIVE_CPU=ON`（`-march=native`））：6 段音频（espeak-ng 合成的中英文 20.9 s 与 3.2 s、2 s 静音、0.8 s 截断；以及不入库的公开英文 11 s 与中文 17 s 真人录音），实时会话与整段识别两条路径上，原生调用序列、每个 delta / preview、VAD 区间、每个流式响应（committed + tentative）与最终文本均与 Python **完全一致**（最长一段有 3 个分段、69 次推送、131 个响应）。`lw-engine --backend native` 端到端：`POST /v1/asr/transcribe` 的结果与 `WS /v1/asr/stream` 的每个 `partial`（3.2 s 夹具，20 个）也与 Python 一致。
+  - 未覆盖：CUDA 后端（含 ABI 0.4 首段一次推送与 CUDA 预热，只有单测）；Windows 上的 cgo 运行与 DLL 加载；首字幕延迟基线（本机仅 CPU，比实时慢约 6–10 倍，无法与 GPU 基线比较）；真麦克风与长录音；与 audio.cpp 16 s 滚动窗的分段比较。
 
 ### 步骤 4：Qwen3（cgo → transcribe.cpp）+ 三级优先级调度 + 文件 job
 

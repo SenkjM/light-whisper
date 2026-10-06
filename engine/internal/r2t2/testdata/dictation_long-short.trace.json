@@ -1,0 +1,226 @@
+{
+ "source": {
+  "wav": "dictation_long.wav",
+  "samples": 12800
+ },
+ "samples": 12800,
+ "backend": "cpu",
+ "chunk_samples": 5120,
+ "feed_samples": 2560,
+ "threads": 4,
+ "context": "Topic: travel and office",
+ "hot_words": [
+  "机场",
+  "quarterly report"
+ ],
+ "stream": {
+  "responses": [
+   {
+    "samples": 2560,
+    "text": "",
+    "tentative": ""
+   },
+   {
+    "samples": 5120,
+    "text": "",
+    "tentative": ""
+   },
+   {
+    "samples": 7680,
+    "text": "",
+    "tentative": ""
+   },
+   {
+    "samples": 10240,
+    "text": "",
+    "tentative": ""
+   },
+   {
+    "samples": 12800,
+    "text": "",
+    "tentative": ""
+   }
+  ],
+  "final": {
+   "text": "我们",
+   "language": "",
+   "sample_count": 12800
+  },
+  "log": [
+   {
+    "op": "vad",
+    "n": 5120,
+    "sha": "15b5f32468c4cdd8d02f9a8c30a7e612c32855682df634c2374c86f7ba36d0dc",
+    "regions": []
+   },
+   {
+    "op": "vad",
+    "n": 10240,
+    "sha": "736d97c53a10f5eabf7e7b7300d56082d9be6a18fa4c7935c79d3dc1129a3d3b",
+    "regions": []
+   },
+   {
+    "op": "vad",
+    "n": 12800,
+    "sha": "d1f0901797d409bdceab59c8c7e86bcabf89a56758009a220bd633adc598886c",
+    "regions": [
+     {
+      "start": 6080,
+      "end": 12800
+     }
+    ]
+   },
+   {
+    "op": "start",
+    "context": "Topic: travel and office\nHotwords: 机场, quarterly report",
+    "language": null
+   },
+   {
+    "op": "push",
+    "offset": 0,
+    "n": 5120,
+    "sha": "15b5f32468c4cdd8d02f9a8c30a7e612c32855682df634c2374c86f7ba36d0dc",
+    "status": 0,
+    "event": true,
+    "text_status": 0,
+    "text": "",
+    "language": "",
+    "preview_status": 0,
+    "preview": ""
+   },
+   {
+    "op": "push",
+    "offset": 5120,
+    "n": 5120,
+    "sha": "52cf77a146ded008bf6b5b700ce74d9e21d70b0329488ed906e7683412ea5ca0",
+    "status": 0,
+    "event": true,
+    "text_status": 0,
+    "text": "",
+    "language": "",
+    "preview_status": 0,
+    "preview": ""
+   },
+   {
+    "op": "push",
+    "offset": 10240,
+    "n": 2560,
+    "sha": "e364939bbe61cf3cf669c94df9da675211748967bc881f8c7f71cc654014aa6e",
+    "status": 0,
+    "event": true,
+    "text_status": 7,
+    "preview_status": 7
+   },
+   {
+    "op": "push",
+    "offset": 12800,
+    "n": 5120,
+    "sha": "cc61635da46b2c9974335ea37e0b5fd660a5c8a42a89b271fa7ec2ac4b8b26f6",
+    "status": 0,
+    "event": true,
+    "text_status": 0,
+    "text": "",
+    "language": "",
+    "preview_status": 0,
+    "preview": ""
+   },
+   {
+    "op": "finish",
+    "status": 0,
+    "text_status": 0,
+    "text": "我们",
+    "language": ""
+   }
+  ]
+ },
+ "transcribe": {
+  "text": "我们",
+  "language": "",
+  "log": [
+   {
+    "op": "vad",
+    "n": 5120,
+    "sha": "15b5f32468c4cdd8d02f9a8c30a7e612c32855682df634c2374c86f7ba36d0dc",
+    "regions": []
+   },
+   {
+    "op": "vad",
+    "n": 10240,
+    "sha": "736d97c53a10f5eabf7e7b7300d56082d9be6a18fa4c7935c79d3dc1129a3d3b",
+    "regions": []
+   },
+   {
+    "op": "vad",
+    "n": 12800,
+    "sha": "d1f0901797d409bdceab59c8c7e86bcabf89a56758009a220bd633adc598886c",
+    "regions": [
+     {
+      "start": 6080,
+      "end": 12800
+     }
+    ]
+   },
+   {
+    "op": "start",
+    "context": "Topic: travel and office\nHotwords: 机场, quarterly report",
+    "language": null
+   },
+   {
+    "op": "push",
+    "offset": 0,
+    "n": 5120,
+    "sha": "15b5f32468c4cdd8d02f9a8c30a7e612c32855682df634c2374c86f7ba36d0dc",
+    "status": 0,
+    "event": true,
+    "text_status": 0,
+    "text": "",
+    "language": "",
+    "preview_status": 0,
+    "preview": ""
+   },
+   {
+    "op": "push",
+    "offset": 5120,
+    "n": 5120,
+    "sha": "52cf77a146ded008bf6b5b700ce74d9e21d70b0329488ed906e7683412ea5ca0",
+    "status": 0,
+    "event": true,
+    "text_status": 0,
+    "text": "",
+    "language": "",
+    "preview_status": 0,
+    "preview": ""
+   },
+   {
+    "op": "push",
+    "offset": 10240,
+    "n": 2560,
+    "sha": "e364939bbe61cf3cf669c94df9da675211748967bc881f8c7f71cc654014aa6e",
+    "status": 0,
+    "event": true,
+    "text_status": 7,
+    "preview_status": 7
+   },
+   {
+    "op": "push",
+    "offset": 12800,
+    "n": 5120,
+    "sha": "cc61635da46b2c9974335ea37e0b5fd660a5c8a42a89b271fa7ec2ac4b8b26f6",
+    "status": 0,
+    "event": true,
+    "text_status": 0,
+    "text": "",
+    "language": "",
+    "preview_status": 0,
+    "preview": ""
+   },
+   {
+    "op": "finish",
+    "status": 0,
+    "text_status": 0,
+    "text": "我们",
+    "language": ""
+   }
+  ]
+ }
+}

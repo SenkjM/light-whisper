@@ -7,7 +7,7 @@
 
 API 契约：[`docs/command-cube/api/`](../docs/command-cube/api/README.md)。
 
-## 当前进度（迁移步骤 1–2）
+## 当前进度（迁移步骤 1–3）
 
 | 部分 | 状态 |
 |------|------|
@@ -15,10 +15,11 @@ API 契约：[`docs/command-cube/api/`](../docs/command-cube/api/README.md)。
 | `GET/PATCH /v1/config`（revision + If-Match、live / reload）、`/v1/config/schema`、`/v1/engine/reload` | ✅ |
 | `WS /v1/events` | ✅ |
 | 串行调度器（单 OS 线程、实时优先） | ✅ |
-| `WS /v1/asr/stream`、`POST /v1/asr/transcribe`（Qwen3 或 R2T2） | ✅ 协议已实现，推理为 **mock** |
+| `WS /v1/asr/stream`、`POST /v1/asr/transcribe`（Qwen3 或 R2T2） | ✅ 协议已实现；默认构建推理为 **mock**，`lwnative` 构建的 R2T2 走真实推理（Qwen3 待步骤 4） |
 | GPU 空闲卸载 | ✅（mock 后端） |
-| FireRedVAD（步骤 2）：`internal/vad`，纯 Go fbank + CMVN + 区间后处理，onnxruntime 走 `lwnative` | ✅ 与 Python 逐帧对齐（见下）；尚未接入会话 |
-| R2T2 cgo（步骤 3）、Qwen3 cgo（步骤 4） | ⏳ 接入点：`internal/asr` 的 `Backend` 接口 |
+| FireRedVAD（步骤 2）：`internal/vad`，纯 Go fbank + CMVN + 区间后处理，onnxruntime 走 `lwnative` | ✅ 与 Python 逐帧对齐（见下）；已接入 R2T2 分段 |
+| R2T2 会话与分段（步骤 3）：`internal/r2t2`，audio.cpp C ABI 走 cgo（`lwnative`） | ✅ 与 Python 逐调用、逐字一致（Linux CPU，见下）；Windows / CUDA 未实测 |
+| Qwen3 cgo（步骤 4） | ⏳ 接入点：`internal/asr` 的 `Backend` 接口 |
 | 模型下载、job、CUDA 运行时下载 | ⏳ 契约占位 |
 | Rust 客户端：拉起、握手、版本校验、崩溃重启、config 读写、事件转发（`src-tauri/crates/lw-engine-client`，开关 `LW_ENGINE_BACKEND=go`） | ✅ |
 | Rust 壳全面切换到 API、移除 Python（步骤 5） | ⏳ |
@@ -33,6 +34,8 @@ internal/scheduler/  串行推理调度器
 internal/asr/        推理后端接口（cgo 接入点）+ mock
 internal/manager/    加载 / 卸载 / reload、实时会话槽、GPU 空闲卸载、状态
 internal/vad/        FireRedVAD：fbank、CMVN、ONNX 模型（lwnative）、平滑与区间；testdata/ 为与 Python 对齐的夹具
+internal/r2t2/       R2T2：audio.cpp C ABI（capi*.go，lwnative）、NativeRuntime / SegmentedR2T2 / R2T2StreamSession 移植、asr.Backend 实现；testdata/ 为 Python 参考轨迹
+internal/native/     组装原生后端（R2T2 + FireRedVAD），读取 LW_* 环境变量
 internal/server/     HTTP / WebSocket 处理与安全检查
 ```
 
@@ -52,7 +55,7 @@ go build -o lw-engine ./cmd/lw-engine          # Windows: GOOS=windows go build 
 
 常用参数：`--listen 127.0.0.1:0`、`--data-dir`、`--config`、`--backend mock|native`、`--token-file`、`--exit-on-stdin-close`、`--no-autoload`、`--allow-origin`（可重复）。
 
-`--backend native` 需要以 `-tags lwnative` 构建，原生 ASR 后端尚未实现（步骤 3–4，Windows + CGO + MSVC/CUDA 构建的 DLL，经 C ABI 动态加载）。
+`--backend native` 需要以 `-tags lwnative` 且 `CGO_ENABLED=1` 构建（见下节）；目前只支持 R2T2，Qwen3 在步骤 4。
 
 ### FireRedVAD 与 `lwnative`
 
@@ -82,6 +85,37 @@ python internal/vad/testdata/gen_reference.py   # 调用 src-tauri/resources/fir
 | 逐帧概率（全流程） | 最大差 1.3e-6（语音夹具）/ 1.2e-5（合成信号夹具），标准为 1e-4；同一组特征送入模型时差为 0 |
 | 平滑、区间 | 与 Python 逐位 / 完全一致（2 个夹具 + 71 组后处理用例） |
 
+### R2T2（步骤 3）与 `lwnative`
+
+`internal/r2t2` 是 Python R2T2 服务的移植：`runtime.go` ← `r2t2_native.py`（160 ms CUDA / 320 ms CPU 分块推送、committed delta 拼接、preview 前缀检查、ABI 0.4 在 CUDA 上首段一次推送、结束前补 320 ms 静音），`segmented.go` ← `r2t2_segmented.py`（先 VAD 再推理；最短 8 s 且尾部静音 ≥ 300 ms 才结束段，无上限；ASCII 感知的段间空格），`session.go` ← `r2t2_stream.py`（session id / offset 校验、committed 只增、tentative = preview − committed、错误后 reset 并作废会话），`backend.go` ← `r2t2_asr_server.py` 与 `hf_cache_utils.py`（固定模型的大小 + SHA-256 校验、CUDA → CPU 回退与 CUDA 预热、`上下文\nHotwords: a, b`、整段识别 = 新建分段会话按块送入再结束、实时会话进行中整段识别返回 busy）。实时会话期间的 R2T2 整段识别仍由 manager 先返回 409。
+
+audio.cpp 只经 C ABI 0.3/0.4（`scripts/patches/audio-cpp-r2t2-windows-streaming.patch` 打过补丁的构建）在**运行时**加载：Linux `dlopen`，Windows `LoadLibraryExW` + `AddDllDirectory`（库所在目录和资源目录，与 Python 的 `os.add_dll_directory` 相同）。不链接导入库、不跨 ABI 传 C++ 对象，内存都由库自己分配和释放，所以 cgo 的 MinGW gcc 与 MSVC（CUDA 12.9）构建的 DLL 只在 C 调用约定上相遇。默认构建（无 cgo）里 `OpenLibrary` 返回 `ErrNativeUnavailable`，会话与分段逻辑照常编译、用假的 C 层测试。
+
+`--backend native` 读取的环境变量（均可省略）：
+
+| 变量 | 默认 | 含义 |
+|------|------|------|
+| `LW_RESOURCES_DIR` | 可执行文件所在目录 | `fireredvad_vad.onnx`、`fireredvad_cmvn.json` 所在目录 |
+| `LW_R2T2_RUNTIME_DIR` | `<资源目录>/r2t2-native` | 其下 `cuda/`、`cpu/` 各放一份 audio.cpp 构建（`audiocpp.dll` / `libaudiocpp.so`） |
+| `LW_ONNXRUNTIME_LIB` | 系统加载器 | onnxruntime 动态库 |
+| `LW_R2T2_MODEL` | Hugging Face 缓存中的固定模型（`models_dir` 或 `HF_HUB_CACHE` / `HF_HOME/hub` / `~/.cache/huggingface/hub`） | 仅开发用：直接使用该 GGUF，跳过大小与哈希校验 |
+
+`device` 为 `cpu` 时不尝试 CUDA（Python 总是先试 CUDA）；其余取值先 CUDA 后 CPU。
+
+测试：
+
+```bash
+go test -race ./internal/r2t2      # 默认构建：移植自 Python 的单测 + 用 testdata/*.trace.json 回放
+# 真实 audio.cpp + 模型 + FireRedVAD，与 Python 轨迹逐调用比较（CPU 4 线程，比实时慢约 6–10 倍）
+CGO_ENABLED=1 LW_R2T2_LIBRARY=/path/libaudiocpp.so LW_R2T2_MODEL=/path/r2t2-q8_0.gguf \
+  LW_ONNXRUNTIME_LIB=/path/libonnxruntime.so.1.24.1 \
+  go test -tags lwnative -run Live -v -timeout 60m ./internal/r2t2
+```
+
+`testdata/gen_reference.py` 用真实的 Python 代码（`handle_stream_command` 以 160 ms PCM16 块推流、`transcribe_audio`）和 audio.cpp 生成轨迹：每次原生调用（start 的上下文 / 语言、每次 push 的 offset、长度、float32 样本 SHA-256、事件的 delta / preview）、每次 VAD 调用（窗口长度、哈希、区间）、每个流式响应和最终文本。回放测试要求 Go 发出完全相同的调用序列并得到相同的响应；Live 测试再把每次调用的真实输出与 Python 比对。`LW_R2T2_TRACE_DIRS` 可追加别处的轨迹目录（如不便入库的真人录音）。
+
+当前结果（Linux x86-64，audio.cpp 按 `scripts/build_r2t2_runtime.py` 的固定修订、补丁与 CMake 选项用 GCC 构建 CPU 版，仅 `ENGINE_ENABLE_NATIVE_CPU=ON`；Q8 模型，4 线程）：6 段音频（合成中英文 20.9 s / 3.2 s、2 s 静音、0.8 s 截断，加上公开的英文 11 s 与中文 17 s 真人录音），实时会话与整段识别两条路径上，原生调用序列、每个 delta / preview、VAD 区间、每个流式响应（committed + tentative）以及最终文本与 Python **完全一致**。用 `--backend native` 启动的 `lw-engine` 端到端（`POST /v1/asr/transcribe` 与 `WS /v1/asr/stream` 的 20 个 `partial`）也与 Python 一致。
+
 ## 许可证
 
 本目录的新写代码采用 **AGPL-3.0-only**（见 [LICENSE](LICENSE) 与 PLAN §10）。每个文件带 SPDX 头；无法加注释的文件（`go.sum`、JSON、测试夹具）用同名 `.license` 旁注文件。例外：
@@ -89,5 +123,6 @@ python internal/vad/testdata/gen_reference.py   # 调用 src-tauri/resources/fir
 - `internal/vad/postprocess.go` 由继承的 `src-tauri/resources/firered_vad.py` 移植，按 PLAN §10.4 标 **GPL-3.0-only**，并保留 FireRedVAD 的 Apache-2.0 声明。
 - `internal/vad/kissfft.go` 是 KISS FFT 的移植，**BSD-3-Clause**，文件内保留原声明。
 - `internal/vad/fbank.go` 只重写 kaldi-native-fbank（Apache-2.0）的算法，不含其代码。
+- `internal/r2t2/` 的 `runtime.go`、`segmented.go`、`session.go`、`backend.go` 及对应的 `*_test.go`（`runtime_test.go`、`segmented_test.go`、`session_test.go`、`backend_test.go`）由继承的 Python 代码与测试移植，标 **GPL-3.0-only**；C ABI 绑定、轨迹回放与 Live 测试为新写的 AGPL-3.0-only。
 
 依赖：`github.com/coder/websocket`（ISC）；`github.com/yalue/onnxruntime_go`（MIT，仅 `lwnative` 构建）。见根目录 `THIRD_PARTY_NOTICES.md`。

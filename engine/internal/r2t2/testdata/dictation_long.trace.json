@@ -1,0 +1,2837 @@
+{
+ "source": {
+  "wav": "dictation_long.wav"
+ },
+ "samples": 334056,
+ "backend": "cpu",
+ "chunk_samples": 5120,
+ "feed_samples": 2560,
+ "threads": 4,
+ "context": "Topic: travel and office",
+ "hot_words": [
+  "机场",
+  "quarterly report"
+ ],
+ "stream": {
+  "responses": [
+   {
+    "samples": 2560,
+    "text": "",
+    "tentative": ""
+   },
+   {
+    "samples": 5120,
+    "text": "",
+    "tentative": ""
+   },
+   {
+    "samples": 7680,
+    "text": "",
+    "tentative": ""
+   },
+   {
+    "samples": 10240,
+    "text": "",
+    "tentative": ""
+   },
+   {
+    "samples": 12800,
+    "text": "",
+    "tentative": ""
+   },
+   {
+    "samples": 15360,
+    "text": "",
+    "tentative": ""
+   },
+   {
+    "samples": 17920,
+    "text": "",
+    "tentative": ""
+   },
+   {
+    "samples": 20480,
+    "text": "",
+    "tentative": "我们"
+   },
+   {
+    "samples": 23040,
+    "text": "",
+    "tentative": "我们"
+   },
+   {
+    "samples": 25600,
+    "text": "",
+    "tentative": "我们"
+   },
+   {
+    "samples": 28160,
+    "text": "",
+    "tentative": "我们"
+   },
+   {
+    "samples": 30720,
+    "text": "",
+    "tentative": "我们民间"
+   },
+   {
+    "samples": 33280,
+    "text": "",
+    "tentative": "我们民间"
+   },
+   {
+    "samples": 35840,
+    "text": "",
+    "tentative": "我们明天早上"
+   },
+   {
+    "samples": 38400,
+    "text": "",
+    "tentative": "我们明天早上"
+   },
+   {
+    "samples": 40960,
+    "text": "",
+    "tentative": "我们明天早上"
+   },
+   {
+    "samples": 43520,
+    "text": "",
+    "tentative": "我们明天早上"
+   },
+   {
+    "samples": 46080,
+    "text": "",
+    "tentative": "我们明天早上九"
+   },
+   {
+    "samples": 48640,
+    "text": "",
+    "tentative": "我们明天早上九"
+   },
+   {
+    "samples": 51200,
+    "text": "我们",
+    "tentative": "明天早上九点在"
+   },
+   {
+    "samples": 53760,
+    "text": "我们",
+    "tentative": "明天早上九点在"
+   },
+   {
+    "samples": 56320,
+    "text": "我们",
+    "tentative": "明天早上九点在"
+   },
+   {
+    "samples": 58880,
+    "text": "我们",
+    "tentative": "明天早上九点在"
+   },
+   {
+    "samples": 61440,
+    "text": "我们明天",
+    "tentative": "早上九点在公司"
+   },
+   {
+    "samples": 64000,
+    "text": "我们明天",
+    "tentative": "早上九点在公司"
+   },
+   {
+    "samples": 66560,
+    "text": "我们明天早上",
+    "tentative": "九点在公司门口"
+   },
+   {
+    "samples": 69120,
+    "text": "我们明天早上",
+    "tentative": "九点在公司门口"
+   },
+   {
+    "samples": 71680,
+    "text": "我们明天早上",
+    "tentative": "九点在公司门口"
+   },
+   {
+    "samples": 74240,
+    "text": "我们明天早上",
+    "tentative": "九点在公司门口"
+   },
+   {
+    "samples": 76800,
+    "text": "我们明天早上九",
+    "tentative": "点在公司门口集合"
+   },
+   {
+    "samples": 79360,
+    "text": "我们明天早上九",
+    "tentative": "点在公司门口集合"
+   },
+   {
+    "samples": 81920,
+    "text": "我们明天早上九",
+    "tentative": "点在公司门口集合"
+   },
+   {
+    "samples": 84480,
+    "text": "我们明天早上九",
+    "tentative": "点在公司门口集合"
+   },
+   {
+    "samples": 87040,
+    "text": "我们明天早上九点在公司门口集合，",
+    "tentative": ""
+   },
+   {
+    "samples": 89600,
+    "text": "我们明天早上九点在公司门口集合，",
+    "tentative": ""
+   },
+   {
+    "samples": 92160,
+    "text": "我们明天早上九点在公司门口集合，",
+    "tentative": "然后"
+   },
+   {
+    "samples": 94720,
+    "text": "我们明天早上九点在公司门口集合，",
+    "tentative": "然后"
+   },
+   {
+    "samples": 97280,
+    "text": "我们明天早上九点在公司门口集合，",
+    "tentative": "然后"
+   },
+   {
+    "samples": 99840,
+    "text": "我们明天早上九点在公司门口集合，",
+    "tentative": "然后"
+   },
+   {
+    "samples": 102400,
+    "text": "我们明天早上九点在公司门口集合，",
+    "tentative": "然后一起去"
+   },
+   {
+    "samples": 104960,
+    "text": "我们明天早上九点在公司门口集合，",
+    "tentative": "然后一起去"
+   },
+   {
+    "samples": 107520,
+    "text": "我们明天早上九点在公司门口集合，",
+    "tentative": "然后一起去"
+   },
+   {
+    "samples": 110080,
+    "text": "我们明天早上九点在公司门口集合，",
+    "tentative": "然后一起去"
+   },
+   {
+    "samples": 112640,
+    "text": "我们明天早上九点在公司门口集合，",
+    "tentative": "然后一起去机场"
+   },
+   {
+    "samples": 115200,
+    "text": "我们明天早上九点在公司门口集合，",
+    "tentative": "然后一起去机场"
+   },
+   {
+    "samples": 117760,
+    "text": "我们明天早上九点在公司门口集合，然后一起去机场。",
+    "tentative": ""
+   },
+   {
+    "samples": 120320,
+    "text": "我们明天早上九点在公司门口集合，然后一起去机场。",
+    "tentative": ""
+   },
+   {
+    "samples": 122880,
+    "text": "我们明天早上九点在公司门口集合，然后一起去机场。",
+    "tentative": ""
+   },
+   {
+    "samples": 125440,
+    "text": "我们明天早上九点在公司门口集合，然后一起去机场。",
+    "tentative": ""
+   },
+   {
+    "samples": 128000,
+    "text": "我们明天早上九点在公司门口集合，然后一起去机场。",
+    "tentative": ""
+   },
+   {
+    "samples": 130560,
+    "text": "我们明天早上九点在公司门口集合，然后一起去机场。",
+    "tentative": ""
+   },
+   {
+    "samples": 133120,
+    "text": "我们明天早上九点在公司门口集合，然后一起去机场。",
+    "tentative": "Please"
+   },
+   {
+    "samples": 135680,
+    "text": "我们明天早上九点在公司门口集合，然后一起去机场。",
+    "tentative": "Please"
+   },
+   {
+    "samples": 138240,
+    "text": "我们明天早上九点在公司门口集合，然后一起去机场。",
+    "tentative": "Please"
+   },
+   {
+    "samples": 140800,
+    "text": "我们明天早上九点在公司门口集合，然后一起去机场。",
+    "tentative": "Please"
+   },
+   {
+    "samples": 143360,
+    "text": "我们明天早上九点在公司门口集合，然后一起去机场。",
+    "tentative": "Please send"
+   },
+   {
+    "samples": 145920,
+    "text": "我们明天早上九点在公司门口集合，然后一起去机场。",
+    "tentative": "Please send"
+   },
+   {
+    "samples": 148480,
+    "text": "我们明天早上九点在公司门口集合，然后一起去机场。",
+    "tentative": "Please send the"
+   },
+   {
+    "samples": 151040,
+    "text": "我们明天早上九点在公司门口集合，然后一起去机场。",
+    "tentative": "Please send the"
+   },
+   {
+    "samples": 153600,
+    "text": "我们明天早上九点在公司门口集合，然后一起去机场。",
+    "tentative": "Please send the quarterly"
+   },
+   {
+    "samples": 156160,
+    "text": "我们明天早上九点在公司门口集合，然后一起去机场。",
+    "tentative": "Please send the quarterly"
+   },
+   {
+    "samples": 158720,
+    "text": "我们明天早上九点在公司门口集合，然后一起去机场。",
+    "tentative": "Please send the quarterly report"
+   },
+   {
+    "samples": 161280,
+    "text": "我们明天早上九点在公司门口集合，然后一起去机场。",
+    "tentative": "Please send the quarterly report"
+   },
+   {
+    "samples": 163840,
+    "text": "我们明天早上九点在公司门口集合，然后一起去机场。Please send",
+    "tentative": " the quarterly report to the"
+   },
+   {
+    "samples": 166400,
+    "text": "我们明天早上九点在公司门口集合，然后一起去机场。Please send",
+    "tentative": " the quarterly report to the"
+   },
+   {
+    "samples": 168960,
+    "text": "我们明天早上九点在公司门口集合，然后一起去机场。Please send",
+    "tentative": " the quarterly report to the"
+   },
+   {
+    "samples": 171520,
+    "text": "我们明天早上九点在公司门口集合，然后一起去机场。Please send",
+    "tentative": " the quarterly report to the"
+   },
+   {
+    "samples": 174080,
+    "text": "我们明天早上九点在公司门口集合，然后一起去机场。Please send the",
+    "tentative": " quarterly report to the finance"
+   },
+   {
+    "samples": 176640,
+    "text": "我们明天早上九点在公司门口集合，然后一起去机场。Please send the",
+    "tentative": " quarterly report to the finance"
+   },
+   {
+    "samples": 179200,
+    "text": "我们明天早上九点在公司门口集合，然后一起去机场。Please send the quarterly",
+    "tentative": " report to the finance team"
+   },
+   {
+    "samples": 181760,
+    "text": "我们明天早上九点在公司门口集合，然后一起去机场。Please send the quarterly",
+    "tentative": " report to the finance team"
+   },
+   {
+    "samples": 184320,
+    "text": "我们明天早上九点在公司门口集合，然后一起去机场。Please send the quarterly report",
+    "tentative": " to the finance team before"
+   },
+   {
+    "samples": 186880,
+    "text": "我们明天早上九点在公司门口集合，然后一起去机场。Please send the quarterly report",
+    "tentative": " to the finance team before"
+   },
+   {
+    "samples": 189440,
+    "text": "我们明天早上九点在公司门口集合，然后一起去机场。Please send the quarterly report to the finance team before Friday.",
+    "tentative": ""
+   },
+   {
+    "samples": 192000,
+    "text": "我们明天早上九点在公司门口集合，然后一起去机场。Please send the quarterly report to the finance team before Friday.",
+    "tentative": ""
+   },
+   {
+    "samples": 194560,
+    "text": "我们明天早上九点在公司门口集合，然后一起去机场。Please send the quarterly report to the finance team before Friday.",
+    "tentative": ""
+   },
+   {
+    "samples": 197120,
+    "text": "我们明天早上九点在公司门口集合，然后一起去机场。Please send the quarterly report to the finance team before Friday.",
+    "tentative": ""
+   },
+   {
+    "samples": 199680,
+    "text": "我们明天早上九点在公司门口集合，然后一起去机场。Please send the quarterly report to the finance team before Friday.",
+    "tentative": ""
+   },
+   {
+    "samples": 202240,
+    "text": "我们明天早上九点在公司门口集合，然后一起去机场。Please send the quarterly report to the finance team before Friday.",
+    "tentative": ""
+   },
+   {
+    "samples": 204800,
+    "text": "我们明天早上九点在公司门口集合，然后一起去机场。Please send the quarterly report to the finance team before Friday.",
+    "tentative": ""
+   },
+   {
+    "samples": 207360,
+    "text": "我们明天早上九点在公司门口集合，然后一起去机场。Please send the quarterly report to the finance team before Friday.",
+    "tentative": ""
+   },
+   {
+    "samples": 209920,
+    "text": "我们明天早上九点在公司门口集合，然后一起去机场。Please send the quarterly report to the finance team before Friday.",
+    "tentative": ""
+   },
+   {
+    "samples": 212480,
+    "text": "我们明天早上九点在公司门口集合，然后一起去机场。Please send the quarterly report to the finance team before Friday.",
+    "tentative": ""
+   },
+   {
+    "samples": 215040,
+    "text": "我们明天早上九点在公司门口集合，然后一起去机场。Please send the quarterly report to the finance team before Friday.",
+    "tentative": ""
+   },
+   {
+    "samples": 217600,
+    "text": "我们明天早上九点在公司门口集合，然后一起去机场。Please send the quarterly report to the finance team before Friday.",
+    "tentative": ""
+   },
+   {
+    "samples": 220160,
+    "text": "我们明天早上九点在公司门口集合，然后一起去机场。Please send the quarterly report to the finance team before Friday.",
+    "tentative": ""
+   },
+   {
+    "samples": 222720,
+    "text": "我们明天早上九点在公司门口集合，然后一起去机场。Please send the quarterly report to the finance team before Friday.",
+    "tentative": ""
+   },
+   {
+    "samples": 225280,
+    "text": "我们明天早上九点在公司门口集合，然后一起去机场。Please send the quarterly report to the finance team before Friday.",
+    "tentative": ""
+   },
+   {
+    "samples": 227840,
+    "text": "我们明天早上九点在公司门口集合，然后一起去机场。Please send the quarterly report to the finance team before Friday.",
+    "tentative": ""
+   },
+   {
+    "samples": 230400,
+    "text": "我们明天早上九点在公司门口集合，然后一起去机场。Please send the quarterly report to the finance team before Friday.",
+    "tentative": ""
+   },
+   {
+    "samples": 232960,
+    "text": "我们明天早上九点在公司门口集合，然后一起去机场。Please send the quarterly report to the finance team before Friday.",
+    "tentative": ""
+   },
+   {
+    "samples": 235520,
+    "text": "我们明天早上九点在公司门口集合，然后一起去机场。Please send the quarterly report to the finance team before Friday.",
+    "tentative": ""
+   },
+   {
+    "samples": 238080,
+    "text": "我们明天早上九点在公司门口集合，然后一起去机场。Please send the quarterly report to the finance team before Friday.",
+    "tentative": ""
+   },
+   {
+    "samples": 240640,
+    "text": "我们明天早上九点在公司门口集合，然后一起去机场。Please send the quarterly report to the finance team before Friday.",
+    "tentative": ""
+   },
+   {
+    "samples": 243200,
+    "text": "我们明天早上九点在公司门口集合，然后一起去机场。Please send the quarterly report to the finance team before Friday.",
+    "tentative": ""
+   },
+   {
+    "samples": 245760,
+    "text": "我们明天早上九点在公司门口集合，然后一起去机场。Please send the quarterly report to the finance team before Friday.",
+    "tentative": ""
+   },
+   {
+    "samples": 248320,
+    "text": "我们明天早上九点在公司门口集合，然后一起去机场。Please send the quarterly report to the finance team before Friday.",
+    "tentative": ""
+   },
+   {
+    "samples": 250880,
+    "text": "我们明天早上九点在公司门口集合，然后一起去机场。Please send the quarterly report to the finance team before Friday.",
+    "tentative": ""
+   },
+   {
+    "samples": 253440,
+    "text": "我们明天早上九点在公司门口集合，然后一起去机场。Please send the quarterly report to the finance team before Friday.",
+    "tentative": ""
+   },
+   {
+    "samples": 256000,
+    "text": "我们明天早上九点在公司门口集合，然后一起去机场。Please send the quarterly report to the finance team before Friday.这个",
+    "tentative": "周末的天气预报我会"
+   },
+   {
+    "samples": 258560,
+    "text": "我们明天早上九点在公司门口集合，然后一起去机场。Please send the quarterly report to the finance team before Friday.这个",
+    "tentative": "周末的天气预报我会"
+   },
+   {
+    "samples": 261120,
+    "text": "我们明天早上九点在公司门口集合，然后一起去机场。Please send the quarterly report to the finance team before Friday.这个",
+    "tentative": "周末的天气预报我会"
+   },
+   {
+    "samples": 263680,
+    "text": "我们明天早上九点在公司门口集合，然后一起去机场。Please send the quarterly report to the finance team before Friday.这个",
+    "tentative": "周末的天气预报我会"
+   },
+   {
+    "samples": 266240,
+    "text": "我们明天早上九点在公司门口集合，然后一起去机场。Please send the quarterly report to the finance team before Friday.这个周末的",
+    "tentative": "天气预报说会下雨"
+   },
+   {
+    "samples": 268800,
+    "text": "我们明天早上九点在公司门口集合，然后一起去机场。Please send the quarterly report to the finance team before Friday.这个周末的",
+    "tentative": "天气预报说会下雨"
+   },
+   {
+    "samples": 271360,
+    "text": "我们明天早上九点在公司门口集合，然后一起去机场。Please send the quarterly report to the finance team before Friday.这个周末的",
+    "tentative": "天气预报说会下雨"
+   },
+   {
+    "samples": 273920,
+    "text": "我们明天早上九点在公司门口集合，然后一起去机场。Please send the quarterly report to the finance team before Friday.这个周末的",
+    "tentative": "天气预报说会下雨"
+   },
+   {
+    "samples": 276480,
+    "text": "我们明天早上九点在公司门口集合，然后一起去机场。Please send the quarterly report to the finance team before Friday.这个周末的天气预报",
+    "tentative": "说会下雨，记得"
+   },
+   {
+    "samples": 279040,
+    "text": "我们明天早上九点在公司门口集合，然后一起去机场。Please send the quarterly report to the finance team before Friday.这个周末的天气预报",
+    "tentative": "说会下雨，记得"
+   },
+   {
+    "samples": 281600,
+    "text": "我们明天早上九点在公司门口集合，然后一起去机场。Please send the quarterly report to the finance team before Friday.这个周末的天气预报说",
+    "tentative": "会下雨，记得带"
+   },
+   {
+    "samples": 284160,
+    "text": "我们明天早上九点在公司门口集合，然后一起去机场。Please send the quarterly report to the finance team before Friday.这个周末的天气预报说",
+    "tentative": "会下雨，记得带"
+   },
+   {
+    "samples": 286720,
+    "text": "我们明天早上九点在公司门口集合，然后一起去机场。Please send the quarterly report to the finance team before Friday.这个周末的天气预报说会下雨，记得带伞。",
+    "tentative": ""
+   },
+   {
+    "samples": 289280,
+    "text": "我们明天早上九点在公司门口集合，然后一起去机场。Please send the quarterly report to the finance team before Friday.这个周末的天气预报说会下雨，记得带伞。",
+    "tentative": ""
+   },
+   {
+    "samples": 291840,
+    "text": "我们明天早上九点在公司门口集合，然后一起去机场。Please send the quarterly report to the finance team before Friday.这个周末的天气预报说会下雨，记得带伞。",
+    "tentative": ""
+   },
+   {
+    "samples": 294400,
+    "text": "我们明天早上九点在公司门口集合，然后一起去机场。Please send the quarterly report to the finance team before Friday.这个周末的天气预报说会下雨，记得带伞。",
+    "tentative": ""
+   },
+   {
+    "samples": 296960,
+    "text": "我们明天早上九点在公司门口集合，然后一起去机场。Please send the quarterly report to the finance team before Friday.这个周末的天气预报说会下雨，记得带伞。",
+    "tentative": ""
+   },
+   {
+    "samples": 299520,
+    "text": "我们明天早上九点在公司门口集合，然后一起去机场。Please send the quarterly report to the finance team before Friday.这个周末的天气预报说会下雨，记得带伞。",
+    "tentative": ""
+   },
+   {
+    "samples": 302080,
+    "text": "我们明天早上九点在公司门口集合，然后一起去机场。Please send the quarterly report to the finance team before Friday.这个周末的天气预报说会下雨，记得带伞。",
+    "tentative": ""
+   },
+   {
+    "samples": 304640,
+    "text": "我们明天早上九点在公司门口集合，然后一起去机场。Please send the quarterly report to the finance team before Friday.这个周末的天气预报说会下雨，记得带伞。",
+    "tentative": ""
+   },
+   {
+    "samples": 307200,
+    "text": "我们明天早上九点在公司门口集合，然后一起去机场。Please send the quarterly report to the finance team before Friday.这个周末的天气预报说会下雨，记得带伞。",
+    "tentative": "Thank"
+   },
+   {
+    "samples": 309760,
+    "text": "我们明天早上九点在公司门口集合，然后一起去机场。Please send the quarterly report to the finance team before Friday.这个周末的天气预报说会下雨，记得带伞。",
+    "tentative": "Thank"
+   },
+   {
+    "samples": 312320,
+    "text": "我们明天早上九点在公司门口集合，然后一起去机场。Please send the quarterly report to the finance team before Friday.这个周末的天气预报说会下雨，记得带伞。",
+    "tentative": "Thank you very"
+   },
+   {
+    "samples": 314880,
+    "text": "我们明天早上九点在公司门口集合，然后一起去机场。Please send the quarterly report to the finance team before Friday.这个周末的天气预报说会下雨，记得带伞。",
+    "tentative": "Thank you very"
+   },
+   {
+    "samples": 317440,
+    "text": "我们明天早上九点在公司门口集合，然后一起去机场。Please send the quarterly report to the finance team before Friday.这个周末的天气预报说会下雨，记得带伞。",
+    "tentative": "Thank you very much"
+   },
+   {
+    "samples": 320000,
+    "text": "我们明天早上九点在公司门口集合，然后一起去机场。Please send the quarterly report to the finance team before Friday.这个周末的天气预报说会下雨，记得带伞。",
+    "tentative": "Thank you very much"
+   },
+   {
+    "samples": 322560,
+    "text": "我们明天早上九点在公司门口集合，然后一起去机场。Please send the quarterly report to the finance team before Friday.这个周末的天气预报说会下雨，记得带伞。Thank you very much.",
+    "tentative": ""
+   },
+   {
+    "samples": 325120,
+    "text": "我们明天早上九点在公司门口集合，然后一起去机场。Please send the quarterly report to the finance team before Friday.这个周末的天气预报说会下雨，记得带伞。Thank you very much.",
+    "tentative": ""
+   },
+   {
+    "samples": 327680,
+    "text": "我们明天早上九点在公司门口集合，然后一起去机场。Please send the quarterly report to the finance team before Friday.这个周末的天气预报说会下雨，记得带伞。Thank you very much.",
+    "tentative": ""
+   },
+   {
+    "samples": 330240,
+    "text": "我们明天早上九点在公司门口集合，然后一起去机场。Please send the quarterly report to the finance team before Friday.这个周末的天气预报说会下雨，记得带伞。Thank you very much.",
+    "tentative": ""
+   },
+   {
+    "samples": 332800,
+    "text": "我们明天早上九点在公司门口集合，然后一起去机场。Please send the quarterly report to the finance team before Friday.这个周末的天气预报说会下雨，记得带伞。Thank you very much.",
+    "tentative": ""
+   },
+   {
+    "samples": 334056,
+    "text": "我们明天早上九点在公司门口集合，然后一起去机场。Please send the quarterly report to the finance team before Friday.这个周末的天气预报说会下雨，记得带伞。Thank you very much.",
+    "tentative": ""
+   }
+  ],
+  "final": {
+   "text": "我们明天早上九点在公司门口集合，然后一起去机场。Please send the quarterly report to the finance team before Friday.这个周末的天气预报说会下雨，记得带伞。Thank you very much.",
+   "language": "",
+   "sample_count": 334056
+  },
+  "log": [
+   {
+    "op": "vad",
+    "n": 5120,
+    "sha": "15b5f32468c4cdd8d02f9a8c30a7e612c32855682df634c2374c86f7ba36d0dc",
+    "regions": []
+   },
+   {
+    "op": "vad",
+    "n": 10240,
+    "sha": "736d97c53a10f5eabf7e7b7300d56082d9be6a18fa4c7935c79d3dc1129a3d3b",
+    "regions": []
+   },
+   {
+    "op": "vad",
+    "n": 15360,
+    "sha": "a3ea749ca89db1517e4da6f35a0835a30755ba8bff0ed9dbdaa85edf035d8f63",
+    "regions": [
+     {
+      "start": 6080,
+      "end": 15360
+     }
+    ]
+   },
+   {
+    "op": "start",
+    "context": "Topic: travel and office\nHotwords: 机场, quarterly report",
+    "language": null
+   },
+   {
+    "op": "push",
+    "offset": 0,
+    "n": 5120,
+    "sha": "15b5f32468c4cdd8d02f9a8c30a7e612c32855682df634c2374c86f7ba36d0dc",
+    "status": 0,
+    "event": true,
+    "text_status": 0,
+    "text": "",
+    "language": "",
+    "preview_status": 0,
+    "preview": ""
+   },
+   {
+    "op": "push",
+    "offset": 5120,
+    "n": 5120,
+    "sha": "52cf77a146ded008bf6b5b700ce74d9e21d70b0329488ed906e7683412ea5ca0",
+    "status": 0,
+    "event": true,
+    "text_status": 0,
+    "text": "",
+    "language": "",
+    "preview_status": 0,
+    "preview": ""
+   },
+   {
+    "op": "push",
+    "offset": 10240,
+    "n": 5120,
+    "sha": "402c3083ac58be4c342106c7f18ae6f54b9975cb242546a2d6ca312541f8013b",
+    "status": 0,
+    "event": true,
+    "text_status": 0,
+    "text": "",
+    "language": "",
+    "preview_status": 0,
+    "preview": ""
+   },
+   {
+    "op": "push",
+    "offset": 15360,
+    "n": 5120,
+    "sha": "60abf022f3f17746d4d0d06582ada6fca01d7df0d51de2a58c911cb8a036ebc4",
+    "status": 0,
+    "event": true,
+    "text_status": 0,
+    "text": "",
+    "language": "",
+    "preview_status": 0,
+    "preview": "我们"
+   },
+   {
+    "op": "push",
+    "offset": 20480,
+    "n": 5120,
+    "sha": "251ab957e785de7bfa616adc02e09f214a705346f2c1d5f12658bbc64eaed7d5",
+    "status": 0,
+    "event": true,
+    "text_status": 0,
+    "text": "",
+    "language": "",
+    "preview_status": 0,
+    "preview": "我们"
+   },
+   {
+    "op": "push",
+    "offset": 25600,
+    "n": 5120,
+    "sha": "4e132f2d4d97ac11437275c90b97578f9664c2d24563d3a04f039a9d6c240f3f",
+    "status": 0,
+    "event": true,
+    "text_status": 0,
+    "text": "",
+    "language": "",
+    "preview_status": 0,
+    "preview": "我们民间"
+   },
+   {
+    "op": "push",
+    "offset": 30720,
+    "n": 5120,
+    "sha": "60b813b971a31bd42478884fd020feeee643e0ee316337ef48c1814905f27bbd",
+    "status": 0,
+    "event": true,
+    "text_status": 0,
+    "text": "",
+    "language": "",
+    "preview_status": 0,
+    "preview": "我们明天早上"
+   },
+   {
+    "op": "push",
+    "offset": 35840,
+    "n": 5120,
+    "sha": "04458568637d4d0f1a69b8eb039906a4a01c79c140b43b447ed21a615134f5f9",
+    "status": 0,
+    "event": true,
+    "text_status": 0,
+    "text": "",
+    "language": "",
+    "preview_status": 0,
+    "preview": "我们明天早上"
+   },
+   {
+    "op": "push",
+    "offset": 40960,
+    "n": 5120,
+    "sha": "e50865f8660c7daf65d4c751b784f4886ba128410c2307e98d58592c00a9682a",
+    "status": 0,
+    "event": true,
+    "text_status": 0,
+    "text": "",
+    "language": "",
+    "preview_status": 0,
+    "preview": "我们明天早上九"
+   },
+   {
+    "op": "push",
+    "offset": 46080,
+    "n": 5120,
+    "sha": "f606d525544b86493b7532b6324ce421b4c5105ae55150fbc0903982de1faa1a",
+    "status": 0,
+    "event": true,
+    "text_status": 0,
+    "text": "我们",
+    "language": "",
+    "preview_status": 0,
+    "preview": "我们明天早上九点在"
+   },
+   {
+    "op": "push",
+    "offset": 51200,
+    "n": 5120,
+    "sha": "8c707bf637642abebcae7af5dde88f43341568e0eb308d7636f9cb24f5ac001c",
+    "status": 0,
+    "event": true,
+    "text_status": 0,
+    "text": "",
+    "language": "",
+    "preview_status": 0,
+    "preview": "我们明天早上九点在"
+   },
+   {
+    "op": "push",
+    "offset": 56320,
+    "n": 5120,
+    "sha": "cad1aa57c00c82b3d4d309ffaefc31d0b68eeec913b7a7c228ee01d21c92fe19",
+    "status": 0,
+    "event": true,
+    "text_status": 0,
+    "text": "明天",
+    "language": "",
+    "preview_status": 0,
+    "preview": "我们明天早上九点在公司"
+   },
+   {
+    "op": "push",
+    "offset": 61440,
+    "n": 5120,
+    "sha": "b8055afa342768a06a00970d95b81a3ef56008f081b5d2a8a61fada32399d96a",
+    "status": 0,
+    "event": true,
+    "text_status": 0,
+    "text": "早上",
+    "language": "",
+    "preview_status": 0,
+    "preview": "我们明天早上九点在公司门口"
+   },
+   {
+    "op": "push",
+    "offset": 66560,
+    "n": 5120,
+    "sha": "127a445cfa29e5a190e7a84b43af7892d9ec2bc462a770d1b758ff81f537945a",
+    "status": 0,
+    "event": true,
+    "text_status": 0,
+    "text": "",
+    "language": "",
+    "preview_status": 0,
+    "preview": "我们明天早上九点在公司门口"
+   },
+   {
+    "op": "push",
+    "offset": 71680,
+    "n": 5120,
+    "sha": "ed3a53a5ac405d0ea277b925f21b037b1cbb407face369111b72ad7cadd9e1d2",
+    "status": 0,
+    "event": true,
+    "text_status": 0,
+    "text": "九",
+    "language": "",
+    "preview_status": 0,
+    "preview": "我们明天早上九点在公司门口集合"
+   },
+   {
+    "op": "push",
+    "offset": 76800,
+    "n": 5120,
+    "sha": "d470dba3c89a88be07d2ffc3a353fc8e7b484702c18bdd6e8035910e10a80466",
+    "status": 0,
+    "event": true,
+    "text_status": 0,
+    "text": "",
+    "language": "",
+    "preview_status": 0,
+    "preview": "我们明天早上九点在公司门口集合"
+   },
+   {
+    "op": "push",
+    "offset": 81920,
+    "n": 5120,
+    "sha": "1561176b1a12aff6b70295012733ef5e75d6cde8a5cf5d6d83df6aae333c7de6",
+    "status": 0,
+    "event": true,
+    "text_status": 0,
+    "text": "点在公司门口集合，",
+    "language": "",
+    "preview_status": 0,
+    "preview": "我们明天早上九点在公司门口集合，"
+   },
+   {
+    "op": "push",
+    "offset": 87040,
+    "n": 5120,
+    "sha": "fa78263ea5f4b357f74a29df765d9c9575ae6cda0b98749723596445eeb0f8d5",
+    "status": 0,
+    "event": true,
+    "text_status": 0,
+    "text": "",
+    "language": "",
+    "preview_status": 0,
+    "preview": "我们明天早上九点在公司门口集合，然后"
+   },
+   {
+    "op": "push",
+    "offset": 92160,
+    "n": 5120,
+    "sha": "d47471a89f398d8d007fdeec97f362c57dd3fa9beb319db94d2776b38fde35e0",
+    "status": 0,
+    "event": true,
+    "text_status": 0,
+    "text": "",
+    "language": "",
+    "preview_status": 0,
+    "preview": "我们明天早上九点在公司门口集合，然后"
+   },
+   {
+    "op": "push",
+    "offset": 97280,
+    "n": 5120,
+    "sha": "efa5e96f0d117a63b8f765b086da79a99029ab2574dc488d585f7f670457ca4c",
+    "status": 0,
+    "event": true,
+    "text_status": 0,
+    "text": "",
+    "language": "",
+    "preview_status": 0,
+    "preview": "我们明天早上九点在公司门口集合，然后一起去"
+   },
+   {
+    "op": "push",
+    "offset": 102400,
+    "n": 5120,
+    "sha": "08a1fe92e0ba92cf9874889bbc0c659f4f63262e612a0b0184f72f8a1e44c7d9",
+    "status": 0,
+    "event": true,
+    "text_status": 0,
+    "text": "",
+    "language": "",
+    "preview_status": 0,
+    "preview": "我们明天早上九点在公司门口集合，然后一起去"
+   },
+   {
+    "op": "push",
+    "offset": 107520,
+    "n": 5120,
+    "sha": "c2788744bafb19d3e4150b148365d1715ef4dc8b7c90d50d49a3c6c78271eb37",
+    "status": 0,
+    "event": true,
+    "text_status": 0,
+    "text": "",
+    "language": "",
+    "preview_status": 0,
+    "preview": "我们明天早上九点在公司门口集合，然后一起去机场"
+   },
+   {
+    "op": "push",
+    "offset": 112640,
+    "n": 5120,
+    "sha": "ed94de9c192d9438d2e4db0a8b207ddb168bd2a6785695a2b5deaeed0c45eb04",
+    "status": 0,
+    "event": true,
+    "text_status": 0,
+    "text": "然后一起去机场。",
+    "language": "",
+    "preview_status": 0,
+    "preview": "我们明天早上九点在公司门口集合，然后一起去机场。"
+   },
+   {
+    "op": "push",
+    "offset": 117760,
+    "n": 5120,
+    "sha": "eed8e0a55582183601fad531304af8886eb39f0e257440c2c0c5aea8d2777026",
+    "status": 0,
+    "event": true,
+    "text_status": 0,
+    "text": "",
+    "language": "",
+    "preview_status": 0,
+    "preview": "我们明天早上九点在公司门口集合，然后一起去机场。"
+   },
+   {
+    "op": "vad",
+    "n": 16000,
+    "sha": "4c0bc993ac1837fe503797aa2ad3826575e364accd43292ab743b46baac0c059",
+    "regions": []
+   },
+   {
+    "op": "push",
+    "offset": 122880,
+    "n": 5120,
+    "sha": "bb8fc9c686fb287c08cfe26bde9798fcf59888de772537feb55bc733f89bbd2b",
+    "status": 0,
+    "event": true,
+    "text_status": 0,
+    "text": "",
+    "language": "",
+    "preview_status": 0,
+    "preview": "我们明天早上九点在公司门口集合，然后一起去机场。"
+   },
+   {
+    "op": "push",
+    "offset": 128000,
+    "n": 5120,
+    "sha": "cc61635da46b2c9974335ea37e0b5fd660a5c8a42a89b271fa7ec2ac4b8b26f6",
+    "status": 0,
+    "event": true,
+    "text_status": 0,
+    "text": "",
+    "language": "",
+    "preview_status": 0,
+    "preview": "我们明天早上九点在公司门口集合，然后一起去机场。"
+   },
+   {
+    "op": "finish",
+    "status": 0,
+    "text_status": 0,
+    "text": "我们明天早上九点在公司门口集合，然后一起去机场。",
+    "language": ""
+   },
+   {
+    "op": "vad",
+    "n": 5120,
+    "sha": "3ead7197ede0d48a6612299cac709f4c5e3bd89bfb26ddf7cd7de57998558cb5",
+    "regions": [
+     {
+      "start": 0,
+      "end": 5120
+     }
+    ]
+   },
+   {
+    "op": "start",
+    "context": "Topic: travel and office\nHotwords: 机场, quarterly report",
+    "language": null
+   },
+   {
+    "op": "push",
+    "offset": 0,
+    "n": 5120,
+    "sha": "3ead7197ede0d48a6612299cac709f4c5e3bd89bfb26ddf7cd7de57998558cb5",
+    "status": 0,
+    "event": true,
+    "text_status": 0,
+    "text": "",
+    "language": "",
+    "preview_status": 0,
+    "preview": "Please"
+   },
+   {
+    "op": "push",
+    "offset": 5120,
+    "n": 5120,
+    "sha": "1294b777d8606be2e4cf616f8040f2debafb668ff2d3239577136e3bfaf0fca0",
+    "status": 0,
+    "event": true,
+    "text_status": 0,
+    "text": "",
+    "language": "",
+    "preview_status": 0,
+    "preview": "Please"
+   },
+   {
+    "op": "push",
+    "offset": 10240,
+    "n": 5120,
+    "sha": "b48531606be2d5ea5445adaba82312e2cd4e659ee2ccf216b07e3980273dc9ff",
+    "status": 0,
+    "event": true,
+    "text_status": 0,
+    "text": "",
+    "language": "",
+    "preview_status": 0,
+    "preview": "Please send"
+   },
+   {
+    "op": "push",
+    "offset": 15360,
+    "n": 5120,
+    "sha": "a44960f0787a7dff28ec6fe3abbb91a45a02eff44a79d27601d1175c70e39571",
+    "status": 0,
+    "event": true,
+    "text_status": 0,
+    "text": "",
+    "language": "",
+    "preview_status": 0,
+    "preview": "Please send the"
+   },
+   {
+    "op": "push",
+    "offset": 20480,
+    "n": 5120,
+    "sha": "c62e7075db46055a14ed542dc004297faccb6d54e9d8417496f7ea6fddbfde17",
+    "status": 0,
+    "event": true,
+    "text_status": 0,
+    "text": "",
+    "language": "",
+    "preview_status": 0,
+    "preview": "Please send the quarterly"
+   },
+   {
+    "op": "push",
+    "offset": 25600,
+    "n": 5120,
+    "sha": "4faa249923ea3fd36f0ad86bcb87dda6991352f364552fb888e48b7353436e05",
+    "status": 0,
+    "event": true,
+    "text_status": 0,
+    "text": "",
+    "language": "",
+    "preview_status": 0,
+    "preview": "Please send the quarterly report"
+   },
+   {
+    "op": "push",
+    "offset": 30720,
+    "n": 5120,
+    "sha": "6887ba98c2456d2296f10ed979343d1fe345279f77f548be161cfe48364eb1c7",
+    "status": 0,
+    "event": true,
+    "text_status": 0,
+    "text": "Please send",
+    "language": "",
+    "preview_status": 0,
+    "preview": "Please send the quarterly report to the"
+   },
+   {
+    "op": "push",
+    "offset": 35840,
+    "n": 5120,
+    "sha": "df0ac74bcf0fb84fcd06e18239afd573ce8770f2ac35efa7e6d9800ecab33103",
+    "status": 0,
+    "event": true,
+    "text_status": 0,
+    "text": "",
+    "language": "",
+    "preview_status": 0,
+    "preview": "Please send the quarterly report to the"
+   },
+   {
+    "op": "push",
+    "offset": 40960,
+    "n": 5120,
+    "sha": "92e166861e625e5a536ee76e2aad28dc87b10fcd7f24cd5bd428f848ea5571d4",
+    "status": 0,
+    "event": true,
+    "text_status": 0,
+    "text": " the",
+    "language": "",
+    "preview_status": 0,
+    "preview": "Please send the quarterly report to the finance"
+   },
+   {
+    "op": "push",
+    "offset": 46080,
+    "n": 5120,
+    "sha": "1394d7236a06056b1885101490842d34988672166302575aeda00b84c50879b7",
+    "status": 0,
+    "event": true,
+    "text_status": 0,
+    "text": " quarterly",
+    "language": "",
+    "preview_status": 0,
+    "preview": "Please send the quarterly report to the finance team"
+   },
+   {
+    "op": "push",
+    "offset": 51200,
+    "n": 5120,
+    "sha": "fcb7ab0fb6f8b36b14df9522ca62c8e262214b0ed31d66da9bb3e7fffc402d05",
+    "status": 0,
+    "event": true,
+    "text_status": 0,
+    "text": " report",
+    "language": "",
+    "preview_status": 0,
+    "preview": "Please send the quarterly report to the finance team before"
+   },
+   {
+    "op": "push",
+    "offset": 56320,
+    "n": 5120,
+    "sha": "67a083418b1b95aace4ff3a477aeade2cc6c0ccc63bec39610ed1ce72af2d406",
+    "status": 0,
+    "event": true,
+    "text_status": 0,
+    "text": " to the finance team before Friday.",
+    "language": "",
+    "preview_status": 0,
+    "preview": "Please send the quarterly report to the finance team before Friday."
+   },
+   {
+    "op": "push",
+    "offset": 61440,
+    "n": 5120,
+    "sha": "e6f04d1ec961efcf92d20a00943bf2a81dbbea3083b697e0c800782dfcbd2b23",
+    "status": 0,
+    "event": true,
+    "text_status": 0,
+    "text": "",
+    "language": "",
+    "preview_status": 0,
+    "preview": "Please send the quarterly report to the finance team before Friday."
+   },
+   {
+    "op": "push",
+    "offset": 66560,
+    "n": 5120,
+    "sha": "20b7a5f3c9f85e10aa86fe9c3d379ad003abf3ab44374c29fbb61d478fe50ef2",
+    "status": 0,
+    "event": true,
+    "text_status": 0,
+    "text": "",
+    "language": "",
+    "preview_status": 0,
+    "preview": "Please send the quarterly report to the finance team before Friday."
+   },
+   {
+    "op": "push",
+    "offset": 71680,
+    "n": 5120,
+    "sha": "57ea7e424efe43ecf2cee6e918982280fca15ebb627be01fdd81f5016e3d2664",
+    "status": 0,
+    "event": true,
+    "text_status": 0,
+    "text": "",
+    "language": "",
+    "preview_status": 0,
+    "preview": "Please send the quarterly report to the finance team before Friday."
+   },
+   {
+    "op": "push",
+    "offset": 76800,
+    "n": 5120,
+    "sha": "aeac600301f26626ce872cc947b840c6dbf38bfd923865eb8b984cb94568a921",
+    "status": 0,
+    "event": true,
+    "text_status": 0,
+    "text": "",
+    "language": "",
+    "preview_status": 0,
+    "preview": "Please send the quarterly report to the finance team before Friday."
+   },
+   {
+    "op": "push",
+    "offset": 81920,
+    "n": 5120,
+    "sha": "39a1f36d6a6b9a0ac27e794623fdd9453fb3c38f12f28ea72dfd08a4036dd2eb",
+    "status": 0,
+    "event": true,
+    "text_status": 0,
+    "text": "",
+    "language": "",
+    "preview_status": 0,
+    "preview": "Please send the quarterly report to the finance team before Friday."
+   },
+   {
+    "op": "push",
+    "offset": 87040,
+    "n": 5120,
+    "sha": "f00035754c36094cf97167fb0427a537e4833e23344803686f630cc9c023a475",
+    "status": 0,
+    "event": true,
+    "text_status": 0,
+    "text": "",
+    "language": "",
+    "preview_status": 0,
+    "preview": "Please send the quarterly report to the finance team before Friday."
+   },
+   {
+    "op": "push",
+    "offset": 92160,
+    "n": 5120,
+    "sha": "dc2ce82ec6538a8580b916ed2c711408ccfe40f311053bb45084700eed74d29a",
+    "status": 0,
+    "event": true,
+    "text_status": 0,
+    "text": "",
+    "language": "",
+    "preview_status": 0,
+    "preview": "Please send the quarterly report to the finance team before Friday."
+   },
+   {
+    "op": "push",
+    "offset": 97280,
+    "n": 5120,
+    "sha": "dfa9158d8fa154b92e16f06e6d09eb7a022d266d7b024954ef9e422d6d1d5c8b",
+    "status": 0,
+    "event": true,
+    "text_status": 0,
+    "text": "",
+    "language": "",
+    "preview_status": 0,
+    "preview": "Please send the quarterly report to the finance team before Friday."
+   },
+   {
+    "op": "push",
+    "offset": 102400,
+    "n": 5120,
+    "sha": "9940e98da8fc3d0713489673d0893d2c7549c52de16aa4e116a5886cf1bb0123",
+    "status": 0,
+    "event": true,
+    "text_status": 0,
+    "text": "",
+    "language": "",
+    "preview_status": 0,
+    "preview": "Please send the quarterly report to the finance team before Friday."
+   },
+   {
+    "op": "push",
+    "offset": 107520,
+    "n": 5120,
+    "sha": "3f87d0528590e04da11021d7d16e682c7757fc97008c61739c9eca61d974d03c",
+    "status": 0,
+    "event": true,
+    "text_status": 0,
+    "text": "",
+    "language": "",
+    "preview_status": 0,
+    "preview": "Please send the quarterly report to the finance team before Friday."
+   },
+   {
+    "op": "push",
+    "offset": 112640,
+    "n": 5120,
+    "sha": "1ba29b3a96c67f956390a53a74fc99fe4f7688a64f87be7c68c4371d6578a3f7",
+    "status": 0,
+    "event": true,
+    "text_status": 0,
+    "text": "",
+    "language": "",
+    "preview_status": 0,
+    "preview": "Please send the quarterly report to the finance team before Friday."
+   },
+   {
+    "op": "push",
+    "offset": 117760,
+    "n": 5120,
+    "sha": "0f79842c4d175271a659b5a7a5ced803cae8176c6b47ab86ca8253f466307d54",
+    "status": 0,
+    "event": true,
+    "text_status": 0,
+    "text": "",
+    "language": "",
+    "preview_status": 0,
+    "preview": "Please send the quarterly report to the finance team before Friday."
+   },
+   {
+    "op": "vad",
+    "n": 16000,
+    "sha": "c60205ce7ca3a1ad384ae2275cb974ca34a91a8242e29fa270d1197bc79f0de1",
+    "regions": [
+     {
+      "start": 0,
+      "end": 16000
+     }
+    ]
+   },
+   {
+    "op": "push",
+    "offset": 122880,
+    "n": 5120,
+    "sha": "9931a780c95e466ce71d57867dcebdc0d4e2597e9a5faad10a4b52c813e3dca2",
+    "status": 0,
+    "event": true,
+    "text_status": 0,
+    "text": "这个",
+    "language": "",
+    "preview_status": 0,
+    "preview": "Please send the quarterly report to the finance team before Friday.这个周末的天气预报我会"
+   },
+   {
+    "op": "vad",
+    "n": 16000,
+    "sha": "4f38cb0442ae3b1b2018e765df9605180fcadf75e4e414a5d732bf3d4ec3f644",
+    "regions": [
+     {
+      "start": 0,
+      "end": 16000
+     }
+    ]
+   },
+   {
+    "op": "push",
+    "offset": 128000,
+    "n": 5120,
+    "sha": "8a965c44871f76c139938201655814f90d5e01c6aaf32204882997eb87339cdd",
+    "status": 0,
+    "event": true,
+    "text_status": 0,
+    "text": "",
+    "language": "",
+    "preview_status": 0,
+    "preview": "Please send the quarterly report to the finance team before Friday.这个周末的天气预报我会"
+   },
+   {
+    "op": "vad",
+    "n": 16000,
+    "sha": "4150d464351b134df0d917ffe58e8074e8a6924a344a54311d94922d3a6930cb",
+    "regions": [
+     {
+      "start": 0,
+      "end": 16000
+     }
+    ]
+   },
+   {
+    "op": "push",
+    "offset": 133120,
+    "n": 5120,
+    "sha": "246561f7bb516a88f10f599fdff9f58ed15243a9ae54c2ddab83a3d88995878e",
+    "status": 0,
+    "event": true,
+    "text_status": 0,
+    "text": "周末的",
+    "language": "",
+    "preview_status": 0,
+    "preview": "Please send the quarterly report to the finance team before Friday.这个周末的天气预报说会下雨"
+   },
+   {
+    "op": "vad",
+    "n": 16000,
+    "sha": "6a97d238cf8572f0db97080b888765cd50927f4e21a29a314fe981907a113a45",
+    "regions": [
+     {
+      "start": 0,
+      "end": 16000
+     }
+    ]
+   },
+   {
+    "op": "push",
+    "offset": 138240,
+    "n": 5120,
+    "sha": "c365ef63707250d7ecea07928bfdb0b3412de9ab3dd2c6485ae98d903a54c14f",
+    "status": 0,
+    "event": true,
+    "text_status": 0,
+    "text": "",
+    "language": "",
+    "preview_status": 0,
+    "preview": "Please send the quarterly report to the finance team before Friday.这个周末的天气预报说会下雨"
+   },
+   {
+    "op": "vad",
+    "n": 16000,
+    "sha": "f45f5e4472c4f5ab03ef6b350d58adaeeb737c42dcd6994d44a044889af23292",
+    "regions": [
+     {
+      "start": 0,
+      "end": 16000
+     }
+    ]
+   },
+   {
+    "op": "push",
+    "offset": 143360,
+    "n": 5120,
+    "sha": "8f385f1cb395db8198868efbd64cd032cc1fda9363056481723b38241fd5e8be",
+    "status": 0,
+    "event": true,
+    "text_status": 0,
+    "text": "天气预报",
+    "language": "",
+    "preview_status": 0,
+    "preview": "Please send the quarterly report to the finance team before Friday.这个周末的天气预报说会下雨，记得"
+   },
+   {
+    "op": "vad",
+    "n": 16000,
+    "sha": "49e1c88499c1b8b398182928503084f5daf2a710d8b60e90ed49e1e7bab0ce56",
+    "regions": [
+     {
+      "start": 0,
+      "end": 16000
+     }
+    ]
+   },
+   {
+    "op": "push",
+    "offset": 148480,
+    "n": 5120,
+    "sha": "571bfa0219619ee1066ea5497430156515c51780b5452b841a7ed540b8a89c57",
+    "status": 0,
+    "event": true,
+    "text_status": 0,
+    "text": "说",
+    "language": "",
+    "preview_status": 0,
+    "preview": "Please send the quarterly report to the finance team before Friday.这个周末的天气预报说会下雨，记得带"
+   },
+   {
+    "op": "vad",
+    "n": 16000,
+    "sha": "4abfcfe97ad7ffb0ad884d4c41c289e4cd1ff4431238f74b9b2b120b14deb30c",
+    "regions": [
+     {
+      "start": 0,
+      "end": 16000
+     }
+    ]
+   },
+   {
+    "op": "push",
+    "offset": 153600,
+    "n": 5120,
+    "sha": "e294614a79c7c09141f4cd7dc15a925843dbf2f389e1e0002784f057b856c67d",
+    "status": 0,
+    "event": true,
+    "text_status": 0,
+    "text": "会下雨，记得带伞。",
+    "language": "",
+    "preview_status": 0,
+    "preview": "Please send the quarterly report to the finance team before Friday.这个周末的天气预报说会下雨，记得带伞。"
+   },
+   {
+    "op": "vad",
+    "n": 16000,
+    "sha": "c89e9bb06764084eddf8a617b359a71b1a707b737025c704490af36f0ddb2401",
+    "regions": [
+     {
+      "start": 0,
+      "end": 8480
+     }
+    ]
+   },
+   {
+    "op": "push",
+    "offset": 158720,
+    "n": 5120,
+    "sha": "776fbdba16bcf79c963978342cafec4ac591aaf83697dae780efab7d1de15531",
+    "status": 0,
+    "event": true,
+    "text_status": 0,
+    "text": "",
+    "language": "",
+    "preview_status": 0,
+    "preview": "Please send the quarterly report to the finance team before Friday.这个周末的天气预报说会下雨，记得带伞。"
+   },
+   {
+    "op": "push",
+    "offset": 163840,
+    "n": 5120,
+    "sha": "cc61635da46b2c9974335ea37e0b5fd660a5c8a42a89b271fa7ec2ac4b8b26f6",
+    "status": 0,
+    "event": true,
+    "text_status": 0,
+    "text": "",
+    "language": "",
+    "preview_status": 0,
+    "preview": "Please send the quarterly report to the finance team before Friday.这个周末的天气预报说会下雨，记得带伞。"
+   },
+   {
+    "op": "finish",
+    "status": 0,
+    "text_status": 0,
+    "text": "Please send the quarterly report to the finance team before Friday.这个周末的天气预报说会下雨，记得带伞。",
+    "language": ""
+   },
+   {
+    "op": "vad",
+    "n": 5120,
+    "sha": "bc4a6341472cd551409ab85002732f3b855b4e31c6befbbde959d5e17ba182f4",
+    "regions": []
+   },
+   {
+    "op": "vad",
+    "n": 10240,
+    "sha": "faaaae9fcb39c746db57f7843cf223023bfcf6d9485b7f992a046ae27ef2692d",
+    "regions": [
+     {
+      "start": 4000,
+      "end": 10240
+     }
+    ]
+   },
+   {
+    "op": "start",
+    "context": "Topic: travel and office\nHotwords: 机场, quarterly report",
+    "language": null
+   },
+   {
+    "op": "push",
+    "offset": 0,
+    "n": 5120,
+    "sha": "bc4a6341472cd551409ab85002732f3b855b4e31c6befbbde959d5e17ba182f4",
+    "status": 0,
+    "event": true,
+    "text_status": 0,
+    "text": "",
+    "language": "",
+    "preview_status": 0,
+    "preview": ""
+   },
+   {
+    "op": "push",
+    "offset": 5120,
+    "n": 5120,
+    "sha": "cc94df10009a15a351975416d5f16e28cbf59123172ae4127a082dfe3bd11284",
+    "status": 0,
+    "event": true,
+    "text_status": 0,
+    "text": "",
+    "language": "",
+    "preview_status": 0,
+    "preview": ""
+   },
+   {
+    "op": "push",
+    "offset": 10240,
+    "n": 5120,
+    "sha": "0ea9c4ce333762c1eeca9ef2d8a25b986f7995102163d078fa0d04964d861fdc",
+    "status": 0,
+    "event": true,
+    "text_status": 0,
+    "text": "",
+    "language": "",
+    "preview_status": 0,
+    "preview": "Thank"
+   },
+   {
+    "op": "push",
+    "offset": 15360,
+    "n": 5120,
+    "sha": "ece8bf3bfdce7b4b28b68b69a5b1e6a10d3e61211b990c296b0b53b59c373cc2",
+    "status": 0,
+    "event": true,
+    "text_status": 0,
+    "text": "",
+    "language": "",
+    "preview_status": 0,
+    "preview": "Thank you very"
+   },
+   {
+    "op": "push",
+    "offset": 20480,
+    "n": 5120,
+    "sha": "ba1da3ec60b6e8ad493c8e79b98d7748f437470c09000642210b1bf8c9fa8b91",
+    "status": 0,
+    "event": true,
+    "text_status": 0,
+    "text": "",
+    "language": "",
+    "preview_status": 0,
+    "preview": "Thank you very much"
+   },
+   {
+    "op": "push",
+    "offset": 25600,
+    "n": 5120,
+    "sha": "aa3207adb71f2e8adf58c0d918611e72b266ce175308a1d5ffb0e6ccca962d85",
+    "status": 0,
+    "event": true,
+    "text_status": 0,
+    "text": "Thank you very much.",
+    "language": "",
+    "preview_status": 0,
+    "preview": "Thank you very much."
+   },
+   {
+    "op": "push",
+    "offset": 30720,
+    "n": 5120,
+    "sha": "38a074539d7679f0ad5a200a0f9edde6d4d78c19a8517ec3972a41bbffa3b7d4",
+    "status": 0,
+    "event": true,
+    "text_status": 0,
+    "text": "",
+    "language": "",
+    "preview_status": 0,
+    "preview": "Thank you very much."
+   },
+   {
+    "op": "push",
+    "offset": 35840,
+    "n": 5120,
+    "sha": "6cf17736b907df02184ed6b844adba40c429bd34dba49e28fed4735b19250c9f",
+    "status": 0,
+    "event": true,
+    "text_status": 0,
+    "text": "",
+    "language": "",
+    "preview_status": 0,
+    "preview": "Thank you very much."
+   },
+   {
+    "op": "push",
+    "offset": 40960,
+    "n": 1256,
+    "sha": "bbdabb3ae06ed42d10be8b860a633e821e62931fa6c9d86a064164baebca240e",
+    "status": 0,
+    "event": true,
+    "text_status": 7,
+    "preview_status": 7
+   },
+   {
+    "op": "push",
+    "offset": 42216,
+    "n": 5120,
+    "sha": "cc61635da46b2c9974335ea37e0b5fd660a5c8a42a89b271fa7ec2ac4b8b26f6",
+    "status": 0,
+    "event": true,
+    "text_status": 0,
+    "text": "",
+    "language": "",
+    "preview_status": 0,
+    "preview": "Thank you very much."
+   },
+   {
+    "op": "finish",
+    "status": 0,
+    "text_status": 0,
+    "text": "Thank you very much.",
+    "language": ""
+   }
+  ]
+ },
+ "transcribe": {
+  "text": "我们明天早上九点在公司门口集合，然后一起去机场。Please send the quarterly report to the finance team before Friday.这个周末的天气预报说会下雨，记得带伞。Thank you very much.",
+  "language": "",
+  "log": [
+   {
+    "op": "vad",
+    "n": 5120,
+    "sha": "15b5f32468c4cdd8d02f9a8c30a7e612c32855682df634c2374c86f7ba36d0dc",
+    "regions": []
+   },
+   {
+    "op": "vad",
+    "n": 10240,
+    "sha": "736d97c53a10f5eabf7e7b7300d56082d9be6a18fa4c7935c79d3dc1129a3d3b",
+    "regions": []
+   },
+   {
+    "op": "vad",
+    "n": 15360,
+    "sha": "a3ea749ca89db1517e4da6f35a0835a30755ba8bff0ed9dbdaa85edf035d8f63",
+    "regions": [
+     {
+      "start": 6080,
+      "end": 15360
+     }
+    ]
+   },
+   {
+    "op": "start",
+    "context": "Topic: travel and office\nHotwords: 机场, quarterly report",
+    "language": null
+   },
+   {
+    "op": "push",
+    "offset": 0,
+    "n": 5120,
+    "sha": "15b5f32468c4cdd8d02f9a8c30a7e612c32855682df634c2374c86f7ba36d0dc",
+    "status": 0,
+    "event": true,
+    "text_status": 0,
+    "text": "",
+    "language": "",
+    "preview_status": 0,
+    "preview": ""
+   },
+   {
+    "op": "push",
+    "offset": 5120,
+    "n": 5120,
+    "sha": "52cf77a146ded008bf6b5b700ce74d9e21d70b0329488ed906e7683412ea5ca0",
+    "status": 0,
+    "event": true,
+    "text_status": 0,
+    "text": "",
+    "language": "",
+    "preview_status": 0,
+    "preview": ""
+   },
+   {
+    "op": "push",
+    "offset": 10240,
+    "n": 5120,
+    "sha": "402c3083ac58be4c342106c7f18ae6f54b9975cb242546a2d6ca312541f8013b",
+    "status": 0,
+    "event": true,
+    "text_status": 0,
+    "text": "",
+    "language": "",
+    "preview_status": 0,
+    "preview": ""
+   },
+   {
+    "op": "push",
+    "offset": 15360,
+    "n": 5120,
+    "sha": "60abf022f3f17746d4d0d06582ada6fca01d7df0d51de2a58c911cb8a036ebc4",
+    "status": 0,
+    "event": true,
+    "text_status": 0,
+    "text": "",
+    "language": "",
+    "preview_status": 0,
+    "preview": "我们"
+   },
+   {
+    "op": "push",
+    "offset": 20480,
+    "n": 5120,
+    "sha": "251ab957e785de7bfa616adc02e09f214a705346f2c1d5f12658bbc64eaed7d5",
+    "status": 0,
+    "event": true,
+    "text_status": 0,
+    "text": "",
+    "language": "",
+    "preview_status": 0,
+    "preview": "我们"
+   },
+   {
+    "op": "push",
+    "offset": 25600,
+    "n": 5120,
+    "sha": "4e132f2d4d97ac11437275c90b97578f9664c2d24563d3a04f039a9d6c240f3f",
+    "status": 0,
+    "event": true,
+    "text_status": 0,
+    "text": "",
+    "language": "",
+    "preview_status": 0,
+    "preview": "我们民间"
+   },
+   {
+    "op": "push",
+    "offset": 30720,
+    "n": 5120,
+    "sha": "60b813b971a31bd42478884fd020feeee643e0ee316337ef48c1814905f27bbd",
+    "status": 0,
+    "event": true,
+    "text_status": 0,
+    "text": "",
+    "language": "",
+    "preview_status": 0,
+    "preview": "我们明天早上"
+   },
+   {
+    "op": "push",
+    "offset": 35840,
+    "n": 5120,
+    "sha": "04458568637d4d0f1a69b8eb039906a4a01c79c140b43b447ed21a615134f5f9",
+    "status": 0,
+    "event": true,
+    "text_status": 0,
+    "text": "",
+    "language": "",
+    "preview_status": 0,
+    "preview": "我们明天早上"
+   },
+   {
+    "op": "push",
+    "offset": 40960,
+    "n": 5120,
+    "sha": "e50865f8660c7daf65d4c751b784f4886ba128410c2307e98d58592c00a9682a",
+    "status": 0,
+    "event": true,
+    "text_status": 0,
+    "text": "",
+    "language": "",
+    "preview_status": 0,
+    "preview": "我们明天早上九"
+   },
+   {
+    "op": "push",
+    "offset": 46080,
+    "n": 5120,
+    "sha": "f606d525544b86493b7532b6324ce421b4c5105ae55150fbc0903982de1faa1a",
+    "status": 0,
+    "event": true,
+    "text_status": 0,
+    "text": "我们",
+    "language": "",
+    "preview_status": 0,
+    "preview": "我们明天早上九点在"
+   },
+   {
+    "op": "push",
+    "offset": 51200,
+    "n": 5120,
+    "sha": "8c707bf637642abebcae7af5dde88f43341568e0eb308d7636f9cb24f5ac001c",
+    "status": 0,
+    "event": true,
+    "text_status": 0,
+    "text": "",
+    "language": "",
+    "preview_status": 0,
+    "preview": "我们明天早上九点在"
+   },
+   {
+    "op": "push",
+    "offset": 56320,
+    "n": 5120,
+    "sha": "cad1aa57c00c82b3d4d309ffaefc31d0b68eeec913b7a7c228ee01d21c92fe19",
+    "status": 0,
+    "event": true,
+    "text_status": 0,
+    "text": "明天",
+    "language": "",
+    "preview_status": 0,
+    "preview": "我们明天早上九点在公司"
+   },
+   {
+    "op": "push",
+    "offset": 61440,
+    "n": 5120,
+    "sha": "b8055afa342768a06a00970d95b81a3ef56008f081b5d2a8a61fada32399d96a",
+    "status": 0,
+    "event": true,
+    "text_status": 0,
+    "text": "早上",
+    "language": "",
+    "preview_status": 0,
+    "preview": "我们明天早上九点在公司门口"
+   },
+   {
+    "op": "push",
+    "offset": 66560,
+    "n": 5120,
+    "sha": "127a445cfa29e5a190e7a84b43af7892d9ec2bc462a770d1b758ff81f537945a",
+    "status": 0,
+    "event": true,
+    "text_status": 0,
+    "text": "",
+    "language": "",
+    "preview_status": 0,
+    "preview": "我们明天早上九点在公司门口"
+   },
+   {
+    "op": "push",
+    "offset": 71680,
+    "n": 5120,
+    "sha": "ed3a53a5ac405d0ea277b925f21b037b1cbb407face369111b72ad7cadd9e1d2",
+    "status": 0,
+    "event": true,
+    "text_status": 0,
+    "text": "九",
+    "language": "",
+    "preview_status": 0,
+    "preview": "我们明天早上九点在公司门口集合"
+   },
+   {
+    "op": "push",
+    "offset": 76800,
+    "n": 5120,
+    "sha": "d470dba3c89a88be07d2ffc3a353fc8e7b484702c18bdd6e8035910e10a80466",
+    "status": 0,
+    "event": true,
+    "text_status": 0,
+    "text": "",
+    "language": "",
+    "preview_status": 0,
+    "preview": "我们明天早上九点在公司门口集合"
+   },
+   {
+    "op": "push",
+    "offset": 81920,
+    "n": 5120,
+    "sha": "1561176b1a12aff6b70295012733ef5e75d6cde8a5cf5d6d83df6aae333c7de6",
+    "status": 0,
+    "event": true,
+    "text_status": 0,
+    "text": "点在公司门口集合，",
+    "language": "",
+    "preview_status": 0,
+    "preview": "我们明天早上九点在公司门口集合，"
+   },
+   {
+    "op": "push",
+    "offset": 87040,
+    "n": 5120,
+    "sha": "fa78263ea5f4b357f74a29df765d9c9575ae6cda0b98749723596445eeb0f8d5",
+    "status": 0,
+    "event": true,
+    "text_status": 0,
+    "text": "",
+    "language": "",
+    "preview_status": 0,
+    "preview": "我们明天早上九点在公司门口集合，然后"
+   },
+   {
+    "op": "push",
+    "offset": 92160,
+    "n": 5120,
+    "sha": "d47471a89f398d8d007fdeec97f362c57dd3fa9beb319db94d2776b38fde35e0",
+    "status": 0,
+    "event": true,
+    "text_status": 0,
+    "text": "",
+    "language": "",
+    "preview_status": 0,
+    "preview": "我们明天早上九点在公司门口集合，然后"
+   },
+   {
+    "op": "push",
+    "offset": 97280,
+    "n": 5120,
+    "sha": "efa5e96f0d117a63b8f765b086da79a99029ab2574dc488d585f7f670457ca4c",
+    "status": 0,
+    "event": true,
+    "text_status": 0,
+    "text": "",
+    "language": "",
+    "preview_status": 0,
+    "preview": "我们明天早上九点在公司门口集合，然后一起去"
+   },
+   {
+    "op": "push",
+    "offset": 102400,
+    "n": 5120,
+    "sha": "08a1fe92e0ba92cf9874889bbc0c659f4f63262e612a0b0184f72f8a1e44c7d9",
+    "status": 0,
+    "event": true,
+    "text_status": 0,
+    "text": "",
+    "language": "",
+    "preview_status": 0,
+    "preview": "我们明天早上九点在公司门口集合，然后一起去"
+   },
+   {
+    "op": "push",
+    "offset": 107520,
+    "n": 5120,
+    "sha": "c2788744bafb19d3e4150b148365d1715ef4dc8b7c90d50d49a3c6c78271eb37",
+    "status": 0,
+    "event": true,
+    "text_status": 0,
+    "text": "",
+    "language": "",
+    "preview_status": 0,
+    "preview": "我们明天早上九点在公司门口集合，然后一起去机场"
+   },
+   {
+    "op": "push",
+    "offset": 112640,
+    "n": 5120,
+    "sha": "ed94de9c192d9438d2e4db0a8b207ddb168bd2a6785695a2b5deaeed0c45eb04",
+    "status": 0,
+    "event": true,
+    "text_status": 0,
+    "text": "然后一起去机场。",
+    "language": "",
+    "preview_status": 0,
+    "preview": "我们明天早上九点在公司门口集合，然后一起去机场。"
+   },
+   {
+    "op": "push",
+    "offset": 117760,
+    "n": 5120,
+    "sha": "eed8e0a55582183601fad531304af8886eb39f0e257440c2c0c5aea8d2777026",
+    "status": 0,
+    "event": true,
+    "text_status": 0,
+    "text": "",
+    "language": "",
+    "preview_status": 0,
+    "preview": "我们明天早上九点在公司门口集合，然后一起去机场。"
+   },
+   {
+    "op": "vad",
+    "n": 16000,
+    "sha": "4c0bc993ac1837fe503797aa2ad3826575e364accd43292ab743b46baac0c059",
+    "regions": []
+   },
+   {
+    "op": "push",
+    "offset": 122880,
+    "n": 5120,
+    "sha": "bb8fc9c686fb287c08cfe26bde9798fcf59888de772537feb55bc733f89bbd2b",
+    "status": 0,
+    "event": true,
+    "text_status": 0,
+    "text": "",
+    "language": "",
+    "preview_status": 0,
+    "preview": "我们明天早上九点在公司门口集合，然后一起去机场。"
+   },
+   {
+    "op": "push",
+    "offset": 128000,
+    "n": 5120,
+    "sha": "cc61635da46b2c9974335ea37e0b5fd660a5c8a42a89b271fa7ec2ac4b8b26f6",
+    "status": 0,
+    "event": true,
+    "text_status": 0,
+    "text": "",
+    "language": "",
+    "preview_status": 0,
+    "preview": "我们明天早上九点在公司门口集合，然后一起去机场。"
+   },
+   {
+    "op": "finish",
+    "status": 0,
+    "text_status": 0,
+    "text": "我们明天早上九点在公司门口集合，然后一起去机场。",
+    "language": ""
+   },
+   {
+    "op": "vad",
+    "n": 5120,
+    "sha": "3ead7197ede0d48a6612299cac709f4c5e3bd89bfb26ddf7cd7de57998558cb5",
+    "regions": [
+     {
+      "start": 0,
+      "end": 5120
+     }
+    ]
+   },
+   {
+    "op": "start",
+    "context": "Topic: travel and office\nHotwords: 机场, quarterly report",
+    "language": null
+   },
+   {
+    "op": "push",
+    "offset": 0,
+    "n": 5120,
+    "sha": "3ead7197ede0d48a6612299cac709f4c5e3bd89bfb26ddf7cd7de57998558cb5",
+    "status": 0,
+    "event": true,
+    "text_status": 0,
+    "text": "",
+    "language": "",
+    "preview_status": 0,
+    "preview": "Please"
+   },
+   {
+    "op": "push",
+    "offset": 5120,
+    "n": 5120,
+    "sha": "1294b777d8606be2e4cf616f8040f2debafb668ff2d3239577136e3bfaf0fca0",
+    "status": 0,
+    "event": true,
+    "text_status": 0,
+    "text": "",
+    "language": "",
+    "preview_status": 0,
+    "preview": "Please"
+   },
+   {
+    "op": "push",
+    "offset": 10240,
+    "n": 5120,
+    "sha": "b48531606be2d5ea5445adaba82312e2cd4e659ee2ccf216b07e3980273dc9ff",
+    "status": 0,
+    "event": true,
+    "text_status": 0,
+    "text": "",
+    "language": "",
+    "preview_status": 0,
+    "preview": "Please send"
+   },
+   {
+    "op": "push",
+    "offset": 15360,
+    "n": 5120,
+    "sha": "a44960f0787a7dff28ec6fe3abbb91a45a02eff44a79d27601d1175c70e39571",
+    "status": 0,
+    "event": true,
+    "text_status": 0,
+    "text": "",
+    "language": "",
+    "preview_status": 0,
+    "preview": "Please send the"
+   },
+   {
+    "op": "push",
+    "offset": 20480,
+    "n": 5120,
+    "sha": "c62e7075db46055a14ed542dc004297faccb6d54e9d8417496f7ea6fddbfde17",
+    "status": 0,
+    "event": true,
+    "text_status": 0,
+    "text": "",
+    "language": "",
+    "preview_status": 0,
+    "preview": "Please send the quarterly"
+   },
+   {
+    "op": "push",
+    "offset": 25600,
+    "n": 5120,
+    "sha": "4faa249923ea3fd36f0ad86bcb87dda6991352f364552fb888e48b7353436e05",
+    "status": 0,
+    "event": true,
+    "text_status": 0,
+    "text": "",
+    "language": "",
+    "preview_status": 0,
+    "preview": "Please send the quarterly report"
+   },
+   {
+    "op": "push",
+    "offset": 30720,
+    "n": 5120,
+    "sha": "6887ba98c2456d2296f10ed979343d1fe345279f77f548be161cfe48364eb1c7",
+    "status": 0,
+    "event": true,
+    "text_status": 0,
+    "text": "Please send",
+    "language": "",
+    "preview_status": 0,
+    "preview": "Please send the quarterly report to the"
+   },
+   {
+    "op": "push",
+    "offset": 35840,
+    "n": 5120,
+    "sha": "df0ac74bcf0fb84fcd06e18239afd573ce8770f2ac35efa7e6d9800ecab33103",
+    "status": 0,
+    "event": true,
+    "text_status": 0,
+    "text": "",
+    "language": "",
+    "preview_status": 0,
+    "preview": "Please send the quarterly report to the"
+   },
+   {
+    "op": "push",
+    "offset": 40960,
+    "n": 5120,
+    "sha": "92e166861e625e5a536ee76e2aad28dc87b10fcd7f24cd5bd428f848ea5571d4",
+    "status": 0,
+    "event": true,
+    "text_status": 0,
+    "text": " the",
+    "language": "",
+    "preview_status": 0,
+    "preview": "Please send the quarterly report to the finance"
+   },
+   {
+    "op": "push",
+    "offset": 46080,
+    "n": 5120,
+    "sha": "1394d7236a06056b1885101490842d34988672166302575aeda00b84c50879b7",
+    "status": 0,
+    "event": true,
+    "text_status": 0,
+    "text": " quarterly",
+    "language": "",
+    "preview_status": 0,
+    "preview": "Please send the quarterly report to the finance team"
+   },
+   {
+    "op": "push",
+    "offset": 51200,
+    "n": 5120,
+    "sha": "fcb7ab0fb6f8b36b14df9522ca62c8e262214b0ed31d66da9bb3e7fffc402d05",
+    "status": 0,
+    "event": true,
+    "text_status": 0,
+    "text": " report",
+    "language": "",
+    "preview_status": 0,
+    "preview": "Please send the quarterly report to the finance team before"
+   },
+   {
+    "op": "push",
+    "offset": 56320,
+    "n": 5120,
+    "sha": "67a083418b1b95aace4ff3a477aeade2cc6c0ccc63bec39610ed1ce72af2d406",
+    "status": 0,
+    "event": true,
+    "text_status": 0,
+    "text": " to the finance team before Friday.",
+    "language": "",
+    "preview_status": 0,
+    "preview": "Please send the quarterly report to the finance team before Friday."
+   },
+   {
+    "op": "push",
+    "offset": 61440,
+    "n": 5120,
+    "sha": "e6f04d1ec961efcf92d20a00943bf2a81dbbea3083b697e0c800782dfcbd2b23",
+    "status": 0,
+    "event": true,
+    "text_status": 0,
+    "text": "",
+    "language": "",
+    "preview_status": 0,
+    "preview": "Please send the quarterly report to the finance team before Friday."
+   },
+   {
+    "op": "push",
+    "offset": 66560,
+    "n": 5120,
+    "sha": "20b7a5f3c9f85e10aa86fe9c3d379ad003abf3ab44374c29fbb61d478fe50ef2",
+    "status": 0,
+    "event": true,
+    "text_status": 0,
+    "text": "",
+    "language": "",
+    "preview_status": 0,
+    "preview": "Please send the quarterly report to the finance team before Friday."
+   },
+   {
+    "op": "push",
+    "offset": 71680,
+    "n": 5120,
+    "sha": "57ea7e424efe43ecf2cee6e918982280fca15ebb627be01fdd81f5016e3d2664",
+    "status": 0,
+    "event": true,
+    "text_status": 0,
+    "text": "",
+    "language": "",
+    "preview_status": 0,
+    "preview": "Please send the quarterly report to the finance team before Friday."
+   },
+   {
+    "op": "push",
+    "offset": 76800,
+    "n": 5120,
+    "sha": "aeac600301f26626ce872cc947b840c6dbf38bfd923865eb8b984cb94568a921",
+    "status": 0,
+    "event": true,
+    "text_status": 0,
+    "text": "",
+    "language": "",
+    "preview_status": 0,
+    "preview": "Please send the quarterly report to the finance team before Friday."
+   },
+   {
+    "op": "push",
+    "offset": 81920,
+    "n": 5120,
+    "sha": "39a1f36d6a6b9a0ac27e794623fdd9453fb3c38f12f28ea72dfd08a4036dd2eb",
+    "status": 0,
+    "event": true,
+    "text_status": 0,
+    "text": "",
+    "language": "",
+    "preview_status": 0,
+    "preview": "Please send the quarterly report to the finance team before Friday."
+   },
+   {
+    "op": "push",
+    "offset": 87040,
+    "n": 5120,
+    "sha": "f00035754c36094cf97167fb0427a537e4833e23344803686f630cc9c023a475",
+    "status": 0,
+    "event": true,
+    "text_status": 0,
+    "text": "",
+    "language": "",
+    "preview_status": 0,
+    "preview": "Please send the quarterly report to the finance team before Friday."
+   },
+   {
+    "op": "push",
+    "offset": 92160,
+    "n": 5120,
+    "sha": "dc2ce82ec6538a8580b916ed2c711408ccfe40f311053bb45084700eed74d29a",
+    "status": 0,
+    "event": true,
+    "text_status": 0,
+    "text": "",
+    "language": "",
+    "preview_status": 0,
+    "preview": "Please send the quarterly report to the finance team before Friday."
+   },
+   {
+    "op": "push",
+    "offset": 97280,
+    "n": 5120,
+    "sha": "dfa9158d8fa154b92e16f06e6d09eb7a022d266d7b024954ef9e422d6d1d5c8b",
+    "status": 0,
+    "event": true,
+    "text_status": 0,
+    "text": "",
+    "language": "",
+    "preview_status": 0,
+    "preview": "Please send the quarterly report to the finance team before Friday."
+   },
+   {
+    "op": "push",
+    "offset": 102400,
+    "n": 5120,
+    "sha": "9940e98da8fc3d0713489673d0893d2c7549c52de16aa4e116a5886cf1bb0123",
+    "status": 0,
+    "event": true,
+    "text_status": 0,
+    "text": "",
+    "language": "",
+    "preview_status": 0,
+    "preview": "Please send the quarterly report to the finance team before Friday."
+   },
+   {
+    "op": "push",
+    "offset": 107520,
+    "n": 5120,
+    "sha": "3f87d0528590e04da11021d7d16e682c7757fc97008c61739c9eca61d974d03c",
+    "status": 0,
+    "event": true,
+    "text_status": 0,
+    "text": "",
+    "language": "",
+    "preview_status": 0,
+    "preview": "Please send the quarterly report to the finance team before Friday."
+   },
+   {
+    "op": "push",
+    "offset": 112640,
+    "n": 5120,
+    "sha": "1ba29b3a96c67f956390a53a74fc99fe4f7688a64f87be7c68c4371d6578a3f7",
+    "status": 0,
+    "event": true,
+    "text_status": 0,
+    "text": "",
+    "language": "",
+    "preview_status": 0,
+    "preview": "Please send the quarterly report to the finance team before Friday."
+   },
+   {
+    "op": "push",
+    "offset": 117760,
+    "n": 5120,
+    "sha": "0f79842c4d175271a659b5a7a5ced803cae8176c6b47ab86ca8253f466307d54",
+    "status": 0,
+    "event": true,
+    "text_status": 0,
+    "text": "",
+    "language": "",
+    "preview_status": 0,
+    "preview": "Please send the quarterly report to the finance team before Friday."
+   },
+   {
+    "op": "vad",
+    "n": 16000,
+    "sha": "c60205ce7ca3a1ad384ae2275cb974ca34a91a8242e29fa270d1197bc79f0de1",
+    "regions": [
+     {
+      "start": 0,
+      "end": 16000
+     }
+    ]
+   },
+   {
+    "op": "push",
+    "offset": 122880,
+    "n": 5120,
+    "sha": "9931a780c95e466ce71d57867dcebdc0d4e2597e9a5faad10a4b52c813e3dca2",
+    "status": 0,
+    "event": true,
+    "text_status": 0,
+    "text": "这个",
+    "language": "",
+    "preview_status": 0,
+    "preview": "Please send the quarterly report to the finance team before Friday.这个周末的天气预报我会"
+   },
+   {
+    "op": "vad",
+    "n": 16000,
+    "sha": "4f38cb0442ae3b1b2018e765df9605180fcadf75e4e414a5d732bf3d4ec3f644",
+    "regions": [
+     {
+      "start": 0,
+      "end": 16000
+     }
+    ]
+   },
+   {
+    "op": "push",
+    "offset": 128000,
+    "n": 5120,
+    "sha": "8a965c44871f76c139938201655814f90d5e01c6aaf32204882997eb87339cdd",
+    "status": 0,
+    "event": true,
+    "text_status": 0,
+    "text": "",
+    "language": "",
+    "preview_status": 0,
+    "preview": "Please send the quarterly report to the finance team before Friday.这个周末的天气预报我会"
+   },
+   {
+    "op": "vad",
+    "n": 16000,
+    "sha": "4150d464351b134df0d917ffe58e8074e8a6924a344a54311d94922d3a6930cb",
+    "regions": [
+     {
+      "start": 0,
+      "end": 16000
+     }
+    ]
+   },
+   {
+    "op": "push",
+    "offset": 133120,
+    "n": 5120,
+    "sha": "246561f7bb516a88f10f599fdff9f58ed15243a9ae54c2ddab83a3d88995878e",
+    "status": 0,
+    "event": true,
+    "text_status": 0,
+    "text": "周末的",
+    "language": "",
+    "preview_status": 0,
+    "preview": "Please send the quarterly report to the finance team before Friday.这个周末的天气预报说会下雨"
+   },
+   {
+    "op": "vad",
+    "n": 16000,
+    "sha": "6a97d238cf8572f0db97080b888765cd50927f4e21a29a314fe981907a113a45",
+    "regions": [
+     {
+      "start": 0,
+      "end": 16000
+     }
+    ]
+   },
+   {
+    "op": "push",
+    "offset": 138240,
+    "n": 5120,
+    "sha": "c365ef63707250d7ecea07928bfdb0b3412de9ab3dd2c6485ae98d903a54c14f",
+    "status": 0,
+    "event": true,
+    "text_status": 0,
+    "text": "",
+    "language": "",
+    "preview_status": 0,
+    "preview": "Please send the quarterly report to the finance team before Friday.这个周末的天气预报说会下雨"
+   },
+   {
+    "op": "vad",
+    "n": 16000,
+    "sha": "f45f5e4472c4f5ab03ef6b350d58adaeeb737c42dcd6994d44a044889af23292",
+    "regions": [
+     {
+      "start": 0,
+      "end": 16000
+     }
+    ]
+   },
+   {
+    "op": "push",
+    "offset": 143360,
+    "n": 5120,
+    "sha": "8f385f1cb395db8198868efbd64cd032cc1fda9363056481723b38241fd5e8be",
+    "status": 0,
+    "event": true,
+    "text_status": 0,
+    "text": "天气预报",
+    "language": "",
+    "preview_status": 0,
+    "preview": "Please send the quarterly report to the finance team before Friday.这个周末的天气预报说会下雨，记得"
+   },
+   {
+    "op": "vad",
+    "n": 16000,
+    "sha": "49e1c88499c1b8b398182928503084f5daf2a710d8b60e90ed49e1e7bab0ce56",
+    "regions": [
+     {
+      "start": 0,
+      "end": 16000
+     }
+    ]
+   },
+   {
+    "op": "push",
+    "offset": 148480,
+    "n": 5120,
+    "sha": "571bfa0219619ee1066ea5497430156515c51780b5452b841a7ed540b8a89c57",
+    "status": 0,
+    "event": true,
+    "text_status": 0,
+    "text": "说",
+    "language": "",
+    "preview_status": 0,
+    "preview": "Please send the quarterly report to the finance team before Friday.这个周末的天气预报说会下雨，记得带"
+   },
+   {
+    "op": "vad",
+    "n": 16000,
+    "sha": "4abfcfe97ad7ffb0ad884d4c41c289e4cd1ff4431238f74b9b2b120b14deb30c",
+    "regions": [
+     {
+      "start": 0,
+      "end": 16000
+     }
+    ]
+   },
+   {
+    "op": "push",
+    "offset": 153600,
+    "n": 5120,
+    "sha": "e294614a79c7c09141f4cd7dc15a925843dbf2f389e1e0002784f057b856c67d",
+    "status": 0,
+    "event": true,
+    "text_status": 0,
+    "text": "会下雨，记得带伞。",
+    "language": "",
+    "preview_status": 0,
+    "preview": "Please send the quarterly report to the finance team before Friday.这个周末的天气预报说会下雨，记得带伞。"
+   },
+   {
+    "op": "vad",
+    "n": 16000,
+    "sha": "c89e9bb06764084eddf8a617b359a71b1a707b737025c704490af36f0ddb2401",
+    "regions": [
+     {
+      "start": 0,
+      "end": 8480
+     }
+    ]
+   },
+   {
+    "op": "push",
+    "offset": 158720,
+    "n": 5120,
+    "sha": "776fbdba16bcf79c963978342cafec4ac591aaf83697dae780efab7d1de15531",
+    "status": 0,
+    "event": true,
+    "text_status": 0,
+    "text": "",
+    "language": "",
+    "preview_status": 0,
+    "preview": "Please send the quarterly report to the finance team before Friday.这个周末的天气预报说会下雨，记得带伞。"
+   },
+   {
+    "op": "push",
+    "offset": 163840,
+    "n": 5120,
+    "sha": "cc61635da46b2c9974335ea37e0b5fd660a5c8a42a89b271fa7ec2ac4b8b26f6",
+    "status": 0,
+    "event": true,
+    "text_status": 0,
+    "text": "",
+    "language": "",
+    "preview_status": 0,
+    "preview": "Please send the quarterly report to the finance team before Friday.这个周末的天气预报说会下雨，记得带伞。"
+   },
+   {
+    "op": "finish",
+    "status": 0,
+    "text_status": 0,
+    "text": "Please send the quarterly report to the finance team before Friday.这个周末的天气预报说会下雨，记得带伞。",
+    "language": ""
+   },
+   {
+    "op": "vad",
+    "n": 5120,
+    "sha": "bc4a6341472cd551409ab85002732f3b855b4e31c6befbbde959d5e17ba182f4",
+    "regions": []
+   },
+   {
+    "op": "vad",
+    "n": 10240,
+    "sha": "faaaae9fcb39c746db57f7843cf223023bfcf6d9485b7f992a046ae27ef2692d",
+    "regions": [
+     {
+      "start": 4000,
+      "end": 10240
+     }
+    ]
+   },
+   {
+    "op": "start",
+    "context": "Topic: travel and office\nHotwords: 机场, quarterly report",
+    "language": null
+   },
+   {
+    "op": "push",
+    "offset": 0,
+    "n": 5120,
+    "sha": "bc4a6341472cd551409ab85002732f3b855b4e31c6befbbde959d5e17ba182f4",
+    "status": 0,
+    "event": true,
+    "text_status": 0,
+    "text": "",
+    "language": "",
+    "preview_status": 0,
+    "preview": ""
+   },
+   {
+    "op": "push",
+    "offset": 5120,
+    "n": 5120,
+    "sha": "cc94df10009a15a351975416d5f16e28cbf59123172ae4127a082dfe3bd11284",
+    "status": 0,
+    "event": true,
+    "text_status": 0,
+    "text": "",
+    "language": "",
+    "preview_status": 0,
+    "preview": ""
+   },
+   {
+    "op": "push",
+    "offset": 10240,
+    "n": 5120,
+    "sha": "0ea9c4ce333762c1eeca9ef2d8a25b986f7995102163d078fa0d04964d861fdc",
+    "status": 0,
+    "event": true,
+    "text_status": 0,
+    "text": "",
+    "language": "",
+    "preview_status": 0,
+    "preview": "Thank"
+   },
+   {
+    "op": "push",
+    "offset": 15360,
+    "n": 5120,
+    "sha": "ece8bf3bfdce7b4b28b68b69a5b1e6a10d3e61211b990c296b0b53b59c373cc2",
+    "status": 0,
+    "event": true,
+    "text_status": 0,
+    "text": "",
+    "language": "",
+    "preview_status": 0,
+    "preview": "Thank you very"
+   },
+   {
+    "op": "push",
+    "offset": 20480,
+    "n": 5120,
+    "sha": "ba1da3ec60b6e8ad493c8e79b98d7748f437470c09000642210b1bf8c9fa8b91",
+    "status": 0,
+    "event": true,
+    "text_status": 0,
+    "text": "",
+    "language": "",
+    "preview_status": 0,
+    "preview": "Thank you very much"
+   },
+   {
+    "op": "push",
+    "offset": 25600,
+    "n": 5120,
+    "sha": "aa3207adb71f2e8adf58c0d918611e72b266ce175308a1d5ffb0e6ccca962d85",
+    "status": 0,
+    "event": true,
+    "text_status": 0,
+    "text": "Thank you very much.",
+    "language": "",
+    "preview_status": 0,
+    "preview": "Thank you very much."
+   },
+   {
+    "op": "push",
+    "offset": 30720,
+    "n": 5120,
+    "sha": "38a074539d7679f0ad5a200a0f9edde6d4d78c19a8517ec3972a41bbffa3b7d4",
+    "status": 0,
+    "event": true,
+    "text_status": 0,
+    "text": "",
+    "language": "",
+    "preview_status": 0,
+    "preview": "Thank you very much."
+   },
+   {
+    "op": "push",
+    "offset": 35840,
+    "n": 5120,
+    "sha": "6cf17736b907df02184ed6b844adba40c429bd34dba49e28fed4735b19250c9f",
+    "status": 0,
+    "event": true,
+    "text_status": 0,
+    "text": "",
+    "language": "",
+    "preview_status": 0,
+    "preview": "Thank you very much."
+   },
+   {
+    "op": "push",
+    "offset": 40960,
+    "n": 1256,
+    "sha": "bbdabb3ae06ed42d10be8b860a633e821e62931fa6c9d86a064164baebca240e",
+    "status": 0,
+    "event": true,
+    "text_status": 7,
+    "preview_status": 7
+   },
+   {
+    "op": "push",
+    "offset": 42216,
+    "n": 5120,
+    "sha": "cc61635da46b2c9974335ea37e0b5fd660a5c8a42a89b271fa7ec2ac4b8b26f6",
+    "status": 0,
+    "event": true,
+    "text_status": 0,
+    "text": "",
+    "language": "",
+    "preview_status": 0,
+    "preview": "Thank you very much."
+   },
+   {
+    "op": "finish",
+    "status": 0,
+    "text_status": 0,
+    "text": "Thank you very much.",
+    "language": ""
+   }
+  ]
+ }
+}

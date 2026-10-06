@@ -58,6 +58,11 @@ project's GPL license. A copy is bundled as
 - `engine/internal/vad/postprocess.go` ports the FireRedVAD post-processing
   from `src-tauri/resources/firered_vad.py` and is GPL-3.0-only, with the
   FireRedVAD Apache-2.0 notice above.
+- `engine/internal/r2t2` loads the audio.cpp runtime described above at run
+  time through its C ABI (only in `lwnative` builds). The C declarations in
+  `capi_lwnative.go` follow the patched `audiocpp.h`; no audio.cpp code is
+  linked or vendored. `runtime.go`, `segmented.go`, `session.go` and
+  `backend.go` port the inherited Python R2T2 server and are GPL-3.0-only.
 - Go modules: [github.com/coder/websocket](https://github.com/coder/websocket)
   (ISC, Copyright (c) 2025 Coder) and, only in builds with the `lwnative` tag,
   [github.com/yalue/onnxruntime_go](https://github.com/yalue/onnxruntime_go)

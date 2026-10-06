@@ -15,6 +15,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/SenkjM/light-whisper/engine/internal/native"
 )
 
 type ready struct {
@@ -138,6 +140,9 @@ func TestExitOnStdinClose(t *testing.T) {
 }
 
 func TestNativeBackendUnavailable(t *testing.T) {
+	if native.Available {
+		t.Skip("native build: covered by internal/native and internal/r2t2 tests")
+	}
 	err := run(context.Background(), []string{"--backend", "native", "--data-dir", t.TempDir()}, strings.NewReader(""), io.Discard, io.Discard)
 	if err == nil || !strings.Contains(err.Error(), "lwnative") {
 		t.Fatalf("got %v", err)
