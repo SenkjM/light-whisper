@@ -293,10 +293,10 @@ POST  /v1/engine/reload          执行待生效的 reload 项；有实时会话
 
 | 阶段 | 需要什么 | 归属 |
 |------|----------|------|
-| **构建期**（CI 产出 R2T2 CUDA 版 DLL） | 完整 CUDA Toolkit（nvcc）+ MSVC | CI 问题，**单独处理** |
+| **构建期**（CI 产出 R2T2 CUDA 版 DLL） | 完整 CUDA Toolkit 12.9（nvcc）+ MSVC | CI 问题，**单独处理** |
 | **运行期**（用户机器） | NVIDIA 驱动 + 运行时 DLL：`cudart64_*.dll`、`cublas64_*.dll`、`cublasLt64_*.dll` | 本节方案；**不需要完整 Toolkit** |
 
-- **CI 现状**：`windows-latest` 已带 VS 2026，CUDA 12.8 的 nvcc 不接受该编译器，CUDA 构建失败。候选方案：固定 `windows-2022` 镜像，或给 nvcc 加 `-allow-unsupported-compiler`；**未定**，与本节方案互不依赖。
+- **CI 现状**：已删除的 Test installer 工作流曾在 `windows-latest`（已带 VS 2026）上运行失败，原因是 CUDA 12.8 的 nvcc 不接受 VS 2026。本项目今后统一使用 **CUDA 12.9** 构建；CUDA 12.9 的 nvcc 是否接受 VS 2026 **待核实**。候选方案：固定 `windows-2022` 镜像，或给 nvcc 加 `-allow-unsupported-compiler`；**未定**，与本节方案互不依赖。
 
 ### 5.3 流程
 
@@ -330,7 +330,7 @@ flowchart TD
 
 ### 5.4 要求与约束
 
-- **主版本一致**：运行时的 CUDA 主版本必须与编译 R2T2 DLL 时的 CUDA 版本一致。建议在构建产物中写入清单（manifest），记录 CUDA 版本、所需运行时 DLL 名称及其哈希；沿用 `build_r2t2_runtime.py` 现有的 manifest 与 SHA-256 机制，引擎据此决定下载哪个版本、如何校验。
+- **主版本一致**：运行时的 CUDA 主版本必须与编译 R2T2 DLL 时的 CUDA 版本一致（本项目构建使用 CUDA 12.9，即主版本 12；同主版本内低于 12.9 的运行时能否使用**待核实**）。建议在构建产物中写入清单（manifest），记录 CUDA 版本、所需运行时 DLL 名称及其哈希；沿用 `build_r2t2_runtime.py` 现有的 manifest 与 SHA-256 机制，引擎据此决定下载哪个版本、如何校验。
 - **大文件下载体验**：cuBLAS 体积数百 MB，必须支持**断点续传、进度显示、取消**；临时文件下载完成并校验通过后再原子替换到目标目录。
 - **待核实**：
   - NVIDIA redistrib 的下载地址与目录结构；
@@ -433,7 +433,7 @@ flowchart TD
 | 外层分段取舍 | 保留 8 秒 + 静音分段，还是只用 C++ 16 秒滚动窗口？原样移植后用测例对比决定 |
 | transcribe.cpp C 接口稳定性 | 需确认公开 C ABI 是否覆盖所需功能（会话、取消、能力查询） |
 | CUDA 变体与显存 | 两套原生库与模型同时驻留的显存成本；CPU、Vulkan、CUDA 回退顺序 |
-| CUDA 运行时按需下载 | 运行时主版本须与 R2T2 DLL 构建版本一致；NVIDIA redistrib 地址、清单格式、最低驱动版本待核实；CI 的 VS 2026 / CUDA 12.8 不兼容问题方案未定（见 §5） |
+| CUDA 运行时按需下载 | 运行时主版本须与 R2T2 DLL 构建版本一致；NVIDIA redistrib 地址、清单格式、最低驱动版本待核实；项目构建使用 CUDA 12.9，其 nvcc 是否接受 `windows-latest` 的 VS 2026 待核实（此前 CUDA 12.8 不接受），CI 方案未定（见 §5） |
 | 上游合并 | 引擎边界大改，cherry-pick 上游的成本上升；尽量保持听写产品行为兼容 |
 | Rust 工具链 | 调研环境 `rustc 1.85.1` 无法 `cargo check`；需钉 ≥1.88 |
 | 时间戳精度 | 文件工具只有句级时间；词级需对齐器 |
@@ -516,7 +516,7 @@ flowchart TD
 | FireRedVAD 模型 + CMVN + 改编代码 | Apache-2.0（`FireRedVAD-LICENSE.txt`） | 兼容 | 原创集成部分现为 GPL-3.0-only |
 | kaldi-native-fbank | Apache-2.0（上游许可证） | 兼容 | Go 侧若封装其 C++ 代码需随附声明；**待核实版本** |
 | Go 依赖（如 onnxruntime_go、WebSocket / HTTP 库） | **待核实** | 待核实 | Go 标准库为 BSD-3-Clause（兼容）；第三方模块逐个用 `go-licenses` 审查 |
-| NVIDIA CUDA 运行库（随 CUDA 包分发） | NVIDIA 专有再分发许可 | **需审阅** | 不是自由软件；能否援引 GPL / AGPL 的「系统库」例外**待核实**（上游 GPL 发行版已有同样问题） |
+| NVIDIA CUDA 运行库（不随安装包分发，按需下载，见 §5） | NVIDIA 专有许可 | **需审阅** | 不是自由软件；安装包不含 CUDA 运行库，由用户通过一键下载从 NVIDIA 官方 redistrib 渠道获取（或复用系统已有安装），受 NVIDIA 许可约束；CUDA 版 R2T2 DLL 运行时动态加载它，能否援引 GPL / AGPL 的「系统库」例外**待核实** |
 | Microsoft VC++ 运行库 | 微软再分发条款 | 通常按「系统库」处理 | **待核实** |
 | Qwen3-ASR 模型权重 | Apache-2.0（据 transcribe.cpp 的 family 文档；上游 HF 页面待核实） | 单独下载，不并入代码 | 不随代码分发，不受 AGPL 影响 |
 | Confucius4-R2T2 模型权重（Q8 GGUF） | **NetEase Youdao Model Use License Agreement**（`R2T2-MODEL-LICENSE.txt`） | **非 OSI 开源许可证；不能、也不应被 GPL / AGPL 覆盖** | 有使用限制，见下 |
@@ -530,7 +530,7 @@ flowchart TD
   - 禁止用于改进其他 AI 模型（非商业模型等例外）。
   - 其对「Derivative Work」的定义包含「model outputs」。
   - 结论：模型应继续单独下载、单独声明，**不得**写成被 AGPL / GPL 覆盖。「输出算衍生作品」对转写文本的影响**待核实**。
-- **CUDA 运行库**：与 GPL / AGPL 一起分发时的兼容性依赖「系统库」例外的解释，属于上游已有问题，AGPL 不会让它变好；**待专业审阅**。
+- **CUDA 运行库**：按 §5 方案，本项目安装包不再捆绑 CUDA 运行库，改由用户按需从 NVIDIA 官方渠道下载（或复用系统已有安装），受 NVIDIA 许可约束；CUDA 版 R2T2 DLL 与之动态链接时，能否按「系统库」例外处理仍**待专业审阅**。
 - **从 GPL 代码移植的逻辑**（见 10.4）：是本节最主要的不确定项。
 
 ---
