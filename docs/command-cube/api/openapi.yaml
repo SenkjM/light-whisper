@@ -1,0 +1,262 @@
+# SPDX-FileCopyrightText: 2026 SenkjM
+# SPDX-License-Identifier: AGPL-3.0-only
+#
+# Go 引擎本地 API 契约 v1（PLAN §4，迁移步骤 0）。
+# WebSocket 消息格式见 ws-protocol.md；引擎设置的 JSON Schema 见
+# engine/internal/config/schema_v1.json（运行时由 GET /v1/config/schema 返回）。
+# x-status: implemented = 步骤 1 已实现（推理为 mock）；planned = 契约占位，后续步骤实现。
+openapi: 3.1.0
+info:
+  title: light-whisper Go 引擎 API
+  version: "1"
+  license:
+    name: AGPL-3.0-only
+    identifier: AGPL-3.0-only
+servers:
+  - url: http://127.0.0.1:{port}
+    variables:
+      port:
+        default: "0"
+        description: 启动时随机分配，经 stdout 首行握手 JSON 交给 Rust 壳
+security:
+  - startupToken: []
+components:
+  securitySchemes:
+    startupToken:
+      type: http
+      scheme: bearer
+      description: 引擎每次启动生成的随机 token（64 位十六进制）。所有请求（含 /health 与 WebSocket 握手）都必须携带。
+  schemas:
+    Error:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: object
+          required: [code, message]
+          properties:
+            code:
+              type: string
+              enum: [unauthorized, bad_host, origin_not_allowed, bad_request, revision_required,
+                     revision_mismatch, invalid_config, config_read_failed, config_write_failed,
+                     realtime_session_active, no_local_engine, wrong_engine, engine_error,
+                     unsupported_media_type, bad_audio, body_too_large]
+            message: { type: string }
+            fields:
+              type: object
+              additionalProperties: { type: string }
+              description: invalid_config 时逐键给出原因
+    ConfigValues:
+      $ref: "../../../engine/internal/config/schema_v1.json"
+    ConfigSnapshot:
+      type: object
+      required: [schema_version, revision, values, apply, pending_reload]
+      properties:
+        schema_version: { type: integer, const: 1 }
+        revision: { type: string, description: 持久化值的内容哈希；作为 If-Match 使用 }
+        values: { $ref: "#/components/schemas/ConfigValues" }
+        apply:
+          type: object
+          additionalProperties: { type: string, enum: [live, reload] }
+        pending_reload:
+          type: array
+          items: { type: string }
+          description: 已持久化但尚未经 POST /v1/engine/reload 生效的 reload 键
+    PatchResult:
+      type: object
+      required: [revision, applied, pending_reload]
+      properties:
+        revision: { type: string }
+        applied: { type: array, items: { type: string }, description: 本次已立即生效的 live 键 }
+        pending_reload: { type: array, items: { type: string } }
+    SchedulerStats:
+      type: object
+      properties:
+        realtime_queued: { type: integer }
+        batch_queued: { type: integer }
+        running: { type: boolean }
+        running_kind: { type: string, enum: [realtime, batch] }
+        completed: { type: integer }
+    EngineStatus:
+      type: object
+      required: [backend, configured_engine, local_engine, loading, model_loaded, missing_models,
+                 pending_reload, realtime_session_active, gpu_idle_seconds, idle_unloaded, scheduler]
+      properties:
+        backend: { type: string, enum: [mock, native] }
+        configured_engine: { type: string, description: engine.json 中持久化的 engine }
+        local_engine: { type: boolean, description: false 表示云端引擎（由 Rust 处理） }
+        loading: { type: boolean }
+        engine: { type: string, description: 当前已加载的引擎 }
+        kind: { type: string, enum: [r2t2, qwen3] }
+        device: { type: string }
+        model_loaded: { type: boolean }
+        gpu_name: { type: string }
+        gpu_memory_total: { type: number, description: GB }
+        missing_models: { type: array, items: { type: string } }
+        pending_reload: { type: array, items: { type: string } }
+        realtime_session_active: { type: boolean }
+        gpu_idle_seconds: { type: integer }
+        idle_unloaded: { type: boolean }
+        scheduler: { $ref: "#/components/schemas/SchedulerStats" }
+        last_error: { type: string }
+    TranscribeResult:
+      type: object
+      required: [text, sample_count, duration]
+      properties:
+        text: { type: string }
+        language: { type: string }
+        sample_count: { type: integer }
+        duration: { type: number, description: 秒 }
+  responses:
+    Unauthorized:
+      description: 缺少或错误的 Bearer token
+      content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+    Forbidden:
+      description: Host 不是回环地址，或 Origin 不在允许列表
+      content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+    Conflict:
+      description: 实时会话进行中 / 当前引擎不支持该操作 / 配置为云端引擎
+      content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+paths:
+  /health:
+    get:
+      x-status: implemented
+      summary: 存活与版本（壳据 api_version 做兼容性检查）
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status, version, api_version]
+                properties:
+                  status: { type: string, const: ok }
+                  version: { type: string }
+                  api_version: { type: integer, const: 1 }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+  /v1/engine/status:
+    get:
+      x-status: implemented
+      summary: 引擎状态（不经过推理线程）
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/EngineStatus" } } } }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+  /v1/engine/load:
+    post:
+      x-status: implemented
+      summary: 加载当前生效的本地引擎（已加载则无操作）
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/EngineStatus" } } } }
+        "409": { $ref: "#/components/responses/Conflict" }
+  /v1/engine/unload:
+    post:
+      x-status: implemented
+      summary: 卸载模型；实时会话进行中返回 409
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/EngineStatus" } } } }
+        "409": { $ref: "#/components/responses/Conflict" }
+  /v1/engine/reload:
+    post:
+      x-status: implemented
+      summary: 使 pending_reload 中的键生效（卸载后按新配置加载）；实时会话进行中返回 409
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  applied: { type: array, items: { type: string } }
+                  status: { $ref: "#/components/schemas/EngineStatus" }
+        "409": { $ref: "#/components/responses/Conflict" }
+  /v1/config:
+    get:
+      x-status: implemented
+      summary: 读取引擎设置
+      responses:
+        "200":
+          description: OK（ETag 头 = "<revision>"）
+          content: { application/json: { schema: { $ref: "#/components/schemas/ConfigSnapshot" } } }
+    patch:
+      x-status: implemented
+      summary: 修改引擎设置（JSON merge patch；null 表示恢复默认并从 engine.json 删除该键）
+      parameters:
+        - in: header
+          name: If-Match
+          required: true
+          schema: { type: string }
+          description: GET /v1/config 返回的 revision（可带引号）
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              description: 只允许引擎持有的键；未知键或壳持有的键（如 glm_endpoint）返回 400
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/PatchResult" } } } }
+        "400": { description: 请求体不是对象 / 校验失败, content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+        "412": { description: revision 不匹配（配置已被修改）, content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+        "428": { description: 缺少 If-Match, content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+  /v1/config/schema:
+    get:
+      x-status: implemented
+      summary: 引擎设置 JSON Schema（前端据此生成表单；x-apply 标注 live / reload）
+      responses:
+        "200": { description: OK, content: { application/schema+json: {} } }
+  /v1/events:
+    get:
+      x-status: implemented
+      summary: WebSocket 事件流（engine_status / config_changed / download_progress / job_progress），见 ws-protocol.md
+      responses:
+        "101": { description: Switching Protocols }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+  /v1/asr/stream:
+    get:
+      x-status: implemented
+      summary: R2T2 实时会话 WebSocket，见 ws-protocol.md；当前引擎不是 R2T2 或已有会话时返回 409（不降级到 Qwen3）
+      responses:
+        "101": { description: Switching Protocols }
+        "409": { $ref: "#/components/responses/Conflict" }
+  /v1/asr/transcribe:
+    post:
+      x-status: implemented
+      summary: Qwen3 短音频同步整段识别（批处理优先级）
+      parameters:
+        - { in: query, name: language, schema: { type: string }, description: 缺省时用 default_language }
+        - { in: query, name: context, schema: { type: string } }
+        - { in: query, name: hot_word, schema: { type: array, items: { type: string } }, style: form, explode: true }
+      requestBody:
+        required: true
+        content:
+          application/octet-stream:
+            schema: { type: string, format: binary, description: PCM s16le、16 kHz、单声道 }
+          audio/wav:
+            schema: { type: string, format: binary, description: 仅 PCM 16-bit、单声道、16 kHz }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/TranscribeResult" } } } }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "413": { description: 超过大小上限（默认 64 MiB） }
+        "415": { description: 音频格式不支持 }
+  /v1/models:
+    get:
+      x-status: planned
+      summary: 模型清单、安装状态、校验结果（PLAN §4.3）
+      responses: { "200": { description: OK } }
+  /v1/models/{id}/download:
+    parameters: [{ in: path, name: id, required: true, schema: { type: string } }]
+    post: { x-status: planned, summary: 开始下载（进度走 /v1/events 的 download_progress）, responses: { "202": { description: Accepted } } }
+    delete: { x-status: planned, summary: 取消下载, responses: { "204": { description: Cancelled } } }
+  /v1/jobs:
+    post: { x-status: planned, summary: 文件转录 job（PLAN §4.5）, responses: { "202": { description: Accepted } } }
+  /v1/jobs/{id}:
+    parameters: [{ in: path, name: id, required: true, schema: { type: string } }]
+    get: { x-status: planned, summary: 查询 job, responses: { "200": { description: OK } } }
+    delete: { x-status: planned, summary: 取消 job, responses: { "204": { description: Cancelled } } }
+  /v1/runtimes/cuda:
+    get: { x-status: planned, summary: CUDA 运行时状态（PLAN §5.5）, responses: { "200": { description: OK } } }
+  /v1/runtimes/cuda/download:
+    post: { x-status: planned, summary: 开始 / 续传 CUDA 运行时下载, responses: { "202": { description: Accepted } } }
+    delete: { x-status: planned, summary: 取消 CUDA 运行时下载, responses: { "204": { description: Cancelled } } }
