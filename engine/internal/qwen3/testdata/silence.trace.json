@@ -1,0 +1,19 @@
+{
+ "name": "silence",
+ "samples": 32000,
+ "pcm_sha256": "4f7988030a00d082fe445e00a2ac5dab502300ff1b80e8592dd569867b60ef74",
+ "backend": "auto",
+ "result": {
+  "text": "",
+  "language": "unknown"
+ },
+ "log": [
+  {
+   "op": "vad",
+   "n": 32000,
+   "sha256": "eec19bc6af0b3b6dfb97a08782c65f4bb3c3203e789a015d2008b0d689ad08be",
+   "regions": []
+  }
+ ],
+ "derived_from": "dictation_short"
+}

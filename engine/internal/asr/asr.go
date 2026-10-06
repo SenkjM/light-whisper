@@ -10,7 +10,8 @@
 //   - audio.cpp C ABI for Confucius4-R2T2 (streaming and whole-clip
 //     transcription, internal/r2t2, migration step 3),
 //   - onnxruntime for FireRedVAD (internal/vad, migration step 2),
-//   - transcribe.cpp for Qwen3-ASR (migration step 4, not yet).
+//   - transcribe.cpp for Qwen3-ASR (whole-clip and whole-sentence realtime,
+//     internal/qwen3, migration step 4).
 //
 // Threading contract: every Backend and Stream method is called only from the
 // scheduler's single inference goroutine (locked OS thread), never
@@ -30,7 +31,7 @@ type Kind string
 
 const (
 	KindR2T2  Kind = "r2t2"  // realtime with live subtitles; batch too
-	KindQwen3 Kind = "qwen3" // batch only / fallback, no live subtitles
+	KindQwen3 Kind = "qwen3" // whole-sentence realtime captions; batch / fallback
 )
 
 // LoadSpec is what a backend needs to load a model.
@@ -58,6 +59,37 @@ type TranscribeOptions struct {
 	Language string
 	Context  string
 	HotWords []string
+	// Interrupt, when non-nil and closed, asks the call to stop at its next
+	// safe boundary and return an error wrapping ErrInterrupted: Qwen3
+	// aborts the transcribe.cpp run at its next chunk / decode boundary
+	// (abort callback); R2T2 stops between two native chunk pushes
+	// (audio.cpp calls cannot be aborted mid-call). Set by the scheduler for
+	// preemptible work; nil for realtime work.
+	Interrupt <-chan struct{}
+}
+
+// Span is a [Start, End) sample range (VAD speech region, job segment).
+type Span struct {
+	Start int `json:"start"`
+	End   int `json:"end"`
+}
+
+// Stream modes reported to WebSocket clients.
+const (
+	// ModeStreaming: R2T2 native streaming, committed grows per character
+	// and tentative carries the preview.
+	ModeStreaming = "streaming"
+	// ModeSentence: Qwen3 whole-sentence captions, committed grows by whole
+	// VAD-cut sentences and tentative is always empty.
+	ModeSentence = "sentence"
+)
+
+// ModeForKind returns the realtime mode of an engine kind.
+func ModeForKind(k Kind) string {
+	if k == KindQwen3 {
+		return ModeSentence
+	}
+	return ModeStreaming
 }
 
 // Result is a final transcription.
@@ -81,7 +113,7 @@ type StreamOptions struct {
 	HotWords  []string
 }
 
-// Stream is one realtime R2T2 session.
+// Stream is one realtime session (R2T2 streaming or Qwen3 sentences).
 type Stream interface {
 	// Push feeds PCM samples (already offset-checked by the caller).
 	Push(pcm []int16) (Partial, error)
@@ -104,8 +136,12 @@ type Backend interface {
 	// transcribe_audio in r2t2_asr_server.py). The caller guarantees no live
 	// R2T2 session is active.
 	Transcribe(pcm []int16, opts TranscribeOptions) (Result, error)
-	// NewStream starts a realtime session (R2T2 path).
+	// NewStream starts a realtime session: R2T2 native streaming, or Qwen3
+	// whole-sentence mode (VAD cuts sentences, each recognized once).
 	NewStream(opts StreamOptions) (Stream, error)
+	// SpeechSegments returns the VAD speech regions of a whole file (file
+	// jobs segment on these, PLAN §4.5). Needs a loaded engine.
+	SpeechSegments(pcm []int16) ([]Span, error)
 }
 
 // Errors shared by implementations.
@@ -113,6 +149,8 @@ var (
 	ErrNotLoaded         = errors.New("model not loaded")
 	ErrWrongKind         = errors.New("operation not supported by the loaded engine")
 	ErrNativeUnavailable = errors.New("native backend not compiled in (build with -tags lwnative and CGO_ENABLED=1)")
+	// ErrInterrupted: the call stopped because TranscribeOptions.Interrupt closed.
+	ErrInterrupted = errors.New("inference interrupted")
 )
 
 // KindForEngine maps a config engine id to a local engine kind.

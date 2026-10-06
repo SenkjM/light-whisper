@@ -47,8 +47,25 @@ func TestMockKindsAndDeterminism(t *testing.T) {
 
 	_ = m.Unload()
 	_ = m.Load(LoadSpec{Engine: "qwen3-asr-0.6b", Kind: KindQwen3, Device: "cuda"})
-	if _, err := m.NewStream(StreamOptions{}); !errors.Is(err, ErrWrongKind) {
-		t.Fatal("Qwen3 mock must not stream")
+	qs, err := m.NewStream(StreamOptions{Language: "zh"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	voicedPCM := make([]int16, SampleRate*3/2)
+	for i := range voicedPCM {
+		voicedPCM[i] = 1
+	}
+	if p, _ := qs.Push(voicedPCM); p.Committed != "" || p.Tentative != "" {
+		t.Fatalf("sentence committed before its pause: %+v", p)
+	}
+	if p, _ := qs.Push(make([]int16, SampleRate/2)); p.Committed != "字" || p.Tentative != "" {
+		t.Fatalf("sentence not committed after 500 ms of silence: %+v", p)
+	}
+	if r, _ := qs.Finish(); r.Text != "字" || r.SampleCount != 2*SampleRate {
+		t.Fatalf("%+v", r)
+	}
+	if MockSpeechSegments(append(append(make([]int16, 10), voicedPCM[:100]...), make([]int16, 100)...))[0] != (Span{Start: 10, End: 110}) {
+		t.Fatal("mock VAD")
 	}
 	if r, err := m.Transcribe(make([]int16, SampleRate*3/2), TranscribeOptions{}); err != nil || r.Text != "字" {
 		t.Fatalf("Qwen3 mock transcribe: %+v %v", r, err)

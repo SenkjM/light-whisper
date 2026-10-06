@@ -73,12 +73,14 @@ func decodeWAV(b []byte) ([]int16, error) {
 	return nil, errors.New("no data chunk")
 }
 
-func (s *Server) handleTranscribe(w http.ResponseWriter, r *http.Request) {
+// readAudioBody decodes a PCM s16le or WAV request body; on failure it has
+// already written the error response.
+func readAudioBody(w http.ResponseWriter, r *http.Request, limit int64) ([]int16, bool) {
 	// Fail fast before reading a large body.
-	body, err := io.ReadAll(http.MaxBytesReader(w, r.Body, s.opts.MaxAudioBytes))
+	body, err := io.ReadAll(http.MaxBytesReader(w, r.Body, limit))
 	if err != nil {
 		writeError(w, http.StatusRequestEntityTooLarge, "body_too_large", err.Error())
-		return
+		return nil, false
 	}
 	mt, _, _ := mime.ParseMediaType(r.Header.Get("Content-Type"))
 	var pcm []int16
@@ -90,15 +92,23 @@ func (s *Server) handleTranscribe(w http.ResponseWriter, r *http.Request) {
 	default:
 		writeError(w, http.StatusUnsupportedMediaType, "unsupported_media_type",
 			"send PCM s16le 16 kHz mono (application/octet-stream) or WAV (audio/wav)")
-		return
+		return nil, false
 	}
 	if err != nil {
 		writeError(w, http.StatusUnsupportedMediaType, "bad_audio", err.Error())
+		return nil, false
+	}
+	return pcm, true
+}
+
+func (s *Server) handleTranscribe(w http.ResponseWriter, r *http.Request) {
+	pcm, ok := readAudioBody(w, r, s.opts.MaxAudioBytes)
+	if !ok {
 		return
 	}
 	q := r.URL.Query()
 	opts := asr.TranscribeOptions{Language: q.Get("language"), Context: q.Get("context"), HotWords: q["hot_word"]}
-	res, err := s.opts.Manager.Transcribe(r.Context(), pcm, opts)
+	res, err := s.opts.Manager.Transcribe(r.Context(), pcm, opts, q.Get("priority"))
 	if err != nil {
 		writeManagerError(w, err)
 		return

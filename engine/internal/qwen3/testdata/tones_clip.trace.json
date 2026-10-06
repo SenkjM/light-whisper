@@ -1,0 +1,18 @@
+{
+ "name": "tones_clip",
+ "samples": 31923,
+ "pcm_sha256": "76d2345753cd59388a53deeeec438c8a310fcb448ad86039404233c8e5044c87",
+ "backend": "auto",
+ "result": {
+  "text": "",
+  "language": "unknown"
+ },
+ "log": [
+  {
+   "op": "vad",
+   "n": 31923,
+   "sha256": "8e2ed5ddc7595a093b211bfff1c07b31723e5a17917bdd5d216294f8093d2894",
+   "regions": []
+  }
+ ]
+}

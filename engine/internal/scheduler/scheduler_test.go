@@ -19,7 +19,7 @@ func TestJobsRunSeriallyOnOneThread(t *testing.T) {
 	var wg sync.WaitGroup
 	for i := 0; i < 50; i++ {
 		wg.Add(1)
-		p := Batch
+		p := High
 		if i%3 == 0 {
 			p = Realtime
 		}
@@ -58,7 +58,7 @@ func block(t *testing.T, s *Scheduler) (release chan struct{}, done chan error) 
 	release = make(chan struct{})
 	done = make(chan error, 1)
 	go func() {
-		done <- s.Do(context.Background(), Batch, func() error {
+		done <- s.Do(context.Background(), High, func() error {
 			close(started)
 			<-release
 			return nil
@@ -70,18 +70,23 @@ func block(t *testing.T, s *Scheduler) (release chan struct{}, done chan error) 
 
 func waitQueued(t *testing.T, s *Scheduler, rt, batch int) {
 	t.Helper()
+	waitQueued3(t, s, rt, batch, 0)
+}
+
+func waitQueued3(t *testing.T, s *Scheduler, rt, high, normal int) {
+	t.Helper()
 	deadline := time.Now().Add(2 * time.Second)
 	for time.Now().Before(deadline) {
 		st := s.Stats()
-		if st.RealtimeQueued == rt && st.BatchQueued == batch {
+		if st.RealtimeQueued == rt && st.HighQueued == high && st.NormalQueued == normal {
 			return
 		}
 		time.Sleep(time.Millisecond)
 	}
-	t.Fatalf("queue never reached rt=%d batch=%d: %+v", rt, batch, s.Stats())
+	t.Fatalf("queue never reached rt=%d high=%d normal=%d: %+v", rt, high, normal, s.Stats())
 }
 
-func TestRealtimeRunsBeforeQueuedBatch(t *testing.T) {
+func TestRealtimeRunsBeforeQueuedHigh(t *testing.T) {
 	s := New()
 	defer s.Close(context.Background())
 	release, done := block(t, s)
@@ -96,13 +101,13 @@ func TestRealtimeRunsBeforeQueuedBatch(t *testing.T) {
 		wg.Add(1)
 		go func() { defer wg.Done(); _ = s.Do(context.Background(), p, rec(name)) }()
 	}
-	submit(Batch, "b1")
+	submit(High, "b1")
 	waitQueued(t, s, 0, 1)
-	submit(Batch, "b2")
+	submit(High, "b2")
 	waitQueued(t, s, 0, 2)
 	submit(Realtime, "r1")
 	waitQueued(t, s, 1, 2)
-	if st := s.Stats(); !st.Running || st.RunningKind != "batch" {
+	if st := s.Stats(); !st.Running || st.RunningKind != "high" {
 		t.Fatalf("stats %+v", st)
 	}
 	close(release)
@@ -123,18 +128,18 @@ func TestCancelWhileQueuedDropsJob(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	var ran atomic.Bool
 	errc := make(chan error, 1)
-	go func() { errc <- s.Do(ctx, Batch, func() error { ran.Store(true); return nil }) }()
+	go func() { errc <- s.Do(ctx, High, func() error { ran.Store(true); return nil }) }()
 	waitQueued(t, s, 0, 1)
 	cancel()
 	if err := <-errc; !errors.Is(err, context.Canceled) {
 		t.Fatalf("got %v", err)
 	}
-	if s.Stats().BatchQueued != 0 {
+	if s.Stats().HighQueued != 0 {
 		t.Fatal("cancelled job still counted")
 	}
 	close(release)
 	<-done
-	_ = s.Do(context.Background(), Batch, func() error { return nil }) // barrier
+	_ = s.Do(context.Background(), High, func() error { return nil }) // barrier
 	if ran.Load() {
 		t.Fatal("cancelled job ran")
 	}
@@ -165,10 +170,10 @@ func TestPanicIsRecovered(t *testing.T) {
 	s := New()
 	defer s.Close(context.Background())
 	var pe *PanicError
-	if err := s.Do(context.Background(), Batch, func() error { panic("boom") }); !errors.As(err, &pe) {
+	if err := s.Do(context.Background(), High, func() error { panic("boom") }); !errors.As(err, &pe) {
 		t.Fatalf("got %v", err)
 	}
-	if err := s.Do(context.Background(), Batch, func() error { return nil }); err != nil {
+	if err := s.Do(context.Background(), High, func() error { return nil }); err != nil {
 		t.Fatalf("scheduler dead after panic: %v", err)
 	}
 }
@@ -178,7 +183,7 @@ func TestCloseDrainsQueueThenRejects(t *testing.T) {
 	release, done := block(t, s)
 	var ran atomic.Bool
 	errc := make(chan error, 1)
-	go func() { errc <- s.Do(context.Background(), Batch, func() error { ran.Store(true); return nil }) }()
+	go func() { errc <- s.Do(context.Background(), High, func() error { ran.Store(true); return nil }) }()
 	waitQueued(t, s, 0, 1)
 	closed := make(chan error, 1)
 	go func() { closed <- s.Close(context.Background()) }()
@@ -190,7 +195,7 @@ func TestCloseDrainsQueueThenRejects(t *testing.T) {
 	if err := <-closed; err != nil {
 		t.Fatal(err)
 	}
-	if err := s.Do(context.Background(), Batch, func() error { return nil }); !errors.Is(err, ErrClosed) {
+	if err := s.Do(context.Background(), High, func() error { return nil }); !errors.Is(err, ErrClosed) {
 		t.Fatalf("got %v", err)
 	}
 }

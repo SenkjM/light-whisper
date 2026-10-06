@@ -1,0 +1,38 @@
+{
+ "name": "speech_mixed",
+ "samples": 104304,
+ "pcm_sha256": "63933c503acd0ac03a8221ce90965ede2c523d11c6e46a0f4737f27a0bbbaa7f",
+ "backend": "auto",
+ "result": {
+  "text": "今天天气很好。Voice activity test. Okay.",
+  "language": "zh"
+ },
+ "log": [
+  {
+   "op": "vad",
+   "n": 104304,
+   "sha256": "3f6c8de34b95af0e7b1dbb2250743b7d34b98f6555703df38ad5c635dc1786bd",
+   "regions": [
+    {
+     "start": 8800,
+     "end": 39200
+    },
+    {
+     "start": 51360,
+     "end": 73920
+    },
+    {
+     "start": 77120,
+     "end": 88640
+    }
+   ]
+  },
+  {
+   "op": "run",
+   "n": 79840,
+   "sha256": "7802c3b04daad2527cae25e0afc560b8492491e147edd83564d251ac967b2a78",
+   "text": "今天天气很好。Voice activity test. Okay.",
+   "language": "zh"
+  }
+ ]
+}

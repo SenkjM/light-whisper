@@ -69,6 +69,12 @@ type Values struct {
 	GPUIdleSeconds  uint64 `json:"gpu_idle_seconds"`
 	DefaultLanguage string `json:"default_language"`
 	LogLevel        string `json:"log_level"`
+	// DefaultPriorityVoice is the priority of voice transcription
+	// (POST /v1/asr/transcribe) without an explicit priority.
+	DefaultPriorityVoice string `json:"default_priority_voice"`
+	// DefaultPriorityFile is the priority of file transcription jobs
+	// (POST /v1/jobs) without an explicit priority.
+	DefaultPriorityFile string `json:"default_priority_file"`
 }
 
 // IsOnlineEngine reports whether the engine is a cloud engine handled by the shell.
@@ -179,6 +185,13 @@ var fields = []field{
 	},
 	enumField("log_level", ApplyLive, "info", []string{"debug", "info", "warn", "error"},
 		func(v *Values) *string { return &v.LogLevel }),
+	// PLAN §3.2 / §4.6: 实时 / 优先 / 普通. Live dictation is always
+	// realtime; file jobs cannot be realtime (they would interleave with a
+	// live R2T2 session).
+	enumField("default_priority_voice", ApplyLive, "high", []string{"realtime", "high", "normal"},
+		func(v *Values) *string { return &v.DefaultPriorityVoice }),
+	enumField("default_priority_file", ApplyLive, "normal", []string{"high", "normal"},
+		func(v *Values) *string { return &v.DefaultPriorityFile }),
 }
 
 func enumField(key string, apply Apply, def string, allowed []string, ptr func(*Values) *string) field {

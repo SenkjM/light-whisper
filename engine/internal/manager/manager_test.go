@@ -82,7 +82,7 @@ func TestGPUIdleUnloadAndReloadOnDemand(t *testing.T) {
 	eventually(t, "idle unload", func() bool { st := f.m.Status(); return !st.ModelLoaded && st.IdleUnloaded })
 
 	// Next request reloads transparently.
-	res, err := f.m.Transcribe(ctx, make([]int16, 2*asr.SampleRate), asr.TranscribeOptions{})
+	res, err := f.m.Transcribe(ctx, make([]int16, 2*asr.SampleRate), asr.TranscribeOptions{}, "")
 	if err != nil || res.Text != "字字" {
 		t.Fatalf("transcribe after idle unload: %q %v", res.Text, err)
 	}
@@ -163,7 +163,7 @@ func TestReloadAndUnloadRefusedDuringSession(t *testing.T) {
 func TestR2T2BatchTranscribe(t *testing.T) {
 	f := newFixture(t, `{"engine":"confucius4-r2t2","default_language":"zh"}`)
 	ctx := context.Background()
-	res, err := f.m.Transcribe(ctx, make([]int16, 2*asr.SampleRate+1), asr.TranscribeOptions{})
+	res, err := f.m.Transcribe(ctx, make([]int16, 2*asr.SampleRate+1), asr.TranscribeOptions{}, "")
 	if err != nil || res.Text != "字字字" || res.Language != "zh" {
 		t.Fatalf("R2T2 transcribe: %+v %v", res, err)
 	}
@@ -174,18 +174,18 @@ func TestR2T2BatchTranscribe(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := f.m.Transcribe(ctx, make([]int16, 10), asr.TranscribeOptions{}); !errors.Is(err, ErrSessionActive) {
+	if _, err := f.m.Transcribe(ctx, make([]int16, 10), asr.TranscribeOptions{}, ""); !errors.Is(err, ErrSessionActive) {
 		t.Fatalf("R2T2 batch during session: %v", err)
 	}
 	sess.Cancel()
-	if _, err := f.m.Transcribe(ctx, make([]int16, 10), asr.TranscribeOptions{}); err != nil {
+	if _, err := f.m.Transcribe(ctx, make([]int16, 10), asr.TranscribeOptions{}, ""); err != nil {
 		t.Fatalf("after session: %v", err)
 	}
 }
 
-// A batch R2T2 job queued behind other work must not run once a live
-// session has started in the meantime (realtime goes first; the batch job
-// re-checks on the inference thread).
+// A batch R2T2 clip queued behind other work must not interleave with a
+// live session that starts in the meantime: the session's hold keeps it
+// queued until the session ends, then it runs.
 func TestR2T2BatchQueuedThenSessionStarts(t *testing.T) {
 	f := newFixture(t, `{"engine":"confucius4-r2t2"}`)
 	ctx := context.Background()
@@ -193,15 +193,15 @@ func TestR2T2BatchQueuedThenSessionStarts(t *testing.T) {
 	release := make(chan struct{})
 	started := make(chan struct{})
 	go func() {
-		_ = f.m.Scheduler().Do(ctx, scheduler.Batch, func() error { close(started); <-release; return nil })
+		_ = f.m.Scheduler().Do(ctx, scheduler.High, func() error { close(started); <-release; return nil })
 	}()
 	<-started
 	errc := make(chan error, 1)
 	go func() {
-		_, err := f.m.Transcribe(ctx, make([]int16, 10), asr.TranscribeOptions{})
+		_, err := f.m.Transcribe(ctx, make([]int16, 10), asr.TranscribeOptions{}, "")
 		errc <- err
 	}()
-	eventually(t, "batch queued", func() bool { return f.m.Scheduler().Stats().BatchQueued == 1 })
+	eventually(t, "batch queued", func() bool { return f.m.Scheduler().Stats().HighQueued == 1 })
 	sessc := make(chan *Session, 1)
 	go func() {
 		s, err := f.m.StartSession(ctx, asr.StreamOptions{SessionID: 2})
@@ -213,20 +213,31 @@ func TestR2T2BatchQueuedThenSessionStarts(t *testing.T) {
 	eventually(t, "session slot held", f.m.SessionActive)
 	close(release)
 	sess := <-sessc
-	if err := <-errc; !errors.Is(err, ErrSessionActive) {
-		t.Fatalf("queued R2T2 batch ran during session: %v", err)
+	if _, err := sess.Push(ctx, 0, make([]int16, 1600)); err != nil {
+		t.Fatal(err)
 	}
-	if sess != nil {
-		sess.Cancel()
+	select {
+	case err := <-errc:
+		t.Fatalf("queued R2T2 clip ran during the session: %v", err)
+	case <-time.After(30 * time.Millisecond):
+	}
+	if st := f.m.Scheduler().Stats(); st.HighQueued != 1 || !st.RealtimeHold {
+		t.Fatalf("stats %+v", st)
+	}
+	sess.Cancel()
+	if err := <-errc; err != nil {
+		t.Fatalf("queued clip after the session: %v", err)
 	}
 }
 
 func TestEngineKindRules(t *testing.T) {
 	f := newFixture(t, `{"engine":"qwen3-asr-0.6b"}`)
 	ctx := context.Background()
-	if _, err := f.m.StartSession(ctx, asr.StreamOptions{}); !errors.Is(err, ErrWrongEngine) {
-		t.Fatalf("stream on qwen3 must be refused (no silent fallback): %v", err)
+	sess, err := f.m.StartSession(ctx, asr.StreamOptions{})
+	if err != nil || sess.Mode() != asr.ModeSentence {
+		t.Fatalf("qwen3 realtime must use the sentence mode: %v", err)
 	}
+	sess.Cancel()
 	f.patch(t, map[string]any{"engine": "glm-asr"})
 	if _, err := f.m.Reload(ctx); err != nil {
 		t.Fatal(err)
@@ -235,11 +246,17 @@ func TestEngineKindRules(t *testing.T) {
 	if st.LocalEngine || st.ModelLoaded {
 		t.Fatalf("cloud engine must not load a local model: %+v", st)
 	}
-	if _, err := f.m.Transcribe(ctx, make([]int16, 10), asr.TranscribeOptions{}); !errors.Is(err, ErrNoLocalEngine) {
+	if _, err := f.m.Transcribe(ctx, make([]int16, 10), asr.TranscribeOptions{}, ""); !errors.Is(err, ErrNoLocalEngine) {
 		t.Fatalf("transcribe with cloud engine: %v", err)
 	}
 	if err := f.m.Load(ctx); !errors.Is(err, ErrNoLocalEngine) {
 		t.Fatalf("load with cloud engine: %v", err)
+	}
+	if _, err := f.m.StartSession(ctx, asr.StreamOptions{}); !errors.Is(err, ErrNoLocalEngine) {
+		t.Fatalf("stream with cloud engine: %v", err)
+	}
+	if _, err := f.m.SubmitJob(JobSpec{PCM: make([]int16, 10)}); !errors.Is(err, ErrNoLocalEngine) {
+		t.Fatalf("job with cloud engine: %v", err)
 	}
 }
 

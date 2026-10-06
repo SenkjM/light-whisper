@@ -1,0 +1,12 @@
+{
+ "name": "dictation_short-tiny",
+ "samples": 6400,
+ "pcm_sha256": "d16b56f72f9ec76730d9d52ac5d584afdf712b3691bf43a71bd90a85d5c3ffb4",
+ "backend": "auto",
+ "result": {
+  "text": "",
+  "language": ""
+ },
+ "log": [],
+ "derived_from": "dictation_short"
+}

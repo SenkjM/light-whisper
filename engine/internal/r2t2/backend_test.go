@@ -437,9 +437,9 @@ func TestUnloadClosesRuntimeAndVADAndReloads(t *testing.T) {
 	}
 }
 
-func TestQwen3IsNotImplementedYet(t *testing.T) {
+func TestLoadRejectsQwen3Kind(t *testing.T) {
 	b := NewBackend(BackendOptions{})
-	if err := b.Load(asr.LoadSpec{Engine: "qwen3-asr", Kind: asr.KindQwen3}); !errors.Is(err, ErrQwen3NotImplemented) {
+	if err := b.Load(asr.LoadSpec{Engine: "qwen3-asr", Kind: asr.KindQwen3}); !errors.Is(err, asr.ErrWrongKind) {
 		t.Fatal(err)
 	}
 }

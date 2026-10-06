@@ -111,8 +111,9 @@ func managerErrCode(err error) string {
 }
 
 func (s *Server) handleStream(w http.ResponseWriter, r *http.Request) {
-	// PLAN §4.4: refuse the connection when R2T2 is not the active engine
-	// (never silently fall back to Qwen3) or when a session is already active.
+	// PLAN §4.4: refuse the connection when the active engine is a cloud
+	// engine or when a session is already active. R2T2 streams natively;
+	// Qwen3 uses the whole-sentence mode. The engine is never switched.
 	if err := s.opts.Manager.CheckRealtimeAvailable(); err != nil {
 		writeManagerError(w, err)
 		return
@@ -131,6 +132,7 @@ func (s *Server) handleStream(w http.ResponseWriter, r *http.Request) {
 
 	var sess *manager.Session
 	var sid uint64
+	var lastCommitted string // sentence mode: partials only on new sentences
 	defer func() {
 		if sess != nil {
 			sess.Cancel()
@@ -165,6 +167,12 @@ func (s *Server) handleStream(w http.ResponseWriter, r *http.Request) {
 				_ = writeWS(ctx, c, errFrame(sid, "engine_error", err.Error()))
 				continue
 			}
+			if sess.Mode() == asr.ModeSentence {
+				if p.Committed == lastCommitted {
+					continue
+				}
+				lastCommitted = p.Committed
+			}
 			if err := writeWS(ctx, c, map[string]any{
 				"type": "partial", "session_id": sid, "committed": p.Committed, "tentative": p.Tentative,
 			}); err != nil {
@@ -191,8 +199,8 @@ func (s *Server) handleStream(w http.ResponseWriter, r *http.Request) {
 				_ = writeWS(ctx, c, errFrame(msg.SessionID, managerErrCode(err), err.Error()))
 				continue
 			}
-			sess, sid = ns, msg.SessionID
-			_ = writeWS(ctx, c, map[string]any{"type": "started", "session_id": sid})
+			sess, sid, lastCommitted = ns, msg.SessionID, ""
+			_ = writeWS(ctx, c, map[string]any{"type": "started", "session_id": sid, "mode": ns.Mode()})
 		case "finish":
 			if sess == nil {
 				_ = writeWS(ctx, c, errFrame(0, "no_session", "no active session"))

@@ -30,6 +30,8 @@ var (
 	ErrNoLocalEngine = errors.New("configured engine is not a local engine")
 	// ErrWrongEngine: the request needs a different engine kind (409).
 	ErrWrongEngine = errors.New("operation not available for the active engine")
+	// ErrBadPriority: unknown or disallowed priority value (400).
+	ErrBadPriority = errors.New("invalid priority")
 )
 
 // Options configure a Manager.
@@ -46,6 +48,9 @@ type Options struct {
 	IdleUnit time.Duration
 	// Now is the clock (tests).
 	Now func() time.Time
+	// JobSegmentSamples bounds one file-job unit (default
+	// MaxJobSegmentSamples; tests shrink it).
+	JobSegmentSamples int
 }
 
 // Status is the GET /v1/engine/status payload.
@@ -60,6 +65,7 @@ type Status struct {
 	GPUIdleSeconds        uint64          `json:"gpu_idle_seconds"`
 	IdleUnloaded          bool            `json:"idle_unloaded"`
 	Scheduler             scheduler.Stats `json:"scheduler"`
+	Jobs                  JobCounts       `json:"jobs"`
 	LastError             string          `json:"last_error,omitempty"`
 }
 
@@ -76,6 +82,7 @@ type Manager struct {
 	lastActivity time.Time
 	idleUnloaded bool
 	sessionHeld  bool
+	jobs         jobStore
 
 	stop     chan struct{}
 	stopOnce sync.Once
@@ -93,6 +100,9 @@ func New(opts Options) *Manager {
 	if opts.Now == nil {
 		opts.Now = time.Now
 	}
+	if opts.JobSegmentSamples <= 0 {
+		opts.JobSegmentSamples = MaxJobSegmentSamples
+	}
 	if opts.Logger == nil {
 		opts.Logger = slog.Default()
 	}
@@ -104,6 +114,7 @@ func New(opts Options) *Manager {
 		stop:  make(chan struct{}),
 	}
 	m.lastActivity = opts.Now()
+	m.jobs.init()
 	m.applyLogLevel(opts.Store.Effective())
 	m.wg.Add(1)
 	go m.idleLoop()
@@ -116,8 +127,9 @@ func (m *Manager) Scheduler() *scheduler.Scheduler { return m.sched }
 // Close stops the idle watcher, unloads the model and stops the scheduler.
 func (m *Manager) Close(ctx context.Context) error {
 	m.stopOnce.Do(func() { close(m.stop) })
+	m.cancelAllJobs()
 	m.wg.Wait()
-	_ = m.sched.Do(ctx, scheduler.Batch, func() error { return m.opts.Backend.Unload() })
+	_ = m.sched.Do(ctx, scheduler.High, func() error { return m.opts.Backend.Unload() })
 	return m.sched.Close(ctx)
 }
 
@@ -208,7 +220,7 @@ func (m *Manager) touch() {
 // Load loads the active engine (no-op if loaded). Used at startup and by
 // POST /v1/engine/load.
 func (m *Manager) Load(ctx context.Context) error {
-	return m.sched.Do(ctx, scheduler.Batch, func() error {
+	return m.sched.Do(ctx, scheduler.High, func() error {
 		err := m.ensureLoaded()
 		m.touch()
 		return err
@@ -220,7 +232,7 @@ func (m *Manager) Unload(ctx context.Context) error {
 	if m.SessionActive() {
 		return ErrBusy
 	}
-	return m.sched.Do(ctx, scheduler.Batch, func() error {
+	return m.sched.Do(ctx, scheduler.High, func() error {
 		err := m.opts.Backend.Unload()
 		m.refreshInfoLocked()
 		m.publishStatus()
@@ -234,7 +246,7 @@ func (m *Manager) Reload(ctx context.Context) (applied []string, err error) {
 	if m.SessionActive() {
 		return nil, ErrBusy
 	}
-	err = m.sched.Do(ctx, scheduler.Batch, func() error {
+	err = m.sched.Do(ctx, scheduler.High, func() error {
 		desired := m.opts.Store.Desired()
 		applied = m.opts.Store.Pending()
 		wasLoaded := m.opts.Backend.Info().ModelLoaded
@@ -276,20 +288,58 @@ func nonNil(s []string) []string {
 	return s
 }
 
-// Transcribe runs whole-clip recognition with the active local engine
-// (Qwen3 or R2T2) at batch priority.
+// Request kinds (PLAN §4.6): the shell only sends voice transcription and
+// file transcription; each carries a priority.
+const (
+	KindVoice = "voice"
+	KindFile  = "file"
+)
+
+// ResolvePriority returns the scheduler priority for a request: the
+// explicit API value, or the configured default (default_priority_voice /
+// default_priority_file). File jobs cannot be realtime.
+func (m *Manager) ResolvePriority(kind, value string) (scheduler.Priority, error) {
+	if value == "" {
+		eff := m.opts.Store.Effective()
+		value = eff.DefaultPriorityVoice
+		if kind == KindFile {
+			value = eff.DefaultPriorityFile
+		}
+	}
+	p, err := scheduler.ParsePriority(value)
+	if err != nil {
+		return 0, fmt.Errorf("%w: %v", ErrBadPriority, err)
+	}
+	if kind == KindFile && p == scheduler.Realtime {
+		return 0, fmt.Errorf("%w: file jobs cannot be realtime (use high or normal)", ErrBadPriority)
+	}
+	return p, nil
+}
+
+// Transcribe runs whole-clip voice transcription with the active local
+// engine at the given priority ("" = default_priority_voice).
 //
-// The whole clip is one scheduler job, so it never interleaves with realtime
-// chunks: a live session that starts meanwhile waits until the job finishes
-// (running jobs are not pre-empted). R2T2 batch work shares the single
-// loaded R2T2 model with live sessions, so — like the Python R2T2 server's
-// "stream_busy" — it is refused with ErrSessionActive while a realtime
-// session holds the slot. Qwen3 batch jobs simply queue behind realtime work.
-func (m *Manager) Transcribe(ctx context.Context, pcm []int16, opts asr.TranscribeOptions) (asr.Result, error) {
+// Qwen3: one preemptible task. When realtime work arrives (or a live session
+// starts) while it runs, the transcribe.cpp run is aborted at its next
+// chunk / decode boundary, the partial result is discarded and the task is
+// re-queued at the head of its priority; it is recognized again from the
+// start (the clip is its only segment).
+//
+// R2T2 (unchanged rule, PLAN §4.5): the clip is one non-segmented,
+// non-preemptible task sharing the single loaded R2T2 model with live
+// sessions, so — like the Python R2T2 server's "stream_busy" — it is refused
+// with ErrSessionActive while a realtime session holds the slot, and a
+// session that starts while it runs waits for it to finish. A clip queued
+// before the session started waits until the session ends.
+func (m *Manager) Transcribe(ctx context.Context, pcm []int16, opts asr.TranscribeOptions, priority string) (asr.Result, error) {
 	eff := m.opts.Store.Effective()
 	kind, ok := asr.KindForEngine(eff.Engine)
 	if !ok {
 		return asr.Result{}, ErrNoLocalEngine
+	}
+	prio, err := m.ResolvePriority(KindVoice, priority)
+	if err != nil {
+		return asr.Result{}, err
 	}
 	if kind == asr.KindR2T2 && m.SessionActive() {
 		return asr.Result{}, fmt.Errorf("%w: R2T2 batch transcription shares the model with the live session", ErrSessionActive)
@@ -298,33 +348,52 @@ func (m *Manager) Transcribe(ctx context.Context, pcm []int16, opts asr.Transcri
 		opts.Language = eff.DefaultLanguage
 	}
 	var res asr.Result
-	err := m.sched.Do(ctx, scheduler.Batch, func() error {
+	if kind == asr.KindR2T2 {
+		err = m.sched.Do(ctx, prio, func() error {
+			defer m.touch()
+			// Re-check on the inference thread (realtime-priority clips are
+			// not held back by the session hold).
+			if m.SessionActive() {
+				return fmt.Errorf("%w: R2T2 batch transcription shares the model with the live session", ErrSessionActive)
+			}
+			if err := m.ensureLoaded(); err != nil {
+				return err
+			}
+			var err error
+			res, err = m.opts.Backend.Transcribe(pcm, opts)
+			return err
+		})
+		return res, err
+	}
+	err = m.sched.DoPreemptible(ctx, prio, func(r *scheduler.Run) error {
 		defer m.touch()
-		// Re-check on the inference thread: a session may have started
-		// while this job was queued (its start job ran first).
-		if kind == asr.KindR2T2 && m.SessionActive() {
-			return fmt.Errorf("%w: R2T2 batch transcription shares the model with the live session", ErrSessionActive)
-		}
 		if err := m.ensureLoaded(); err != nil {
 			return err
 		}
+		o := opts
+		o.Interrupt = r.Interrupted()
 		var err error
-		res, err = m.opts.Backend.Transcribe(pcm, opts)
+		res, err = m.opts.Backend.Transcribe(pcm, o)
 		return err
 	})
 	return res, err
 }
 
-// Session is one realtime R2T2 session holding the single realtime slot.
+// Session is one realtime session holding the single realtime slot: R2T2
+// native streaming or Qwen3 whole-sentence mode, chosen by the active
+// engine (PLAN §4.4).
 type Session struct {
 	m        *Manager
 	stream   asr.Stream
+	mode     string
 	samples  uint64
 	released bool
 }
 
-// StartSession acquires the realtime slot and opens a stream. Only R2T2 may
-// stream; there is no silent fallback to Qwen3 (PLAN §4.4).
+// StartSession acquires the realtime slot, sets the scheduler's realtime
+// hold (non-realtime work stops at its next boundary and waits until the
+// session ends) and opens a stream on the active local engine. A cloud
+// engine is refused; the engine is never switched silently.
 func (m *Manager) StartSession(ctx context.Context, opts asr.StreamOptions) (*Session, error) {
 	if err := m.CheckRealtimeAvailable(); err != nil {
 		return nil, err
@@ -336,6 +405,7 @@ func (m *Manager) StartSession(ctx context.Context, opts asr.StreamOptions) (*Se
 	}
 	m.sessionHeld = true
 	m.mu.Unlock()
+	m.sched.SetHold(true)
 	if opts.Language == "" {
 		opts.Language = m.opts.Store.Effective().DefaultLanguage
 	}
@@ -347,6 +417,7 @@ func (m *Manager) StartSession(ctx context.Context, opts asr.StreamOptions) (*Se
 		}
 		st, err := m.opts.Backend.NewStream(opts)
 		s.stream = st
+		s.mode = asr.ModeForKind(m.opts.Backend.Info().Kind)
 		return err
 	})
 	if err != nil {
@@ -357,15 +428,13 @@ func (m *Manager) StartSession(ctx context.Context, opts asr.StreamOptions) (*Se
 	return s, nil
 }
 
-// CheckRealtimeAvailable reports whether the active engine can stream.
+// CheckRealtimeAvailable reports whether the active engine can stream:
+// both local engines can (R2T2 natively, Qwen3 by whole sentences); cloud
+// engines cannot.
 func (m *Manager) CheckRealtimeAvailable() error {
 	eff := m.opts.Store.Effective()
-	kind, ok := asr.KindForEngine(eff.Engine)
-	if !ok {
+	if _, ok := asr.KindForEngine(eff.Engine); !ok {
 		return ErrNoLocalEngine
-	}
-	if kind != asr.KindR2T2 {
-		return fmt.Errorf("%w: realtime streaming needs %s", ErrWrongEngine, config.EngineR2T2)
 	}
 	return nil
 }
@@ -375,8 +444,12 @@ func (m *Manager) releaseSession() {
 	m.sessionHeld = false
 	m.lastActivity = m.opts.Now()
 	m.mu.Unlock()
+	m.sched.SetHold(false)
 	m.publishStatus()
 }
+
+// Mode is asr.ModeStreaming (R2T2) or asr.ModeSentence (Qwen3).
+func (s *Session) Mode() string { return s.mode }
 
 // SessionActive reports whether the realtime slot is held.
 func (m *Manager) SessionActive() bool {
@@ -468,6 +541,7 @@ func (m *Manager) Status() Status {
 		GPUIdleSeconds:        eff.GPUIdleSeconds,
 		IdleUnloaded:          m.idleUnloaded,
 		Scheduler:             m.sched.Stats(),
+		Jobs:                  m.jobs.counts(),
 		LastError:             m.lastErr,
 	}
 }
@@ -508,7 +582,7 @@ func (m *Manager) shouldIdleUnload(onThread bool) bool {
 		return false
 	}
 	st := m.sched.Stats()
-	if st.RealtimeQueued > 0 || st.BatchQueued > 0 || (st.Running && !onThread) {
+	if st.RealtimeQueued > 0 || st.HighQueued > 0 || st.NormalQueued > 0 || (st.Running && !onThread) {
 		return false
 	}
 	return m.opts.Now().Sub(m.lastActivity) >= time.Duration(idle)*m.opts.IdleUnit
@@ -520,7 +594,7 @@ func (m *Manager) idleTick() {
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
-	_ = m.sched.Do(ctx, scheduler.Batch, func() error {
+	_ = m.sched.Do(ctx, scheduler.High, func() error {
 		// Re-check on the inference thread: a session may have started.
 		if !m.shouldIdleUnload(true) {
 			return nil

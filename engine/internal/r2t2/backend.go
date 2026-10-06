@@ -51,8 +51,6 @@ var (
 	// ErrStreamBusy: whole-clip transcription while a live stream is active
 	// (Python "stream_busy"; the manager maps it to 409 earlier).
 	ErrStreamBusy = errors.New("R2T2 stream session is active")
-	// ErrQwen3NotImplemented: the native Qwen3 path arrives in migration step 4.
-	ErrQwen3NotImplemented = errors.New("native Qwen3 backend not implemented yet (migration step 4)")
 )
 
 // Detector is a SpeechDetector that holds native resources.
@@ -236,7 +234,7 @@ func (b *Backend) loadRuntime(modelPath, device string) (*Runtime, error) {
 // the live segmented session (initialize).
 func (b *Backend) Load(spec asr.LoadSpec) error {
 	if spec.Kind != asr.KindR2T2 {
-		return ErrQwen3NotImplemented
+		return asr.ErrWrongKind
 	}
 	if b.native != nil && b.spec == spec {
 		return nil
@@ -340,7 +338,7 @@ func (b *Backend) Transcribe(pcm []int16, opts asr.TranscribeOptions) (asr.Resul
 	}
 	context := ComposeContext(opts.Context, opts.HotWords)
 	language := NormalizeLanguage(opts.Language)
-	text, detected, err := TranscribeClip(b.native, b.detector, PCM16ToFloat(pcm), context, language)
+	text, detected, err := TranscribeClip(b.native, b.detector, PCM16ToFloat(pcm), context, language, opts.Interrupt)
 	if err != nil {
 		return asr.Result{}, err
 	}
@@ -351,7 +349,11 @@ func (b *Backend) Transcribe(pcm []int16, opts asr.TranscribeOptions) (asr.Resul
 }
 
 // TranscribeClip runs audio through a new Segmented session over native.
-func TranscribeClip(native *Runtime, detector SpeechDetector, audio []float32, context, language string) (string, string, error) {
+// When interrupt closes, it stops before the next chunk push (an audio.cpp
+// call in flight cannot be aborted), resets the native stream and returns
+// an error wrapping asr.ErrInterrupted. (The interrupt check is engine
+// scheduling code, not part of the Python transcribe_audio.)
+func TranscribeClip(native *Runtime, detector SpeechDetector, audio []float32, context, language string, interrupt <-chan struct{}) (string, string, error) {
 	chunk := max(1, native.ChunkSamples())
 	seg := NewSegmented(native, detector, DefaultSegmentOptions(chunk))
 	text, detected, err := func() (string, string, error) {
@@ -359,6 +361,11 @@ func TranscribeClip(native *Runtime, detector SpeechDetector, audio []float32, c
 			return "", "", err
 		}
 		for start := 0; start < len(audio); start += chunk {
+			select {
+			case <-interrupt: // nil: never
+				return "", "", asr.ErrInterrupted
+			default:
+			}
 			if _, _, err := seg.Feed(audio[start:min(start+chunk, len(audio))]); err != nil {
 				return "", "", err
 			}
@@ -370,6 +377,22 @@ func TranscribeClip(native *Runtime, detector SpeechDetector, audio []float32, c
 		return "", "", err
 	}
 	return text, detected, nil
+}
+
+// SpeechSegments runs the VAD over a whole file (file jobs).
+func (b *Backend) SpeechSegments(pcm []int16) ([]asr.Span, error) {
+	if b.detector == nil {
+		return nil, asr.ErrNotLoaded
+	}
+	regions, err := b.detector.SpeechTimestamps(PCM16ToFloat(pcm))
+	if err != nil {
+		return nil, err
+	}
+	out := make([]asr.Span, len(regions))
+	for i, r := range regions {
+		out[i] = asr.Span{Start: r.Start, End: r.End}
+	}
+	return out, nil
 }
 
 // NewStream opens the live session (stream_start).

@@ -1,0 +1,42 @@
+{
+ "name": "dictation_long",
+ "samples": 334056,
+ "pcm_sha256": "16940ffcf06fe8be3f5102ed3ddcd25cb4fa010ad3240de2e224b6656f76d82a",
+ "backend": "auto",
+ "result": {
+  "text": "我们明天早上九点在公司门口集合，然后一起去机场。Please send the quarterly report to the finance team before Friday.这个周末的天气预报会下雨，记得带上。Thank you very much.",
+  "language": "zh"
+ },
+ "log": [
+  {
+   "op": "vad",
+   "n": 334056,
+   "sha256": "57a205a10a0b64194ad4c35f6020f852ea946e26cf323bafd032680516064481",
+   "regions": [
+    {
+     "start": 6080,
+     "end": 113920
+    },
+    {
+     "start": 126400,
+     "end": 189760
+    },
+    {
+     "start": 207040,
+     "end": 284480
+    },
+    {
+     "start": 295520,
+     "end": 318400
+    }
+   ]
+  },
+  {
+   "op": "run",
+   "n": 312320,
+   "sha256": "96c42c85c1604a5d70ef4f1d36fbf4d0fe13ef3db94149c5355d30eb7bdd7303",
+   "text": "我们明天早上九点在公司门口集合，然后一起去机场。Please send the quarterly report to the finance team before Friday.这个周末的天气预报会下雨，记得带上。Thank you very much.",
+   "language": "zh"
+  }
+ ]
+}

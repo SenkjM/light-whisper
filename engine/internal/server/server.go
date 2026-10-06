@@ -36,6 +36,9 @@ type Options struct {
 	AllowedOrigins []string
 	// MaxAudioBytes bounds POST /v1/asr/transcribe bodies (default 64 MiB).
 	MaxAudioBytes int64
+	// MaxJobBytes bounds POST /v1/jobs audio (default 512 MiB, about 4.6 h
+	// of 16 kHz mono s16).
+	MaxJobBytes int64
 }
 
 // Server is the HTTP handler.
@@ -52,6 +55,9 @@ func New(opts Options) *Server {
 	}
 	if opts.MaxAudioBytes <= 0 {
 		opts.MaxAudioBytes = 64 << 20
+	}
+	if opts.MaxJobBytes <= 0 {
+		opts.MaxJobBytes = 512 << 20
 	}
 	s := &Server{opts: opts, mux: http.NewServeMux(), log: opts.Logger}
 	s.routes()
@@ -70,6 +76,10 @@ func (s *Server) routes() {
 	s.mux.HandleFunc("GET /v1/events", s.handleEvents)
 	s.mux.HandleFunc("POST /v1/asr/transcribe", s.handleTranscribe)
 	s.mux.HandleFunc("GET /v1/asr/stream", s.handleStream)
+	s.mux.HandleFunc("POST /v1/jobs", s.handleCreateJob)
+	s.mux.HandleFunc("GET /v1/jobs", s.handleListJobs)
+	s.mux.HandleFunc("GET /v1/jobs/{id}", s.handleGetJob)
+	s.mux.HandleFunc("DELETE /v1/jobs/{id}", s.handleDeleteJob)
 }
 
 // ServeHTTP applies the security checks, then routes.
@@ -160,6 +170,10 @@ func writeManagerError(w http.ResponseWriter, err error) {
 		writeError(w, http.StatusConflict, "no_local_engine", err.Error())
 	case errors.Is(err, manager.ErrWrongEngine):
 		writeError(w, http.StatusConflict, "wrong_engine", err.Error())
+	case errors.Is(err, manager.ErrBadPriority):
+		writeError(w, http.StatusBadRequest, "invalid_priority", err.Error())
+	case errors.Is(err, manager.ErrJobNotFound):
+		writeError(w, http.StatusNotFound, "not_found", err.Error())
 	default:
 		writeError(w, http.StatusInternalServerError, "engine_error", err.Error())
 	}

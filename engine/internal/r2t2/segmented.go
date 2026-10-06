@@ -154,6 +154,13 @@ func (s *Segmented) joinedText(includeCurrent bool, current string) string {
 	if includeCurrent && s.nativeActive && current != "" {
 		pieces = append(pieces, current)
 	}
+	return JoinPieces(pieces)
+}
+
+// JoinPieces joins recognized pieces like SegmentedR2T2._joined_text: a
+// space is inserted only where an ASCII letter / digit (or ".!?:;") meets
+// an ASCII letter / digit.
+func JoinPieces(pieces []string) string {
 	if len(pieces) == 0 {
 		return ""
 	}

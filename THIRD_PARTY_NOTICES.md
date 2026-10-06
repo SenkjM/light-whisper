@@ -63,6 +63,12 @@ project's GPL license. A copy is bundled as
   `capi_lwnative.go` follow the patched `audiocpp.h`; no audio.cpp code is
   linked or vendored. `runtime.go`, `segmented.go`, `session.go` and
   `backend.go` port the inherited Python R2T2 server and are GPL-3.0-only.
+- `engine/internal/qwen3` loads the transcribe.cpp shared library described
+  above at run time through its C ABI (only in `lwnative` builds); the C
+  declarations in `capi_lwnative.go` follow the transcribe.cpp 0.1.x public
+  header, and no transcribe.cpp code is linked or vendored. `backend.go` and
+  `nvidia_*.go` port the inherited Python Qwen3-ASR server and are
+  GPL-3.0-only.
 - Go modules: [github.com/coder/websocket](https://github.com/coder/websocket)
   (ISC, Copyright (c) 2025 Coder) and, only in builds with the `lwnative` tag,
   [github.com/yalue/onnxruntime_go](https://github.com/yalue/onnxruntime_go)

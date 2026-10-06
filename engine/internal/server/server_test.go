@@ -309,7 +309,7 @@ func TestStreamSession(t *testing.T) {
 	}
 
 	sendJSON(t, c, map[string]any{"type": "start", "session_id": 42, "language": "zh"})
-	if m := readJSON(t, c); m["type"] != "started" || m["session_id"] != float64(42) {
+	if m := readJSON(t, c); m["type"] != "started" || m["session_id"] != float64(42) || m["mode"] != "streaming" {
 		t.Fatalf("%v", m)
 	}
 
@@ -365,13 +365,56 @@ func TestStreamSession(t *testing.T) {
 	}
 }
 
-func TestStreamRefusedWithoutR2T2(t *testing.T) {
-	e := newEnv(t, `{"engine":"qwen3-asr-0.6b"}`)
+func TestStreamRefusedForCloudEngine(t *testing.T) {
+	e := newEnv(t, `{"engine":"glm-asr"}`)
 	_, resp, err := websocket.Dial(context.Background(), wsURL(e, "/v1/asr/stream"), &websocket.DialOptions{
 		HTTPHeader: http.Header{"Authorization": {"Bearer " + token}},
 	})
 	if err == nil || resp == nil || resp.StatusCode != http.StatusConflict {
 		t.Fatalf("expected 409, got %v %v", resp, err)
+	}
+}
+
+func voicedFrame(offset uint64, samples int) []byte {
+	b := frame(offset, samples)
+	for i := StreamFrameHeader; i < len(b); i += 2 {
+		b[i] = 1
+	}
+	return b
+}
+
+func TestStreamQwen3SentenceMode(t *testing.T) {
+	e := newEnv(t, `{"engine":"qwen3-asr-0.6b"}`)
+	c := dial(t, e, "/v1/asr/stream")
+	sendJSON(t, c, map[string]any{"type": "start", "session_id": 5, "language": "zh"})
+	if m := readJSON(t, c); m["type"] != "started" || m["mode"] != "sentence" {
+		t.Fatalf("%v", m)
+	}
+	const blk = 2560
+	off := uint64(0)
+	send := func(b []byte) {
+		if err := c.Write(context.Background(), websocket.MessageBinary, b); err != nil {
+			t.Fatal(err)
+		}
+		off += uint64((len(b) - StreamFrameHeader) / 2)
+	}
+	// 2 s of speech, then 0.8 s of silence: one partial, when the sentence ends.
+	for i := 0; i < 13; i++ { // 2.08 s
+		send(voicedFrame(off, blk))
+	}
+	for i := 0; i < 5; i++ {
+		send(frame(off, blk))
+	}
+	if m := readJSON(t, c); m["type"] != "partial" || m["committed"] != "字字" || m["tentative"] != "" {
+		t.Fatalf("%v", m)
+	}
+	// A shorter tail sentence is recognized at finish.
+	for i := 0; i < 3; i++ {
+		send(voicedFrame(off, blk))
+	}
+	sendJSON(t, c, map[string]any{"type": "finish"})
+	if m := readJSON(t, c); m["type"] != "result" || m["text"] != "字字字" || m["sample_count"] != float64(off) {
+		t.Fatalf("%v", m)
 	}
 }
 

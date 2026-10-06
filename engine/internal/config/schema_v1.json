@@ -51,6 +51,22 @@
       "enum": ["debug", "info", "warn", "error"],
       "default": "info",
       "x-apply": "live"
+    },
+    "default_priority_voice": {
+      "title": "语音转录默认优先级",
+      "type": "string",
+      "enum": ["realtime", "high", "normal"],
+      "default": "high",
+      "description": "POST /v1/asr/transcribe 未带 priority 时使用：realtime = 实时（打断正在运行的可抢占任务）、high = 优先、normal = 普通。实时听写（WS /v1/asr/stream）固定为实时，不受此项影响。",
+      "x-apply": "live"
+    },
+    "default_priority_file": {
+      "title": "文件转录默认优先级",
+      "type": "string",
+      "enum": ["high", "normal"],
+      "default": "normal",
+      "description": "POST /v1/jobs 未带 priority 时使用：high = 优先、normal = 普通。文件转录不能为实时。",
+      "x-apply": "live"
     }
   }
 }

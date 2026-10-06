@@ -1,0 +1,30 @@
+{
+ "name": "dictation_short",
+ "samples": 50868,
+ "pcm_sha256": "e48ef469ad1555bd8940ebbcd68258925580872ba6a92b551e1e92ee40ba6805",
+ "backend": "auto",
+ "result": {
+  "text": "Hello world. This is a short test.",
+  "language": "en"
+ },
+ "log": [
+  {
+   "op": "vad",
+   "n": 50868,
+   "sha256": "c7eee057c85aa6442c26d626b24a3b05551c96e3e54876e2a42389a3bf5295f5",
+   "regions": [
+    {
+     "start": 4960,
+     "end": 42720
+    }
+   ]
+  },
+  {
+   "op": "run",
+   "n": 37760,
+   "sha256": "317e2d7580e9508f6f2b5396166cbe7347b0268cc978a65d15839a8b9868ffc7",
+   "text": "Hello world. This is a short test.",
+   "language": "en"
+  }
+ ]
+}
