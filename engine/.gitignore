@@ -1,0 +1,6 @@
+# SPDX-FileCopyrightText: 2026 SenkjM
+# SPDX-License-Identifier: AGPL-3.0-only
+
+# go build output (dev path used by the Tauri shell in debug builds)
+/lw-engine
+/lw-engine.exe

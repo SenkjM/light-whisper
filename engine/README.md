@@ -19,7 +19,8 @@ API 契约：[`docs/command-cube/api/`](../docs/command-cube/api/README.md)。
 | GPU 空闲卸载 | ✅（mock 后端） |
 | FireRedVAD（步骤 2）、R2T2 cgo（步骤 3）、Qwen3 cgo（步骤 4） | ⏳ 接入点：`internal/asr` 的 `Backend` 接口 |
 | 模型下载、job、CUDA 运行时下载 | ⏳ 契约占位 |
-| Rust 壳切换到 API（步骤 5） | ⏳ |
+| Rust 客户端：拉起、握手、版本校验、崩溃重启、config 读写、事件转发（`src-tauri/crates/lw-engine-client`，开关 `LW_ENGINE_BACKEND=go`） | ✅ |
+| Rust 壳全面切换到 API、移除 Python（步骤 5） | ⏳ |
 
 ## 目录
 
@@ -44,6 +45,8 @@ go test -race ./...
 go build -o lw-engine ./cmd/lw-engine          # Windows: GOOS=windows go build -o lw-engine.exe ./cmd/lw-engine
 ./lw-engine --data-dir /tmp/lw-demo            # stdout 第一行为握手 JSON
 ```
+
+在应用里试用：在本目录 `go build -o lw-engine ./cmd/lw-engine`（Windows 为 `lw-engine.exe`），然后以 `LW_ENGINE_BACKEND=go` 启动开发版应用（`npm run tauri dev`）。详见 [API README 的「Rust 客户端」](../docs/command-cube/api/README.md#rust-客户端步骤-1)。
 
 常用参数：`--listen 127.0.0.1:0`、`--data-dir`、`--config`、`--backend mock|native`、`--token-file`、`--exit-on-stdin-close`、`--no-autoload`、`--allow-origin`（可重复）。
 

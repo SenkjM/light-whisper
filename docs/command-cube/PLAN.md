@@ -1,7 +1,7 @@
 # Command-Cube 规划：前后端分离（Go 引擎后端 + Rust 薄壳 + 独立前端）
 
 > 分支：`Command-Cube`  
-> 状态：规划文档（仅描述方向，不包含实现）  
+> 状态：规划文档；实施进度见 §7 各步骤的「进度」（步骤 1 已完成，推理为 mock）  
 > 基于：对 `main` @ `151a61c` 的只读调研  
 > **本文主线**：用独立 Go 后端服务取代 Python 编排层；Rust（Tauri）只做系统集成与应用层；前端独立。
 
@@ -402,6 +402,11 @@ flowchart TD
 
 - 进程启动、端口与 token 交接、`/health`、`/v1/engine/status`、`/v1/events`、`GET/PATCH /v1/config`、`/v1/config/schema`、`/v1/engine/reload`；推理部分用 mock。
 - **完成标准**：无头启动；Rust 能拉起、校验版本、读写引擎设置；`revision` 冲突返回 412；live 与 reload 标记生效。
+- **进度（已完成）**：
+  - Go 侧：`engine/`（见 `engine/README.md`）。
+  - Rust 侧：`src-tauri/crates/lw-engine-client`（定位 / 拉起 / 握手 / `api_version` 校验 / HTTP + WS 客户端 / 有界指数退避重启：1 s 起翻倍、上限 30 s、连续失败 5 次放弃、稳定运行 60 s 后清零；`api_version` 不兼容直接判定失败，不重启）与 `src-tauri/src/services/go_engine.rs`（Tauri 接入）。
+  - 开关：环境变量 `LW_ENGINE_BACKEND=go|python`，默认 `python`，行为与原来一致。为 `go` 时，`engine` / `models_dir` / `gpu_idle_seconds` 的读写走 `/v1/config`（412 自动重读重试，reload 键写入后调用 `/v1/engine/reload`），`/v1/events` 转发为 Tauri 事件 `go-engine-status` / `go-engine-config-changed`，进程状态为 `go-engine-process`；识别仍由 Python 引擎完成（Go 推理为 mock，两者共享 engine.json）。
+  - 未做（留给步骤 5）：Windows Job Object（目前靠 `--exit-on-stdin-close` 与 `kill_on_drop` 兜底）；把 `lw-engine.exe` 写进 `tauri.conf.json` 的打包资源（现需手动放到 `src-tauri/resources/` 或用 `LW_ENGINE_PATH` 指定）。
 
 ### 步骤 2：FireRedVAD（Go + onnxruntime）
 
