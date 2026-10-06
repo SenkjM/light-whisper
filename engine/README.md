@@ -15,7 +15,7 @@ API 契约：[`docs/command-cube/api/`](../docs/command-cube/api/README.md)。
 | `GET/PATCH /v1/config`（revision + If-Match、live / reload）、`/v1/config/schema`、`/v1/engine/reload` | ✅ |
 | `WS /v1/events` | ✅ |
 | 串行调度器（单 OS 线程、实时优先） | ✅ |
-| `WS /v1/asr/stream`、`POST /v1/asr/transcribe` | ✅ 协议已实现，推理为 **mock** |
+| `WS /v1/asr/stream`、`POST /v1/asr/transcribe`（Qwen3 或 R2T2） | ✅ 协议已实现，推理为 **mock** |
 | GPU 空闲卸载 | ✅（mock 后端） |
 | FireRedVAD（步骤 2）、R2T2 cgo（步骤 3）、Qwen3 cgo（步骤 4） | ⏳ 接入点：`internal/asr` 的 `Backend` 接口 |
 | 模型下载、job、CUDA 运行时下载 | ⏳ 契约占位 |

@@ -419,9 +419,41 @@ func TestTranscribe(t *testing.T) {
 		t.Errorf("odd PCM: %d", resp.StatusCode)
 	}
 
-	e2 := newEnv(t, `{"engine":"confucius4-r2t2"}`)
-	resp, b = e2.do(t, "POST", "/v1/asr/transcribe", bytes.NewReader(make([]byte, 20)), nil)
-	if resp.StatusCode != http.StatusConflict || errCode(t, b) != "wrong_engine" {
+}
+
+func TestTranscribeWithR2T2(t *testing.T) {
+	e := newEnv(t, `{"engine":"confucius4-r2t2"}`)
+	resp, b := e.do(t, "POST", "/v1/asr/transcribe?language=zh", bytes.NewReader(wav(asr.SampleRate*3/2, 16000, 1)),
+		map[string]string{"Content-Type": "audio/wav"})
+	m := decode[map[string]any](t, b)
+	if resp.StatusCode != 200 || m["text"] != "字字" || m["language"] != "zh" || m["sample_count"] != float64(asr.SampleRate*3/2) {
 		t.Fatalf("r2t2 transcribe: %d %s", resp.StatusCode, b)
+	}
+
+	// During a live R2T2 session the shared model is busy: 409.
+	c := dial(t, e, "/v1/asr/stream")
+	sendJSON(t, c, map[string]any{"type": "start", "session_id": 1})
+	if m := readJSON(t, c); m["type"] != "started" {
+		t.Fatalf("%v", m)
+	}
+	resp, b = e.do(t, "POST", "/v1/asr/transcribe", bytes.NewReader(make([]byte, 20)), nil)
+	if resp.StatusCode != http.StatusConflict || errCode(t, b) != "realtime_session_active" {
+		t.Fatalf("r2t2 batch during session: %d %s", resp.StatusCode, b)
+	}
+	sendJSON(t, c, map[string]any{"type": "cancel"})
+	if m := readJSON(t, c); m["type"] != "cancelled" {
+		t.Fatalf("%v", m)
+	}
+	resp, _ = e.do(t, "POST", "/v1/asr/transcribe", bytes.NewReader(make([]byte, 20)), nil)
+	if resp.StatusCode != 200 {
+		t.Fatalf("after session: %d", resp.StatusCode)
+	}
+}
+
+func TestTranscribeRefusedForCloudEngine(t *testing.T) {
+	e := newEnv(t, `{"engine":"glm-asr"}`)
+	resp, b := e.do(t, "POST", "/v1/asr/transcribe", bytes.NewReader(make([]byte, 20)), nil)
+	if resp.StatusCode != http.StatusConflict || errCode(t, b) != "no_local_engine" {
+		t.Fatalf("cloud engine transcribe: %d %s", resp.StatusCode, b)
 	}
 }

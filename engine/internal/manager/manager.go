@@ -276,13 +276,23 @@ func nonNil(s []string) []string {
 	return s
 }
 
-// Transcribe runs a Qwen3 whole-utterance recognition at batch priority.
+// Transcribe runs whole-clip recognition with the active local engine
+// (Qwen3 or R2T2) at batch priority.
+//
+// The whole clip is one scheduler job, so it never interleaves with realtime
+// chunks: a live session that starts meanwhile waits until the job finishes
+// (running jobs are not pre-empted). R2T2 batch work shares the single
+// loaded R2T2 model with live sessions, so — like the Python R2T2 server's
+// "stream_busy" — it is refused with ErrSessionActive while a realtime
+// session holds the slot. Qwen3 batch jobs simply queue behind realtime work.
 func (m *Manager) Transcribe(ctx context.Context, pcm []int16, opts asr.TranscribeOptions) (asr.Result, error) {
 	eff := m.opts.Store.Effective()
-	if kind, ok := asr.KindForEngine(eff.Engine); !ok {
+	kind, ok := asr.KindForEngine(eff.Engine)
+	if !ok {
 		return asr.Result{}, ErrNoLocalEngine
-	} else if kind != asr.KindQwen3 {
-		return asr.Result{}, fmt.Errorf("%w: /v1/asr/transcribe needs %s", ErrWrongEngine, config.EngineQwen3)
+	}
+	if kind == asr.KindR2T2 && m.SessionActive() {
+		return asr.Result{}, fmt.Errorf("%w: R2T2 batch transcription shares the model with the live session", ErrSessionActive)
 	}
 	if opts.Language == "" {
 		opts.Language = eff.DefaultLanguage
@@ -290,6 +300,11 @@ func (m *Manager) Transcribe(ctx context.Context, pcm []int16, opts asr.Transcri
 	var res asr.Result
 	err := m.sched.Do(ctx, scheduler.Batch, func() error {
 		defer m.touch()
+		// Re-check on the inference thread: a session may have started
+		// while this job was queued (its start job ran first).
+		if kind == asr.KindR2T2 && m.SessionActive() {
+			return fmt.Errorf("%w: R2T2 batch transcription shares the model with the live session", ErrSessionActive)
+		}
 		if err := m.ensureLoaded(); err != nil {
 			return err
 		}

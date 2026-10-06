@@ -15,6 +15,7 @@ import (
 	"github.com/SenkjM/light-whisper/engine/internal/asr"
 	"github.com/SenkjM/light-whisper/engine/internal/config"
 	"github.com/SenkjM/light-whisper/engine/internal/events"
+	"github.com/SenkjM/light-whisper/engine/internal/scheduler"
 )
 
 type fixture struct {
@@ -156,6 +157,67 @@ func TestReloadAndUnloadRefusedDuringSession(t *testing.T) {
 	}
 	if _, err := f.m.Reload(ctx); err != nil {
 		t.Fatalf("reload after session: %v", err)
+	}
+}
+
+func TestR2T2BatchTranscribe(t *testing.T) {
+	f := newFixture(t, `{"engine":"confucius4-r2t2","default_language":"zh"}`)
+	ctx := context.Background()
+	res, err := f.m.Transcribe(ctx, make([]int16, 2*asr.SampleRate+1), asr.TranscribeOptions{})
+	if err != nil || res.Text != "字字字" || res.Language != "zh" {
+		t.Fatalf("R2T2 transcribe: %+v %v", res, err)
+	}
+
+	// While a live R2T2 session holds the shared model, batch R2T2 is refused
+	// (Python: stream_busy) instead of interleaving with the session.
+	sess, err := f.m.StartSession(ctx, asr.StreamOptions{SessionID: 1})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := f.m.Transcribe(ctx, make([]int16, 10), asr.TranscribeOptions{}); !errors.Is(err, ErrSessionActive) {
+		t.Fatalf("R2T2 batch during session: %v", err)
+	}
+	sess.Cancel()
+	if _, err := f.m.Transcribe(ctx, make([]int16, 10), asr.TranscribeOptions{}); err != nil {
+		t.Fatalf("after session: %v", err)
+	}
+}
+
+// A batch R2T2 job queued behind other work must not run once a live
+// session has started in the meantime (realtime goes first; the batch job
+// re-checks on the inference thread).
+func TestR2T2BatchQueuedThenSessionStarts(t *testing.T) {
+	f := newFixture(t, `{"engine":"confucius4-r2t2"}`)
+	ctx := context.Background()
+	_ = f.m.Load(ctx)
+	release := make(chan struct{})
+	started := make(chan struct{})
+	go func() {
+		_ = f.m.Scheduler().Do(ctx, scheduler.Batch, func() error { close(started); <-release; return nil })
+	}()
+	<-started
+	errc := make(chan error, 1)
+	go func() {
+		_, err := f.m.Transcribe(ctx, make([]int16, 10), asr.TranscribeOptions{})
+		errc <- err
+	}()
+	eventually(t, "batch queued", func() bool { return f.m.Scheduler().Stats().BatchQueued == 1 })
+	sessc := make(chan *Session, 1)
+	go func() {
+		s, err := f.m.StartSession(ctx, asr.StreamOptions{SessionID: 2})
+		if err != nil {
+			t.Error(err)
+		}
+		sessc <- s
+	}()
+	eventually(t, "session slot held", f.m.SessionActive)
+	close(release)
+	sess := <-sessc
+	if err := <-errc; !errors.Is(err, ErrSessionActive) {
+		t.Fatalf("queued R2T2 batch ran during session: %v", err)
+	}
+	if sess != nil {
+		sess.Cancel()
 	}
 }
 

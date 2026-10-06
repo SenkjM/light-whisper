@@ -17,8 +17,10 @@ func TestMockKindsAndDeterminism(t *testing.T) {
 	if info := m.Info(); !info.ModelLoaded || info.Device != "cpu" || info.MissingModels == nil {
 		t.Fatalf("%+v", info)
 	}
-	if _, err := m.Transcribe(nil, TranscribeOptions{}); !errors.Is(err, ErrWrongKind) {
-		t.Fatal("R2T2 mock must not do batch transcription")
+	// R2T2 supports whole-clip transcription (segmented session, tail rounded up).
+	if r, err := m.Transcribe(make([]int16, SampleRate*3/2), TranscribeOptions{Language: "en"}); err != nil ||
+		r.Text != "字字" || r.SampleCount != SampleRate*3/2 || r.Language != "en" {
+		t.Fatalf("R2T2 mock transcribe: %+v %v", r, err)
 	}
 	st, err := m.NewStream(StreamOptions{Language: "zh"})
 	if err != nil {
@@ -47,6 +49,9 @@ func TestMockKindsAndDeterminism(t *testing.T) {
 	_ = m.Load(LoadSpec{Engine: "qwen3-asr-0.6b", Kind: KindQwen3, Device: "cuda"})
 	if _, err := m.NewStream(StreamOptions{}); !errors.Is(err, ErrWrongKind) {
 		t.Fatal("Qwen3 mock must not stream")
+	}
+	if r, err := m.Transcribe(make([]int16, SampleRate*3/2), TranscribeOptions{}); err != nil || r.Text != "字" {
+		t.Fatalf("Qwen3 mock transcribe: %+v %v", r, err)
 	}
 	if m.Loads.Load() != 2 || m.Unloads.Load() != 1 {
 		t.Fatalf("loads %d unloads %d", m.Loads.Load(), m.Unloads.Load())

@@ -8,6 +8,7 @@
 // real implementation will live behind the "lwnative" build tag and bind via
 // cgo / LoadLibrary to:
 //   - audio.cpp C ABI for Confucius4-R2T2 (streaming, PLAN §2.1 / migration step 3),
+//     (also whole-clip batch transcription when R2T2 is the active engine),
 //   - transcribe.cpp for Qwen3-ASR (batch, migration step 4),
 //   - onnxruntime for FireRedVAD (migration step 2).
 //
@@ -28,8 +29,8 @@ const SampleRate = 16000
 type Kind string
 
 const (
-	KindR2T2  Kind = "r2t2"  // realtime, live subtitles
-	KindQwen3 Kind = "qwen3" // batch / fallback, no live subtitles
+	KindR2T2  Kind = "r2t2"  // realtime with live subtitles; batch too
+	KindQwen3 Kind = "qwen3" // batch only / fallback, no live subtitles
 )
 
 // LoadSpec is what a backend needs to load a model.
@@ -97,7 +98,11 @@ type Backend interface {
 	Load(spec LoadSpec) error
 	Unload() error
 	Info() Info
-	// Transcribe runs whole-utterance recognition (Qwen3 path).
+	// Transcribe runs whole-clip recognition with the loaded engine: Qwen3
+	// runs once over the VAD-trimmed clip; R2T2 feeds the clip through a
+	// fresh segmented session in chunks and finishes it (like
+	// transcribe_audio in r2t2_asr_server.py). The caller guarantees no live
+	// R2T2 session is active.
 	Transcribe(pcm []int16, opts TranscribeOptions) (Result, error)
 	// NewStream starts a realtime session (R2T2 path).
 	NewStream(opts StreamOptions) (Stream, error)

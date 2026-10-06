@@ -23,7 +23,8 @@ type Priority int
 const (
 	// Realtime is used by R2T2 streaming sessions.
 	Realtime Priority = iota
-	// Batch is used by Qwen3 transcription / jobs and engine (re)loads.
+	// Batch is used by whole-clip transcription (Qwen3 or R2T2), jobs and
+	// engine (re)loads.
 	Batch
 )
 

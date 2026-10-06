@@ -73,10 +73,22 @@ func (m *Mock) Transcribe(pcm []int16, opts TranscribeOptions) (Result, error) {
 	if !m.loaded {
 		return Result{}, ErrNotLoaded
 	}
-	if m.spec.Kind != KindQwen3 {
-		return Result{}, ErrWrongKind
+	switch m.spec.Kind {
+	case KindQwen3:
+		return Result{Text: MockText(len(pcm)), Language: opts.Language, SampleCount: len(pcm)}, nil
+	case KindR2T2:
+		// Same path as the native R2T2 batch: push the clip through a
+		// fresh session in chunks, then finish (tail rounded up).
+		st := &mockStream{opts: StreamOptions{Language: opts.Language}}
+		const chunk = SampleRate * 320 / 1000
+		for i := 0; i < len(pcm); i += chunk {
+			if _, err := st.Push(pcm[i:min(i+chunk, len(pcm))]); err != nil {
+				return Result{}, err
+			}
+		}
+		return st.Finish()
 	}
-	return Result{Text: MockText(len(pcm)), Language: opts.Language, SampleCount: len(pcm)}, nil
+	return Result{}, ErrWrongKind
 }
 
 func (m *Mock) NewStream(opts StreamOptions) (Stream, error) {
