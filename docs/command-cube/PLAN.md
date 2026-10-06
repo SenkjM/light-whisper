@@ -1,7 +1,7 @@
 # Command-Cube 规划：前后端分离（Go 引擎后端 + Rust 薄壳 + 独立前端）
 
 > 分支：`Command-Cube`  
-> 状态：规划文档；实施进度见 §7 各步骤的「进度」（步骤 1 已完成，推理为 mock）  
+> 状态：规划文档；实施进度见 §7 各步骤的「进度」（步骤 1 已完成，推理为 mock；步骤 2 FireRedVAD 的 Go 移植已完成并与 Python 对齐，尚未接入会话）  
 > 基于：对 `main` @ `151a61c` 的只读调研  
 > **本文主线**：用独立 Go 后端服务取代 Python 编排层；Rust（Tauri）只做系统集成与应用层；前端独立。
 
@@ -436,7 +436,7 @@ flowchart TD
 | 2 | **Windows 上的 cgo 与原生依赖打包** | 🔴 | Go cgo 在 Windows 上需要 MinGW gcc；而 audio.cpp / transcribe.cpp 的 CUDA 构建基于 MSVC（CUDA 12.9、MSVC 14.44）。走纯 C ABI 一般可行，但不能跨 ABI 传 C++ 对象或 CRT 资源；还要打包 CRT DLL（CUDA 运行时改为按需下载，见 §5），以及 CPU、Vulkan、CUDA 多种变体 | 只经 C ABI 调用，按需 `LoadLibrary` 动态加载（cgo 或 `syscall`/purego 风格）；内存由库自己分配和释放；沿用 `build_r2t2_runtime.py` / `build_engine.py` 的 manifest 与 SHA-256 校验；transcribe.cpp 需确认有稳定的 C 头文件，必要时写一层薄 C 封装 |
 | 3 | **进程生命周期与版本兼容** | 🟠 | Rust 需要拉起和监管后端、崩溃后重启、交接端口与 token、处理壳与后端版本不匹配、处理实时会话中途后端崩溃（现有 `ipc_recovery_tests.rs` 的语义） | `/health` 返回 `api_version`，Rust 校验兼容范围；用 Job Object 绑定子进程生命周期；指数退避重启；会话中断时向 UI 发明确错误，并保留已 committed 的文本 |
 | 4 | **性能** | 🟠 | ①本地 WS 推流：160ms 一帧，回环延迟通常小于 1ms，不是瓶颈，但要避免 base64 和 JSON 封装；②cgo 每次调用约 50–100ns，可忽略；但单次 `stream_push` / `run` 是长时间 C 调用，会占住 OS 线程；③缓冲区复用与 GC 抖动；④实时与批处理争用唯一的推理线程 / GPU；⑤冷启动、模型加载、空闲卸载后的预热（现状初始化约 5 秒） | 二进制帧；单一推理线程 `LockOSThread`，会话内串行；用 `sync.Pool` 复用 PCM 缓冲，传给 C 的内存固定或由 C 侧分配；按 §4.6 三级优先级调度（实时可抢占、被打断任务按段重排）；模型加载后预热并报告 ready；空闲卸载阈值可配，重新加载时 UI 显示加载状态 |
-| 5 | **FireRedVAD 移植** | 🟠 | 关键在 fbank 特征一致性：`kaldi-native-fbank` 是 C++，Go 端要么用 C 封装调用它，要么用 Go 重写（帧长、窗函数、mel、CMVN 都要逐项一致）；onnxruntime 可用 `onnxruntime_go`（cgo 动态加载） | 优先封装原 C++ fbank 库保证一致；与 Python 输出逐帧对比概率（误差 < 1e-4）和区间 |
+| 5 | **FireRedVAD 移植** | 🟠 | 关键在 fbank 特征一致性：`kaldi-native-fbank` 是 C++，Go 端要么用 C 封装调用它，要么用 Go 重写（帧长、窗函数、mel、CMVN 都要逐项一致）；onnxruntime 可用 `onnxruntime_go`（cgo 动态加载） | 优先封装原 C++ fbank 库保证一致；与 Python 输出逐帧对比概率（误差 < 1e-4）和区间。实际采用纯 Go 重写（含 KISS FFT 移植），对齐结果见步骤 2 进度 |
 | 6 | **协议 / 契约迁移（含 `formal/`）** | 🟠 | stdio JSON 改为 HTTP/WS；`protocol.rs`、`ipc_dto_contract_tests.rs`，以及 `formal/` 下 TLA+（EngineSpeech、GpuIdle、EngineDownload 等）都以现有 IPC 为前提 | 先冻结契约（OpenAPI + WS 消息 schema），用契约测试双向校验；逐个更新 `.tla`，暂缓的在 `formal/COVERAGE.md` 标注 |
 | 7 | **设置迁移** | 🟠 | localStorage 设置迁到壳内持久化；`engine.json` 归后端所有；`user_profile.json` 加 `schema_version`；首次升级要一次性搬迁，失败可回退 | 前端首启时读取 localStorage，通过一次性迁移命令写入壳；后端读取旧 `engine.json` 并升级 schema；迁移幂等且有日志 |
 | 8 | **三语言工具链与 CI 成本** | 🟠 | Rust（需 ≥1.87/1.88，现有依赖 `time`、`zbus` 已要求）+ Go（含 cgo/MinGW）+ C++（MSVC/CUDA/CMake/Ninja）；CUDA 构建耗时长 | `rust-toolchain.toml` 钉版本；原生库预构建成制品并缓存；CI 分层：Go 单测用 mock 推理，原生集成测试放夜间或手动 |
@@ -469,6 +469,15 @@ flowchart TD
 
 - 移植 fbank、CMVN、ONNX 推理与区间后处理。
 - **完成标准**：同一批夹具上逐帧概率与区间和 Python 一致（容差内）；无 Python 依赖。
+- **进度（移植与对齐已完成；接入会话 / 调度留给步骤 3、4）**：
+  - 代码：`engine/internal/vad`（见 `engine/README.md`）。`VAD` / `Model` 接口；`FireRedVAD` = fbank → CMVN → 模型 → 平滑 → 区间，参数与 `firered_vad.py` 相同（阈值 0.5、平滑 5 帧、最短语音 150 ms、最短静音 300 ms、两侧各补 120 ms）。Python 实现本身无状态（每次调用整段计算），Go 端相同；实时窗口仍由调用方（R2T2 分段 / Qwen3 切句）负责。
+  - fbank 为纯 Go：逐项照搬 kaldi-native-fbank 1.22.3 的配置与 float32 运算顺序，FFT 是 KISS FFT 的 float32 移植（与普通编译的 C 版逐位一致）。onnxruntime 走 `onnxruntime_go` v1.27（cgo，运行时加载动态库，ORT C API 24，可用 onnxruntime ≥ 1.24；应用现带 1.24.1），只在 `-tags lwnative` 且 CGO 开启时编译；默认构建为纯 Go，模型可替换为 mock。
+  - 区间后处理文件 `postprocess.go` 由 `firered_vad.py` 逐行移植，按 §10.4 标 GPL-3.0-only 并保留 FireRedVAD 的 Apache 声明；其余新文件为 AGPL-3.0-only。
+  - 对齐结果（夹具：espeak-ng 合成的中英文语音 + 噪声 6.5 s，以及含数字静音、削波、噪声、非整帧长度的合成信号 2 s；参考输出由 `firered_vad.py` 生成）：
+    - fbank：log-mel 最大差 1.6e-3、平均 1.1e-6（CMVN 后最大 3.6e-4）。差异来自 kaldi-native-fbank 的 Linux 构建对 kissfft 开了 `-ffast-math`（舍入随编译器变化），无法逐位复现。
+    - 逐帧概率（Go 全流程 vs Python 全流程）：最大差 1.3e-6（语音）/ 1.2e-5（合成信号），低于 1e-4 的标准；同一组特征送入模型时差为 0。onnxruntime 1.24.1 与 1.30.0 结果相同。
+    - 区间：两个夹具上与 Python 完全一致；平滑与区间状态机在 71 组 Python 用例上逐位 / 完全一致。
+  - 未覆盖：真人录音、Windows 上的 cgo 构建与 `onnxruntime.dll` 加载（只在 Linux 上验证）；接入 `internal/asr` 的会话与调度（步骤 3、4）。
 
 ### 步骤 3：R2T2 会话与分段（cgo → audio.cpp）
 
@@ -589,8 +598,9 @@ flowchart TD
 | NetEase Youdao R2T2 参考实现 | Apache-2.0（`R2T2-CODE-LICENSE.txt`） | 兼容 | 滚动推理的改编参考了它，需保留声明 |
 | onnxruntime | MIT（上游许可证） | 兼容 | 随包 DLL 的版本待核对 |
 | FireRedVAD 模型 + CMVN + 改编代码 | Apache-2.0（`FireRedVAD-LICENSE.txt`） | 兼容 | 原创集成部分现为 GPL-3.0-only |
-| kaldi-native-fbank | Apache-2.0（上游许可证） | 兼容 | Go 侧若封装其 C++ 代码需随附声明；**待核实版本** |
-| Go 依赖（如 onnxruntime_go、WebSocket / HTTP 库） | **待核实** | 待核实 | Go 标准库为 BSD-3-Clause（兼容）；第三方模块逐个用 `go-licenses` 审查 |
+| kaldi-native-fbank | Apache-2.0（上游许可证） | 兼容 | Python 端用 1.22.3；Go 端只重写其算法（`engine/internal/vad/fbank.go`），不链接其代码，在 `THIRD_PARTY_NOTICES.md` 中致谢 |
+| KISS FFT | BSD-3-Clause | 兼容 | Go 端 `engine/internal/vad/kissfft.go` 为其移植，文件内保留完整声明；二进制分发时随附该声明（`THIRD_PARTY_NOTICES.md`） |
+| Go 依赖 | 目前：`github.com/coder/websocket` ISC；`github.com/yalue/onnxruntime_go` MIT（仅 `lwnative` 构建） | 兼容 | Go 标准库为 BSD-3-Clause（兼容）；新增模块仍需逐个用 `go-licenses` 审查 |
 | NVIDIA CUDA 运行库（不随安装包分发，按需下载，见 §5） | NVIDIA 专有许可 | **需审阅** | 不是自由软件；安装包不含 CUDA 运行库，由用户通过一键下载从 NVIDIA 官方 redistrib 渠道获取（或复用系统已有安装），受 NVIDIA 许可约束；CUDA 版 R2T2 DLL 运行时动态加载它，能否援引 GPL / AGPL 的「系统库」例外**待核实** |
 | Microsoft VC++ 运行库 | 微软再分发条款 | 通常按「系统库」处理 | **待核实** |
 | Qwen3-ASR 模型权重 | Apache-2.0（据 transcribe.cpp 的 family 文档；上游 HF 页面待核实） | 单独下载，不并入代码 | 不随代码分发，不受 AGPL 影响 |

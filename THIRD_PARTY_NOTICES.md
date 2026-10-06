@@ -44,3 +44,21 @@ is derived from [NetEase Youdao Confucius4-R2T2](https://github.com/netease-youd
 It is subject to the NetEase Youdao Model Use License Agreement, not this
 project's GPL license. A copy is bundled as
 [`R2T2-MODEL-LICENSE.txt`](src-tauri/resources/R2T2-MODEL-LICENSE.txt).
+
+## Go engine (`engine/`)
+
+- The FFT in `engine/internal/vad/kissfft.go` is a Go port of
+  [KISS FFT](https://github.com/mborgerding/kissfft), Copyright (c) 2003-2010
+  Mark Borgerding, distributed under the BSD-3-Clause license; the full notice
+  is kept in that file.
+- `engine/internal/vad/fbank.go` reimplements the filterbank algorithm of
+  [kaldi-native-fbank](https://github.com/csukuangfj/kaldi-native-fbank),
+  Copyright (c) 2022 Xiaomi Corporation, Apache-2.0. No upstream code is
+  linked or vendored.
+- `engine/internal/vad/postprocess.go` ports the FireRedVAD post-processing
+  from `src-tauri/resources/firered_vad.py` and is GPL-3.0-only, with the
+  FireRedVAD Apache-2.0 notice above.
+- Go modules: [github.com/coder/websocket](https://github.com/coder/websocket)
+  (ISC, Copyright (c) 2025 Coder) and, only in builds with the `lwnative` tag,
+  [github.com/yalue/onnxruntime_go](https://github.com/yalue/onnxruntime_go)
+  (MIT, Copyright (c) 2023 Nathan Otterness).

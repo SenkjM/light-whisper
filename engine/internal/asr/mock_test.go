@@ -57,6 +57,6 @@ func TestMockKindsAndDeterminism(t *testing.T) {
 		t.Fatalf("loads %d unloads %d", m.Loads.Load(), m.Unloads.Load())
 	}
 	if _, err := NewNative(); !errors.Is(err, ErrNativeUnavailable) {
-		t.Fatal("native backend should be unavailable without the lwnative tag")
+		t.Fatal("native backend should be unavailable (not compiled in, or not implemented yet)")
 	}
 }

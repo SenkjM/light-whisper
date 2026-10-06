@@ -1,0 +1,7 @@
+# SPDX-FileCopyrightText: 2026 SenkjM
+# SPDX-License-Identifier: AGPL-3.0-only
+#
+# Parity-test fixtures are committed on purpose (the root .gitignore drops
+# *.wav and *.bin elsewhere).
+!*.wav
+!*.bin
