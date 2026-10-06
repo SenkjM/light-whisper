@@ -1,6 +1,7 @@
 use tauri::Emitter;
 
 use crate::services::funasr_service;
+use crate::services::go_engine;
 use crate::services::llm_provider;
 use crate::state::AppState;
 use crate::utils::{paths, AppError};
@@ -166,6 +167,13 @@ pub async fn restart_funasr(
 
 #[tauri::command]
 pub async fn get_engine() -> Result<String, AppError> {
+    if go_engine::is_go() {
+        if let Some(engine) = go_engine::read_value("engine").await {
+            if let Some(engine) = engine.as_str() {
+                return Ok(engine.to_string());
+            }
+        }
+    }
     Ok(paths::read_engine_config())
 }
 
@@ -256,8 +264,14 @@ pub async fn set_engine(
     }
     // 配置文件使用原子替换；只有提交成功后才停止旧服务。这样磁盘/权限错误
     // 不会把仍然有效的旧引擎留在“配置未变但进程已停”的状态。
-    paths::write_engine_config(&engine)
-        .map_err(|e| AppError::Other(format!("写入引擎配置失败: {}", e)))?;
+    if !go_engine::is_go()
+        || go_engine::write_values(go_engine_patch("engine", serde_json::json!(engine)))
+            .await?
+            .is_none()
+    {
+        paths::write_engine_config(&engine)
+            .map_err(|e| AppError::Other(format!("写入引擎配置失败: {}", e)))?;
+    }
     state.engine.block_funasr_starting();
     let switch_result: Result<(), AppError> = async {
         funasr_service::stop_server(state.inner()).await?;
@@ -281,6 +295,11 @@ pub async fn set_engine(
 
 #[tauri::command]
 pub async fn get_gpu_idle_seconds() -> Result<u64, AppError> {
+    if go_engine::is_go() {
+        if let Some(value) = go_engine::read_value("gpu_idle_seconds").await {
+            return Ok(paths::parse_gpu_idle_seconds(Some(&value)));
+        }
+    }
     Ok(paths::read_gpu_idle_seconds())
 }
 
@@ -296,8 +315,17 @@ pub async fn set_gpu_idle_seconds(
             paths::MAX_GPU_IDLE_SECONDS
         )));
     }
-    paths::write_gpu_idle_seconds(seconds)
-        .map_err(|e| AppError::Other(format!("写入 GPU 空闲设置失败: {}", e)))?;
+    if !go_engine::is_go()
+        || go_engine::write_values(go_engine_patch(
+            "gpu_idle_seconds",
+            serde_json::json!(seconds),
+        ))
+        .await?
+        .is_none()
+    {
+        paths::write_gpu_idle_seconds(seconds)
+            .map_err(|e| AppError::Other(format!("写入 GPU 空闲设置失败: {}", e)))?;
+    }
     // 正在运行的本地引擎立刻生效；没启动或在线引擎只记在 engine.json。
     funasr_service::push_gpu_idle_seconds(state.inner(), seconds).await?;
     Ok(seconds)
@@ -532,8 +560,46 @@ pub async fn list_alibaba_asr_models(
     }))
 }
 
+/// `LW_ENGINE_BACKEND=go` 时引擎字段写入 Go 的 `/v1/config`；Go 引擎未运行
+/// （或 python 模式）时直接写 engine.json，与原行为一致。
+async fn write_models_dir_setting(dir: Option<&str>) -> Result<(), AppError> {
+    let value = dir
+        .filter(|d| !d.is_empty())
+        .map_or(serde_json::Value::Null, |d| d.into());
+    if go_engine::is_go()
+        && go_engine::write_values(go_engine_patch("models_dir", value))
+            .await?
+            .is_some()
+    {
+        return Ok(());
+    }
+    paths::write_models_dir(dir).map_err(|e| AppError::Other(format!("写入配置失败: {}", e)))
+}
+
+fn go_engine_patch(
+    key: &str,
+    value: serde_json::Value,
+) -> serde_json::Map<String, serde_json::Value> {
+    let mut patch = serde_json::Map::new();
+    patch.insert(key.to_string(), value);
+    patch
+}
+
 #[tauri::command]
 pub async fn get_models_dir() -> Result<serde_json::Value, AppError> {
+    if go_engine::is_go() {
+        if let Some(value) = go_engine::read_value("models_dir").await {
+            let custom = value.as_str().filter(|dir| !dir.is_empty());
+            let effective = match custom {
+                Some(dir) => dir.to_string(),
+                None => paths::strip_win_prefix(&paths::get_default_models_dir()),
+            };
+            return Ok(serde_json::json!({
+                "path": effective,
+                "is_custom": custom.is_some(),
+            }));
+        }
+    }
     let effective = paths::strip_win_prefix(&paths::get_effective_models_dir());
     let is_custom = paths::read_models_dir().is_some();
     Ok(serde_json::json!({
@@ -598,8 +664,7 @@ pub async fn set_models_dir(
     let canon_new = std::fs::canonicalize(&new_dir).unwrap_or_else(|_| new_dir.clone());
     if canon_old == canon_new {
         if restore_default {
-            paths::write_models_dir(None)
-                .map_err(|e| AppError::Other(format!("写入配置失败: {}", e)))?;
+            write_models_dir_setting(None).await?;
             return Ok(models_dir_update_result(true, None));
         }
         return Ok(ModelsDirUpdateResult {
@@ -637,8 +702,7 @@ pub async fn set_models_dir(
     // prepare 失败只留下可安全覆盖的目标副本；源和旧运行时都保持不变。
     // 配置原子提交成功之后才取消旧启动并停止旧服务。
     let dir_str = paths::strip_win_prefix(&new_dir);
-    paths::write_models_dir((!restore_default).then_some(dir_str.as_str()))
-        .map_err(|e| AppError::Other(format!("写入配置失败: {}", e)))?;
+    write_models_dir_setting((!restore_default).then_some(dir_str.as_str())).await?;
 
     state.engine.block_funasr_starting();
     let update_result: Result<bool, AppError> = async {

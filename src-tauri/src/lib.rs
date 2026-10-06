@@ -200,6 +200,8 @@ pub fn run() {
             }
 
             spawn_funasr_startup(app_handle.clone());
+            // LW_ENGINE_BACKEND=go 时拉起 Go 引擎（默认 python，不做任何事）。
+            services::go_engine::start(&app_handle);
             spawn_subtitle_prewarm(app_handle.clone());
             spawn_profile_maintenance(app_handle.clone());
             if let Err(error) = services::selection_service::create_selection_window(&app_handle) {
@@ -236,6 +238,7 @@ pub fn run() {
             commands::funasr::cancel_model_download,
             commands::funasr::restart_funasr,
             commands::funasr::get_engine,
+            commands::go_engine::get_go_engine_status,
             commands::funasr::set_engine,
             commands::funasr::get_gpu_idle_seconds,
             commands::funasr::set_gpu_idle_seconds,
@@ -560,6 +563,8 @@ fn stop_funasr_on_exit(app: &tauri::AppHandle) {
             }
         }
     }
+
+    services::go_engine::stop_on_exit();
 
     let funasr_process = state.engine.funasr_process.clone();
 

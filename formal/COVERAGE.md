@@ -19,6 +19,7 @@ an explicit contract, with actual source and evidence paths.
 | History | Multiple/shared records, consent, transactional deletion, retention/GC failures, export/leases/reprocessing; SQLite-backed tests and HistoryPage. |
 | Windows/UI | Startup/tray/exit, manual/session generations, terminal subtitles, theme/autostart/navigation; window/overlay/tray/capability/system settings tests. |
 | Protocols/transport | Tagged JSONL replies, native streaming, cloud result/error classes, SSE timeouts/retries/cancellation; Python server and Rust protocol/transport tests. |
+| Go engine (opt-in, PLAN 步骤 1) | `LW_ENGINE_BACKEND=go` only: lw-engine spawn/handshake/api_version, bounded restart, `/v1/config` revision conflicts and `/v1/events` forwarding are bound to the engine/transport contracts by inventory and checked by the `lw-engine-client` integration tests against the real Go engine (`--backend mock`). The Go-side scheduler and config store are not yet modelled in TLA+; extending RuntimeConfiguration/RequestProtocols to the Go path is deferred (PLAN §6 #6) and must be done or re-recorded here before PLAN 步骤 7. |
 | Updates/validation | Actual numeric version parser, HTTPS GitHub release URL and http(s) source/provider partitions; URL/input and normalization tests. |
 
 ## Bounds and decomposition

@@ -4,8 +4,9 @@
 //! Integration tests against the real Go engine (`engine/`, `--backend mock`).
 //!
 //! The engine is built with `go build` into a temp directory. Tests that need
-//! it print a SKIP note and pass when no Go toolchain is available (set
-//! `LW_ENGINE_TEST_GO` to point at a specific `go` binary).
+//! it print a SKIP note and pass when no Go toolchain is available. Set
+//! `LW_ENGINE_TEST_GO` to use a specific `go` binary, or `LW_ENGINE_TEST_BIN`
+//! to use a prebuilt `lw-engine` (e.g. a Windows build under Wine).
 
 use lw_engine_client::*;
 use serde_json::{json, Map, Value};
@@ -29,6 +30,15 @@ fn temp_dir(tag: &str) -> PathBuf {
 fn engine_binary() -> Option<PathBuf> {
     static BIN: OnceLock<Option<PathBuf>> = OnceLock::new();
     BIN.get_or_init(|| {
+        if let Some(bin) = std::env::var_os("LW_ENGINE_TEST_BIN") {
+            let bin = PathBuf::from(bin);
+            assert!(
+                bin.is_file(),
+                "LW_ENGINE_TEST_BIN={} does not exist",
+                bin.display()
+            );
+            return Some(bin);
+        }
         let go = std::env::var_os("LW_ENGINE_TEST_GO").unwrap_or_else(|| "go".into());
         let ok = std::process::Command::new(&go)
             .arg("version")
