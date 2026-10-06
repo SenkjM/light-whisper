@@ -1,0 +1,56 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://light-whisper.local/schemas/engine-config/v1",
+  "title": "Go 引擎设置 (engine.json) v1",
+  "description": "Go 引擎持有并持久化的设置。x-apply: live = 立即生效；reload = 需 POST /v1/engine/reload。engine.json 中的其他键（如云 ASR 的 glm_endpoint / alibaba_region / alibaba_model）由 Rust 壳持有，引擎原样保留、不解释。",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "engine": {
+      "title": "识别引擎",
+      "type": "string",
+      "enum": ["qwen3-asr-0.6b", "confucius4-r2t2", "glm-asr", "alibaba-asr"],
+      "default": "qwen3-asr-0.6b",
+      "description": "本地引擎由 Go 引擎加载；glm-asr / alibaba-asr 为云端引擎，由 Rust 壳处理，Go 引擎此时不加载本地模型。旧值 qwen3-asr-1.7b 读取时按 confucius4-r2t2 处理。",
+      "x-apply": "reload"
+    },
+    "models_dir": {
+      "title": "模型目录",
+      "type": "string",
+      "default": "",
+      "description": "空字符串表示默认 HuggingFace 缓存目录；非空时必须是绝对路径。",
+      "x-apply": "reload"
+    },
+    "device": {
+      "title": "设备偏好",
+      "type": "string",
+      "enum": ["auto", "cpu", "cuda", "vulkan"],
+      "default": "auto",
+      "x-apply": "reload"
+    },
+    "gpu_idle_seconds": {
+      "title": "GPU 空闲卸载（秒）",
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 604800,
+      "default": 0,
+      "description": "0 表示关闭；仅在 GPU 设备上生效。",
+      "x-apply": "live"
+    },
+    "default_language": {
+      "title": "默认语言",
+      "type": "string",
+      "maxLength": 32,
+      "default": "",
+      "description": "空字符串表示自动；请求中显式给出的 language 优先。",
+      "x-apply": "live"
+    },
+    "log_level": {
+      "title": "日志级别",
+      "type": "string",
+      "enum": ["debug", "info", "warn", "error"],
+      "default": "info",
+      "x-apply": "live"
+    }
+  }
+}
