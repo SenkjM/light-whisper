@@ -4,7 +4,7 @@
 # Go 引擎本地 API 契约 v1（PLAN §4，迁移步骤 0）。
 # WebSocket 消息格式见 ws-protocol.md；引擎设置的 JSON Schema 见
 # engine/internal/config/schema_v1.json（运行时由 GET /v1/config/schema 返回）。
-# x-status: implemented = 步骤 1 已实现（推理为 mock）；planned = 契约占位，后续步骤实现。
+# x-status: implemented = 已实现（步骤 1 起；R2T2 推理步骤 3、Qwen3 推理与调度 / job 步骤 4）；planned = 契约占位，后续步骤实现。
 openapi: 3.1.0
 info:
   title: light-whisper Go 引擎 API
@@ -40,7 +40,7 @@ components:
               enum: [unauthorized, bad_host, origin_not_allowed, bad_request, revision_required,
                      revision_mismatch, invalid_config, config_read_failed, config_write_failed,
                      realtime_session_active, no_local_engine, wrong_engine, engine_error,
-                     unsupported_media_type, bad_audio, body_too_large]
+                     unsupported_media_type, bad_audio, body_too_large, invalid_priority, not_found]
             message: { type: string }
             fields:
               type: object
@@ -70,21 +70,33 @@ components:
         applied: { type: array, items: { type: string }, description: 本次已立即生效的 live 键 }
         pending_reload: { type: array, items: { type: string } }
     Priority:
-      x-status: planned
+      x-status: implemented
       type: string
       enum: [realtime, high, normal]
       description: |
-        请求优先级（PLAN §4.6，步骤 4 实现）：realtime = 实时（实时听写，可抢占：打断并丢弃正在运行的任务），
-        high = 优先（普通按键听写的缺省），normal = 普通（文件转录的缺省）。同级 FIFO；被抢占的任务从中断的段重新排队。
+        请求优先级（PLAN §4.6）：realtime = 实时（可抢占），high = 优先，normal = 普通。
+        缺省值来自引擎设置 default_priority_voice（语音转录，缺省 high）/ default_priority_file（文件转录，缺省 normal）；
+        请求显式给出的值优先。同级 FIFO；只有 realtime 抢占。被抢占的任务不判失败，回到同级队首，从中断的段继续。
+        实时会话（WS /v1/asr/stream）进行期间只执行 realtime 任务，其余任务排队等会话结束。
+        抢占的粒度见 /v1/jobs 的说明。
     SchedulerStats:
       type: object
-      description: 现有实现为两级（realtime / batch）、运行中的任务不打断；步骤 4 起按 Priority 三级计数（planned）
+      description: 单推理线程、三级优先级队列（PLAN §4.6）
       properties:
         realtime_queued: { type: integer }
-        batch_queued: { type: integer }
+        high_queued: { type: integer }
+        normal_queued: { type: integer }
         running: { type: boolean }
-        running_kind: { type: string, enum: [realtime, batch] }
+        running_kind: { $ref: "#/components/schemas/Priority" }
+        realtime_hold: { type: boolean, description: 实时会话进行中：只放行 realtime 任务 }
         completed: { type: integer }
+        preemptions: { type: integer, description: 运行中的任务被实时请求打断的次数 }
+        yields: { type: integer, description: 可抢占任务在段边界主动让出的次数 }
+    JobCounts:
+      type: object
+      properties:
+        queued: { type: integer, description: 含被抢占 / 让出后等待继续的 job }
+        running: { type: integer }
     EngineStatus:
       type: object
       required: [backend, configured_engine, local_engine, loading, model_loaded, missing_models,
@@ -96,7 +108,7 @@ components:
         loading: { type: boolean }
         engine: { type: string, description: 当前已加载的引擎 }
         kind: { type: string, enum: [r2t2, qwen3] }
-        device: { type: string }
+        device: { type: string, description: "R2T2：cpu / cuda；Qwen3：transcribe.cpp 实际使用的后端名（小写，如 cpu、cuda0、vulkan0）" }
         model_loaded: { type: boolean }
         gpu_name: { type: string }
         gpu_memory_total: { type: number, description: GB }
@@ -106,6 +118,7 @@ components:
         gpu_idle_seconds: { type: integer }
         idle_unloaded: { type: boolean }
         scheduler: { $ref: "#/components/schemas/SchedulerStats" }
+        jobs: { $ref: "#/components/schemas/JobCounts" }
         last_error: { type: string }
     TranscribeResult:
       type: object
@@ -115,6 +128,38 @@ components:
         language: { type: string }
         sample_count: { type: integer }
         duration: { type: number, description: 秒 }
+    JobSegment:
+      type: object
+      required: [start, end, text]
+      properties:
+        start: { type: number, description: 秒（文件内，VAD 边界，毫秒精度） }
+        end: { type: number }
+        text: { type: string }
+    Job:
+      type: object
+      required: [id, state, priority, created_at, duration, segments_total, segments_done, progress, preemptions]
+      description: |
+        GET /v1/jobs/{id} 的返回；POST /v1/jobs、GET /v1/jobs 与 job_progress 事件中的同一结构不带 text / segments。
+      properties:
+        id: { type: string }
+        state:
+          type: string
+          enum: [queued, running, completed, failed, cancelled]
+          description: queued 也包括被抢占 / 让出后等待继续
+        priority: { $ref: "#/components/schemas/Priority" }
+        engine: { type: string, description: 第一次执行时加载的引擎 }
+        created_at: { type: string, format: date-time }
+        started_at: { type: string, format: date-time }
+        finished_at: { type: string, format: date-time }
+        duration: { type: number, description: 音频时长（秒） }
+        segments_total: { type: integer, description: VAD 分段后的识别单元数（首次执行前为 0） }
+        segments_done: { type: integer }
+        progress: { type: number, minimum: 0, maximum: 1, description: 已完成单元的语音时长占比 }
+        preemptions: { type: integer, description: 单元执行中途被打断（结果丢弃、该单元重做）的次数 }
+        text: { type: string, description: 仅 completed；各单元文本按 R2T2 分段的规则拼接（只在 ASCII 词之间加空格） }
+        language: { type: string }
+        segments: { type: array, items: { $ref: "#/components/schemas/JobSegment" }, description: 仅请求 segments=true 时；已完成的单元 }
+        error: { type: string, description: 仅 failed }
   responses:
     Unauthorized:
       description: 缺少或错误的 Bearer token
@@ -226,9 +271,10 @@ paths:
       x-status: implemented
       summary: 语音转录 · 实时会话 WebSocket（优先级固定为 realtime），见 ws-protocol.md
       description: |
-        已实现：当前引擎为 R2T2 时的原生流式会话；当前引擎不是 R2T2 或已有会话时返回 409（不静默更换引擎）。
-        planned（PLAN §3.0.2 / §4.4，步骤 4）：当前引擎为 Qwen3 时改为 VAD 整句模式（committed 按整句追加、tentative 为空），
-        届时只有云端引擎或已有会话才返回 409。
+        模式由当前引擎决定（started 消息的 mode 字段）：R2T2 = 原生流式（streaming）；Qwen3 = VAD 整句模式
+        （sentence：committed 按整句追加、tentative 为空，只在切出新句时发 partial）。
+        云端引擎或已有会话时返回 409（不静默更换引擎）。会话期间调度器只执行 realtime 任务，
+        正在运行的可抢占任务被打断（见 Priority）。
       responses:
         "101": { description: Switching Protocols }
         "409": { $ref: "#/components/responses/Conflict" }
@@ -240,19 +286,20 @@ paths:
         Qwen3：VAD 裁首尾后整段识别（非实时场景的推荐 / 回退选择）。
         R2T2：整段音频按块送入新建的分段会话再结束（与 Python transcribe_audio 一致）。
         R2T2 整段识别与实时会话共用唯一推理线程和同一个已加载模型：实时会话进行中返回 409
-        realtime_session_active；整段作为一个未分段任务执行，期间开始的实时会话等待其结束。
-        该 409 规则保持现状，只适用于这条未分段的整段路径；三级优先级实现时（步骤 4）重新评估。
+        realtime_session_active；整段作为一个未分段、不可抢占的任务执行，期间开始的实时会话等待其结束
+        （步骤 4 评估后保留，只适用于这条未分段的整段路径；需要让出的长音频走 /v1/jobs）。
+        Qwen3 整段识别是可抢占任务：实时会话期间照常排队（不返回 409），等会话结束再执行；
+        执行中被实时会话打断时整段结果丢弃、回到队首重做（transcribe.cpp 0.1.3 实际不在 Qwen3 识别中途响应中止，
+        见 /v1/jobs 的说明，因此通常是这次调用完成后结果照常返回、实时任务随后执行）。
         配置为云端引擎时返回 409 no_local_engine。
-        现有实现一律按批处理级（scheduler 的 batch）排队；priority 参数为 planned。
       parameters:
         - { in: query, name: language, schema: { type: string }, description: 缺省时用 default_language }
         - { in: query, name: context, schema: { type: string } }
         - { in: query, name: hot_word, schema: { type: array, items: { type: string } }, style: form, explode: true }
         - in: query
           name: priority
-          x-status: planned
           schema: { $ref: "#/components/schemas/Priority" }
-          description: 缺省为 high（优先），默认值后续可由用户设置调整（PLAN §4.6）；现有实现忽略此参数
+          description: 缺省为设置 default_priority_voice（缺省 high）；非法值返回 400 invalid_priority
       requestBody:
         required: true
         content:
@@ -262,6 +309,7 @@ paths:
             schema: { type: string, format: binary, description: 仅 PCM 16-bit、单声道、16 kHz }
       responses:
         "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/TranscribeResult" } } } }
+        "400": { description: invalid_priority, content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
         "409":
           description: no_local_engine（云端引擎）或 realtime_session_active（R2T2 实时会话进行中）
           content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
@@ -278,17 +326,85 @@ paths:
     delete: { x-status: planned, summary: 取消下载, responses: { "204": { description: Cancelled } } }
   /v1/jobs:
     post:
-      x-status: planned
-      summary: 文件转录 job（PLAN §4.5）
+      x-status: implemented
+      summary: 文件转录 job（PLAN §4.5），立即返回 202
       description: |
-        请求体（待定）携带文件与可选 priority（Priority，缺省 normal / 普通）；不指定引擎，由后端按设置选择。
-        Go 先用 VAD 分段，再把每段作为一个任务按 job 优先级入队；实时请求可在段间插入或打断当前段，
-        被打断的段连同其后各段重新排队（PLAN §4.6）。
-      responses: { "202": { description: Accepted } }
+        引擎由后端按设置选择（Qwen3 或 R2T2）；云端引擎返回 409 no_local_engine。
+        执行：首次执行时用当前引擎的 VAD 对整个文件分段，相邻语音区间合并为不超过 20 s 的识别单元
+        （单元内的停顿保留，与 Qwen3 整段裁剪相同；超过 20 s 的单个区间按 20 s 切开；单元之间的静音不识别），
+        每个单元走该引擎的整段识别路径（Qwen3 = 短音频 / VAD 过滤 + 一次 transcribe.cpp；R2T2 = 新建分段会话）。
+        进度经 /v1/events 的 job_progress 推送（排队、开始、分段完成、每个单元完成、结束各一条）。
+        调度：job 是一个可抢占任务，自己记录完成到第几个单元：
+          - 每个单元开始前，如有更高优先级的任务在等（含 high 的语音转录），job 让出（yields +1）并回到同级队首，
+            之后从下一个未完成单元继续——效果等同于「每段一个任务」。
+          - 实时会话开始（或 realtime 任务入队）时打断正在执行的单元：该单元结果丢弃，job 回到同级队首，
+            会话结束后从该单元重做（preemptions +1）；已完成的单元不重做，最终文本与未被打断时一致。
+          - 正在进行的原生调用能否中途停下：
+            R2T2（audio.cpp）没有中止接口，在下一次分块推送（CPU 320 ms / CUDA 160 ms 音频）前停下并 reset；
+            Qwen3 已注册 transcribe.cpp 的 abort 回调，但 transcribe.cpp 0.1.3 的 Qwen3 识别实际不轮询它
+            （在 CPU 上实测，Python Session.cancel 同样无效），所以单元会算完：结果保留、计为已完成，
+            job 随后让出。实时任务因此最多等待一个单元（≤ 20 s 音频）的推理时间；VAD 与模型加载也会先完成。
+        R2T2 job 不受 409 规则限制：实时会话期间提交照常排队。
+      parameters:
+        - { in: query, name: language, schema: { type: string }, description: 仅二进制 body 时；缺省时用 default_language }
+        - { in: query, name: context, schema: { type: string } }
+        - { in: query, name: hot_word, schema: { type: array, items: { type: string } }, style: form, explode: true }
+        - { in: query, name: priority, schema: { $ref: "#/components/schemas/Priority" }, description: 缺省为设置 default_priority_file（缺省 normal） }
+        - { in: query, name: segments, schema: { type: boolean }, description: 结果中带各单元的时间与文本 }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [path]
+              additionalProperties: false
+              properties:
+                path: { type: string, description: 本机 WAV 文件的绝对路径（PCM 16-bit、单声道、16 kHz） }
+                language: { type: string }
+                context: { type: string }
+                hot_words: { type: array, items: { type: string } }
+                priority: { $ref: "#/components/schemas/Priority" }
+                segments: { type: boolean }
+          application/octet-stream:
+            schema: { type: string, format: binary, description: PCM s16le、16 kHz、单声道（选项走 query） }
+          audio/wav:
+            schema: { type: string, format: binary, description: 仅 PCM 16-bit、单声道、16 kHz（选项走 query） }
+      responses:
+        "202":
+          description: 已排队；Location 头 = /v1/jobs/{id}
+          content: { application/json: { schema: { $ref: "#/components/schemas/Job" } } }
+        "400": { description: bad_request / bad_audio / invalid_priority, content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+        "409": { description: no_local_engine, content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+        "413": { description: 超过大小上限（默认 512 MiB） }
+        "415": { description: 音频格式不支持 }
+    get:
+      x-status: implemented
+      summary: 列出 job（创建时间升序，不含 text / segments；已结束的 job 最多保留 64 个）
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  jobs: { type: array, items: { $ref: "#/components/schemas/Job" } }
   /v1/jobs/{id}:
     parameters: [{ in: path, name: id, required: true, schema: { type: string } }]
-    get: { x-status: planned, summary: 查询 job, responses: { "200": { description: OK } } }
-    delete: { x-status: planned, summary: 取消 job, responses: { "204": { description: Cancelled } } }
+    get:
+      x-status: implemented
+      summary: 查询 job（completed 时带 text）
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/Job" } } } }
+        "404": { description: not_found, content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+    delete:
+      x-status: implemented
+      summary: 取消排队中 / 执行中的 job（最多等 5 s 让它停下）；对已结束的 job 则删除记录
+      description: 执行中的单元按上面的抢占粒度停下（R2T2 下一次分块推送前；Qwen3 当前 transcribe.cpp 调用结束后）。
+      responses:
+        "204": { description: 已取消 / 已删除 }
+        "404": { description: not_found, content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
   /v1/runtimes/cuda:
     get: { x-status: planned, summary: CUDA 运行时状态（PLAN §5.5）, responses: { "200": { description: OK } } }
   /v1/runtimes/cuda/download:
