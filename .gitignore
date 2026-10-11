@@ -163,6 +163,12 @@ python
 # PyInstaller 构建产物
 src-tauri/resources/python-dist/
 src-tauri/resources/engine.tar.xz
+# Go engine binaries for packaging (built by scripts/build_lw_engine_for_bundle.sh)
+src-tauri/resources/lw-engine
+src-tauri/resources/lw-engine.exe
+engine/lw-engine
+engine/lw-engine.exe
+
 src-tauri/resources/r2t2-native/
 
 .claude/

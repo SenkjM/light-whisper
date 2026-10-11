@@ -233,7 +233,7 @@ pub fn run() {
             }
 
             spawn_funasr_startup(app_handle.clone());
-            // LW_ENGINE_BACKEND=go 时拉起 Go 引擎（默认 python，不做任何事）。
+            // 默认拉起 Go 引擎；LW_ENGINE_BACKEND=python 时跳过。
             services::go_engine::start(&app_handle);
             spawn_subtitle_prewarm(app_handle.clone());
             spawn_profile_maintenance(app_handle.clone());
@@ -450,7 +450,7 @@ fn spawn_funasr_startup(app_handle: tauri::AppHandle) {
                 );
                 return;
             }
-            log::info!("LW_ENGINE_BACKEND=go：等待 Go 引擎就绪（跳过 Python）");
+            log::info!("Go 引擎后端：等待就绪（跳过 Python 子进程）");
             services::go_engine::bootstrap_ready(&app_handle).await;
             return;
         }

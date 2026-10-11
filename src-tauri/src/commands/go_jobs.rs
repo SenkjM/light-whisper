@@ -15,7 +15,7 @@ fn require_go() -> Result<(), AppError> {
         Ok(())
     } else {
         Err(AppError::Other(
-            "文件转录 job 仅在 LW_ENGINE_BACKEND=go 时可用".into(),
+            "文件转录 job 需要 Go 引擎（默认已启用；勿设置 LW_ENGINE_BACKEND=python）".into(),
         ))
     }
 }

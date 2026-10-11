@@ -1,14 +1,15 @@
 #!/usr/bin/env bash
 # 在本机完成完整验证和打包，候选提交的 CI 通过后才创建 tag 和 GitHub Release。
 # 用法:
-#   bash scripts/release.sh 1.6.0 "Concise English release notes." [--rebuild-engine|--reuse-engine]
-#   bash scripts/release.sh 1.6.0 --generate-notes --reuse-engine
+#   bash scripts/release.sh 1.6.0 "Concise English release notes." [--rebuild-go-engine|--reuse-go-engine]
+#   bash scripts/release.sh 1.6.0 --generate-notes --reuse-go-engine
+# Default package is pure Go (lw-engine.exe). Python/engine.tar.xz are not shipped.
 
 set -euo pipefail
 
 VERSION="${1:-}"
 RELEASE_NOTES="${2:---generate-notes}"
-ENGINE_MODE="${3:---rebuild-engine}"
+ENGINE_MODE="${3:---rebuild-go-engine}"
 TAG="v${VERSION}"
 RELEASE_BRANCH="${RELEASE_BRANCH:-main}"
 CI_WORKFLOW="${CI_WORKFLOW:-ci.yml}"
@@ -20,7 +21,7 @@ CARGO_TOML="src-tauri/Cargo.toml"
 CARGO_LOCK="src-tauri/Cargo.lock"
 PYPROJECT_TOML="pyproject.toml"
 UV_LOCK="uv.lock"
-ENGINE_ARCHIVE="src-tauri/resources/engine.tar.xz"
+GO_ENGINE_EXE="src-tauri/resources/lw-engine.exe"
 INSTALLER="src-tauri/target/release/bundle/nsis/轻语 Whisper_${VERSION}_x64-setup.exe"
 RELEASE_FILES=(
     "$PKG_JSON"
@@ -32,7 +33,7 @@ RELEASE_FILES=(
 )
 
 usage() {
-    echo "用法: bash scripts/release.sh <X.Y.Z> [发布说明|--generate-notes] [--rebuild-engine|--reuse-engine]"
+    echo "用法: bash scripts/release.sh <X.Y.Z> [发布说明|--generate-notes] [--rebuild-go-engine|--reuse-go-engine]"
 }
 
 fail() {
@@ -50,12 +51,12 @@ preflight() {
         usage
         fail "版本号必须是 X.Y.Z"
     }
-    [[ "$ENGINE_MODE" == "--rebuild-engine" || "$ENGINE_MODE" == "--reuse-engine" ]] || {
+    [[ "$ENGINE_MODE" == "--rebuild-go-engine" || "$ENGINE_MODE" == "--reuse-go-engine" ]] || {
         usage
         fail "未知引擎模式: $ENGINE_MODE"
     }
 
-    for command_name in git gh node pnpm python uv cargo sha256sum; do
+    for command_name in git gh node pnpm python uv cargo go sha256sum; do
         require_command "$command_name"
     done
     find_seven_zip >/dev/null
@@ -156,11 +157,11 @@ run_local_checks() {
 }
 
 prepare_engine() {
-    echo "[3/9] 准备 Python 引擎"
-    if [[ "$ENGINE_MODE" == "--rebuild-engine" ]]; then
-        uv run --locked python scripts/build_engine.py
+    echo "[3/9] 准备 Go 引擎 (lw-engine.exe)"
+    if [[ "$ENGINE_MODE" == "--rebuild-go-engine" ]]; then
+        bash scripts/build_lw_engine_for_bundle.sh windows
     else
-        echo "复用现有引擎归档；仅适用于 Python ASR 运行时代码未变化的补丁版本。"
+        echo "复用现有 lw-engine.exe；仅适用于 Go 引擎代码未变化的补丁版本。"
     fi
 }
 
@@ -172,16 +173,14 @@ find_seven_zip() {
     elif [[ -x "/c/Program Files/7-Zip/7z.exe" ]]; then
         printf '%s\n' "/c/Program Files/7-Zip/7z.exe"
     else
-        fail "未找到 7-Zip，无法验证引擎归档和 NSIS 安装包"
+        fail "未找到 7-Zip，无法验证 NSIS 安装包"
     fi
 }
 
 verify_engine_archive() {
-    echo "[4/9] 验证引擎归档"
-    node scripts/verify_engine_archive.mjs "$ENGINE_ARCHIVE"
-    local seven_zip
-    seven_zip="$(find_seven_zip)"
-    "$seven_zip" t "$ENGINE_ARCHIVE"
+    echo "[4/9] 验证 Go 引擎包资源"
+    node scripts/verify_lw_engine_bundle.mjs
+    [[ -f "$GO_ENGINE_EXE" && -s "$GO_ENGINE_EXE" ]] || fail "缺少 $GO_ENGINE_EXE"
 }
 
 build_installer() {

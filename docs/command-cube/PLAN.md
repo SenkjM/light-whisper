@@ -1,7 +1,7 @@
 # Command-Cube 规划：前后端分离（Go 引擎后端 + Rust 薄壳 + 独立前端）
 
 > 分支：`Command-Cube`  
-> 状态：规划文档；实施进度见 §7 各步骤的「进度」（步骤 1 已完成；步骤 2 FireRedVAD 的 Go 移植已完成并与 Python 对齐；步骤 3 R2T2 会话与分段已移植，在 Linux CPU 上与 Python 逐调用、逐字一致，Windows / CUDA 与延迟基线未实测；步骤 4 Qwen3 / 调度 / job 已实现；步骤 5 完成；步骤 6：业务设置以壳 `app_preferences` 为准、字幕 streaming/sentence 分离、`pnpm dev`+Go 调试台已接通；默认 python 打包不变；Windows E2E / 纯 Go 安装包 / 步骤 7 工具仍待）  
+> 状态：规划文档；实施进度见 §7 各步骤的「进度」（步骤 1 已完成；步骤 2 FireRedVAD 的 Go 移植已完成并与 Python 对齐；步骤 3 R2T2 会话与分段已移植，在 Linux CPU 上与 Python 逐调用、逐字一致，Windows / CUDA 与延迟基线未实测；步骤 4 Qwen3 / 调度 / job 已实现；步骤 5–6 完成；默认安装包纯 Go（`lw-engine.exe`，无 `engine.tar.xz` / PyInstaller）；`LW_ENGINE_BACKEND` 默认 `go`；Windows 真人 E2E、lwnative+原生 DLL 随包、步骤 7 工具仍待）  
 > 基于：对 `main` @ `151a61c` 的只读调研  
 > **本文主线**：用独立 Go 后端服务取代 Python 编排层；Rust（Tauri）只做系统集成与应用层；前端独立。
 
@@ -43,7 +43,7 @@
 | Qwen3-ASR 0.6B | Python → `transcribe-cpp` | `resources/qwen3_asr_server.py`、`scripts/build_engine.py` |
 | Confucius4-R2T2 | Python ctypes → audio.cpp C ABI | `resources/r2t2_native.py`、`r2t2_stream.py`、`r2t2_segmented.py`、`r2t2_asr_server.py`、`scripts/build_r2t2_runtime.py`、`scripts/patches/audio-cpp-r2t2-windows-streaming.patch` |
 | VAD | FireRedVAD ONNX + onnxruntime + kaldi-native-fbank | `resources/firered_vad.py` |
-| 发布 | PyInstaller → `engine.exe` → `engine.tar.xz` | `resources/engine.py`、`tauri.conf.json` |
+| 发布 | **默认** `go build` → `lw-engine.exe` 打进 NSIS；不再打包 `engine.tar.xz` | `scripts/build_lw_engine_for_bundle.sh`、`tauri.conf.json`；源码树仍保留 `scripts/build_engine.py` 供 `LW_ENGINE_BACKEND=python` 调试 |
 
 ### 2.1 分句 / 切段现状（迁移重点）
 
@@ -463,8 +463,8 @@ flowchart TD
 - **进度（已完成）**：
   - Go 侧：`engine/`（见 `engine/README.md`）。
   - Rust 侧：`src-tauri/crates/lw-engine-client`（定位 / 拉起 / 握手 / `api_version` 校验 / HTTP + WS 客户端 / 有界指数退避重启：1 s 起翻倍、上限 30 s、连续失败 5 次放弃、稳定运行 60 s 后清零；`api_version` 不兼容直接判定失败，不重启）与 `src-tauri/src/services/go_engine.rs`（Tauri 接入）。
-  - 开关：环境变量 `LW_ENGINE_BACKEND=go|python`，默认 `python`，行为与原来一致。为 `go` 时，`engine` / `models_dir` / `gpu_idle_seconds` 的读写走 `/v1/config`（412 自动重读重试，reload 键写入后调用 `/v1/engine/reload`），`/v1/events` 转发为 Tauri 事件 `go-engine-status` / `go-engine-config-changed` / `go-engine-job-progress`，进程状态为 `go-engine-process`；**识别在步骤 5 已切到 Go API**（python 模式仍走 Python）。
-  - Windows Job Object：步骤 5 已在 `lw-engine-client` 实现（`KILL_ON_JOB_CLOSE`）；把 `lw-engine.exe` 写进 `tauri.conf.json` 的打包资源仍待做（现需手动放到 `src-tauri/resources/` 或用 `LW_ENGINE_PATH` 指定）。
+  - 开关：环境变量 `LW_ENGINE_BACKEND=go|python`，**默认 `go`**。`engine` / `models_dir` / `gpu_idle_seconds` 的读写走 `/v1/config`；`/v1/events` → Tauri `go-engine-status` / `go-engine-config-changed` / `go-engine-job-progress`；进程状态 `go-engine-process`；识别走 Go API。`python` 仅开发回退。
+  - Windows Job Object：`lw-engine-client`（`KILL_ON_JOB_CLOSE`）；`lw-engine.exe` 已写入默认 `tauri.conf.json` `bundle.resources`。
 
 ### 步骤 2：FireRedVAD（Go + onnxruntime）
 
@@ -515,7 +515,7 @@ flowchart TD
 
 - Rust 用 HTTP/WS 客户端取代 stdio JSON；cpal 音频经 WS 推流；删除 `interim.rs`；密钥 API 改为只写；localStorage 设置迁入壳内；打包改为 Go 后端 + 原生 DLL。
 - **完成标准**：安装包不再包含 Python 和 `engine.tar.xz`；现有听写、热键、注入、润色、历史回归通过；`formal/` 已更新或在 `COVERAGE.md` 标注；崩溃重启与版本不匹配有测试覆盖。
-- **进度（识别切换已实现，开关 `LW_ENGINE_BACKEND=go`；python 默认不变；完整去 Python 打包未做）**：
+- **进度（识别 + 默认纯 Go 打包已实现；`LW_ENGINE_BACKEND=python` 为开发回退）**：
   - **客户端**（`src-tauri/crates/lw-engine-client`）：
     - `stream.rs`：`WS /v1/asr/stream`；`started.mode` → `StreamMode::{Streaming,Sentence}`。
     - **Pre-`started` 音频缓冲（已定）**：`start` 发出后、收到 `started` 前，`feed` 的 PCM **全部缓冲**，`started` 到达后按采样 offset 顺序 flush 为 160 ms（2560 样本）二进制帧，不丢样。上限 [`PRE_START_BUFFER_MAX_SAMPLES`] = 30 s @ 16 kHz（≈ 960 KiB）；超出 → 错误码 `pre_start_buffer_overflow`，会话失败并取消。等待 `started` 超时 [`START_TIMEOUT`] = 15 s → `start_timeout`。二者均映射为 UI 启动失败（`AppError::Asr`）。
@@ -531,9 +531,10 @@ flowchart TD
     - **删除 `interim.rs`**：python Qwen3 听写不再做 12 s 伪实时，松开后整段 ASR；Go 路径仍用 WS `sentence`/`streaming` 字幕。
     - **密钥只写**：所有 `get_*_api_key` 对前端返回空串；新增 `has_*_api_key`；设置页 / RecordingContext 不再把密钥读回输入框或回写空串。
     - **壳内偏好**：`<data_dir>/app_preferences.json`（热键/录音模式/麦克风/输入方式/提示音/电平监测/润色开关）；启动加载；`set_*` 持久化；`migrate_app_preferences` 一次性从 localStorage 迁入。主题 / UI 语言 / 引导仍前端 localStorage（步骤 6）。
-    - **打包**：`scripts/build_lw_engine_for_bundle.sh` 产出 `resources/lw-engine[.exe]`；**不**从默认 python 包移除 `engine.tar.xz`（避免打断 `LW_ENGINE_BACKEND=python`）。Go 包需手动把二进制写入 `tauri.conf.json` `bundle.resources`。
+    - **打包**：`scripts/build_lw_engine_for_bundle.sh` → `resources/lw-engine.exe`；默认包已去掉 `engine.tar.xz`；`LW_ENGINE_BACKEND=python` 仅开发者本机可选。
     - **formal/**：`verification.json` 登记 `go_jobs::*`、`has_*`、`preferences::*`、`go-engine-job-progress`；`COVERAGE.md` 更新步骤 5。
-  - **仍未做 / 推迟**：端到端真人听写；安装包默认改为纯 Go、去掉 Python/`engine.tar.xz`；Go 调度 / WS 的 TLA+ 模型（§6 #6 → 步骤 7 前）。业务 localStorage 已在步骤 6 迁出。
+  - **打包（已切默认纯 Go）**：`tauri.conf.json` 资源为 `lw-engine.exe` + VAD onnx/cmvn + 许可证；**不含** `engine.tar.xz` / PyInstaller / Python 脚本。`LW_ENGINE_BACKEND` **默认 `go`**；`python` 仅源码调试（需自备引擎归档或开发 Python）。`build:distribution` / `release.sh` 走 `build_lw_engine_for_bundle.sh` + `verify_lw_engine_bundle.mjs`。默认 `go build` 为纯 Go（mock）；真实 ASR 仍需 `-tags lwnative` + 原生 DLL（未默认随包）。
+  - **仍未做 / 推迟**：端到端真人听写；lwnative 二进制与 audiocpp/transcribe/onnxruntime DLL 默认随包；Go 调度 / WS 的 TLA+ 模型（§6 #6 → 步骤 7 前）。业务 localStorage 已在步骤 6 迁出。
   - 测试：同上 client 集成测试；本轮 `cargo check`；`scripts/check_formal.py` 清单校对。
 
 ### 步骤 6：独立前端
@@ -544,7 +545,7 @@ flowchart TD
   - **业务设置**：热键 / 录音模式 / 麦克风 / 输入方式 / 提示音 / 电平监测 / 润色开关以 `app_preferences.json` 为源；`loadAppPreferences` 一次性迁出 localStorage；主题 / UI 语言 / 引导仍 localStorage（§3.2）。LLM provider drafts 仍前端草稿（非壳业务设置）。
   - **两种模式 UI**：`transcription-result.mode` = `streaming`|`sentence`（Go 路径）；字幕 overlay 对 sentence 关闭逐字平滑；设置页能力文案区分流式 / 整句。
   - **无 Tauri 调试**：`./scripts/dev_go_engine.sh` + `pnpm dev` → `http://localhost:1422/?view=dev-engine`（Vite 代理 `/lw-engine`，引擎设置 PATCH + 文件 job）。
-  - **未做**：纯 Go 默认安装包；Windows 真人 E2E；步骤 7 工具链。
+  - **未做**：Windows 真人 E2E；lwnative+DLL 默认随包；步骤 7 工具链。纯 Go 默认安装包已在步骤 5 打包段完成。
 
 ### 步骤 7：后续工具（低优先级，非拆分门槛）
 

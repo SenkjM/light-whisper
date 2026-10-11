@@ -1,3 +1,5 @@
+// Legacy: optional Python/PyInstaller engine.tar.xz verification.
+// Default distribution uses scripts/verify_lw_engine_bundle.mjs instead.
 import { open, stat } from "node:fs/promises";
 import { spawnSync } from "node:child_process";
 import { pathToFileURL } from "node:url";

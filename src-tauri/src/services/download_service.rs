@@ -92,6 +92,13 @@ pub async fn run_download(
     app_handle: &tauri::AppHandle,
     state: &AppState,
 ) -> Result<String, AppError> {
+    if crate::services::go_engine::is_go() {
+        // Default package no longer ships PyInstaller / download_models.py.
+        // Models are expected under models_dir / HF cache; a Go-native downloader is PLAN 后续.
+        return Err(AppError::Download(
+            "当前为 Go 引擎模式：安装包不再包含 Python 下载脚本。请将模型放到 models_dir（或设置 LW_ENGINE_BACKEND=python 使用源码树调试下载）".into(),
+        ));
+    }
     // 获取下载脚本路径，清理 Windows \\?\ 前缀
     let download_script = paths::get_download_script_path(app_handle);
     let download_script_str = paths::strip_win_prefix(&download_script);

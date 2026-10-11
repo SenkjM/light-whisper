@@ -26,6 +26,7 @@ pub fn locate_engine_binary(
     let name = binary_file_name();
     let candidates = [
         resource_dir.map(|d| d.join("resources").join(&name)),
+        resource_dir.map(|d| d.join(&name)),
         dev_dir.map(|d| d.join(&name)),
     ];
     candidates.into_iter().flatten().find(|p| p.is_file())

@@ -32,12 +32,12 @@ Rust 壳拉起 `lw-engine`（默认 `--listen 127.0.0.1:0`），读取 **stdout 
 
 | 环境变量 | 作用 |
 |----------|------|
-| `LW_ENGINE_BACKEND` | `python`（默认，行为不变）或 `go` |
+| `LW_ENGINE_BACKEND` | **`go`（默认）** 或 `python`（仅开发回退，安装包不含 Python 引擎） |
 | `LW_ENGINE_PATH` | 指定 `lw-engine[.exe]` 路径（优先级最高） |
 | `LW_ENGINE_GO_BACKEND` | 传给 `--backend`，默认 `mock` |
 
 - **查找顺序**：`LW_ENGINE_PATH` → `<resource_dir>/resources/lw-engine[.exe]`（安装包）→ 开发构建下的 `engine/lw-engine[.exe]`。
-- **打包**：`tauri.conf.json` 暂未加入 `lw-engine.exe`（文件缺失会让打包失败）。需要时手动执行 `cd engine && go build -o ../src-tauri/resources/lw-engine.exe ./cmd/lw-engine`，再把 `resources/lw-engine.exe` 加进 `bundle.resources`。步骤 5 会改成正式构建步骤。
+- **打包（默认纯 Go）**：`./scripts/build_lw_engine_for_bundle.sh windows` → `resources/lw-engine.exe`；`tauri.conf.json` 已列入该二进制且**不再**包含 `engine.tar.xz`。见 `scripts/verify_lw_engine_bundle.mjs`。
 - **拉起**：`--listen 127.0.0.1:0 --backend <mock|native> --exit-on-stdin-close --data-dir <应用数据目录>`；stdin 保持打开（父进程消失 → 引擎退出）；stderr 写 `<数据目录>/go_engine_stderr.log`；Windows 用 `CREATE_NO_WINDOW`，并把子进程加入带 `KILL_ON_JOB_CLOSE` 的 Job Object（步骤 5）。握手超时 15 s，`api_version` ≠ 1 视为不兼容；随后再用 `GET /health` 核对一次 token 与版本。
 - **崩溃重启**（PLAN §6 #3）：退避 1 s、2 s、4 s … 上限 30 s；连续失败 5 次后停止并报告 `failed`；稳定运行 60 s 后计数清零；版本不兼容直接 `failed`，不重启。应用退出（托盘「退出」）时结束子进程。
 - **设置**：`go` 模式下 `get/set_engine`、`get/set_models_dir`、`get/set_gpu_idle_seconds` 经 `GET/PATCH /v1/config`。412 时重读 revision 并重试（最多 3 次，补丁是绝对值，可安全重放）；写入 reload 键后调用 `POST /v1/engine/reload`，实时会话中返回 409 时保留 `pending_reload`。引擎处于 `failed` / 未启动时回退为直接写 engine.json（此时没有进程持有该文件）。识别仍由 Python 引擎完成。
@@ -100,9 +100,9 @@ Rust 壳拉起 `lw-engine`（默认 `--listen 127.0.0.1:0`），读取 **stdout 
 | Qwen3 整句实时 | 同一 WS 端点，`started.mode = "sentence"`：VAD 切句、逐句识别，`partial` 只在新句识别完成时发送，`committed` 按句追加、`tentative` 为空 | `ws-protocol.md` |
 
 协议新增（均为新增字段 / 端点 / 错误码，`api_version` 仍为 1）：`started.mode`；`SchedulerStats` 的 `high_queued` / `normal_queued` / `realtime_hold` / `preemptions` / `yields`（移除了两级时代的 `batch_queued`，`running_kind` 改为 Priority 取值）；`EngineStatus.jobs`；`/v1/jobs` 全部；错误码 `invalid_priority`（400）、`not_found`（404）；设置键 `default_priority_voice` / `default_priority_file`。
-## 步骤 5：Rust 经 Go API 识别（`LW_ENGINE_BACKEND=go`）
+## 步骤 5：Rust 经 Go API 识别（默认 `LW_ENGINE_BACKEND=go`）
 
-默认仍是 `python`（行为不变）。`LW_ENGINE_BACKEND=go` 时：
+默认安装包纯 Go。`LW_ENGINE_BACKEND=python` 仅开发回退。`go`（默认）时：
 
 | 能力 | 实现 |
 |------|------|

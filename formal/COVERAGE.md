@@ -83,3 +83,9 @@ proved. New boundaries or source changes require renewed correspondence review.
 
 - `patch_app_preferences` + FE `src/lib/appPreferences.ts`：业务设置源在壳内。
 - `DevEngineConsole` / Vite `/lw-engine` 代理：无 Tauri 引擎调试（非 Tauri 命令，不进清单）。
+
+## 默认纯 Go 安装包
+
+- 资源：`lw-engine.exe`（无 `engine.tar.xz`）；`LW_ENGINE_BACKEND` 默认 `go`。
+- 构建：`scripts/build_lw_engine_for_bundle.sh` + `scripts/verify_lw_engine_bundle.mjs`。
+- Python 编排仍留在源码树，仅 `LW_ENGINE_BACKEND=python` 开发回退（不进默认包）。

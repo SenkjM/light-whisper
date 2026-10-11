@@ -23,8 +23,9 @@ API 契约：[`docs/command-cube/api/`](../docs/command-cube/api/README.md)。
 | 文件转录 job（步骤 4）：`/v1/jobs`，VAD 分段、按单元让出 / 被抢占后续做、`job_progress` 事件、取消 | ✅ |
 | 模型下载、CUDA 运行时下载 | ⏳ 契约占位 |
 | Rust 客户端：拉起、握手、版本校验、崩溃重启、config 读写、事件转发（`src-tauri/crates/lw-engine-client`，开关 `LW_ENGINE_BACKEND=go`） | ✅ |
-| Rust 经 Go API 识别（步骤 5，`LW_ENGINE_BACKEND=go`）：WS 流 + pre-started 缓冲、transcribe、jobs、Job Object；删 interim；密钥只写；app_preferences | ✅；默认 python 包仍含 engine.tar.xz；Go 包见 `scripts/build_lw_engine_for_bundle.sh` |
+| Rust 经 Go API 识别（步骤 5）：WS 流 + jobs、Job Object；删 interim；密钥只写；app_preferences | ✅；**默认 `LW_ENGINE_BACKEND=go`**，安装包打 `lw-engine.exe`（无 engine.tar.xz） |
 | 独立前端（步骤 6）：壳 prefs 为业务设置源、streaming/sentence UI、`pnpm dev`+Go 调试台 | ✅ 见 `scripts/dev_go_engine.sh` 与 `?view=dev-engine` |
+| 默认纯 Go 安装包 | ✅ `tauri.conf.json` + `scripts/build_lw_engine_for_bundle.sh`；python/`engine.tar.xz` 不进包 |
 
 ## 目录
 
@@ -156,3 +157,16 @@ CGO_ENABLED=1 LW_TRANSCRIBE_LIBRARY=/path/libtranscribe.so LW_QWEN3_MODEL=/path/
 - `internal/qwen3/` 的 `backend.go`、`nvidia_*.go` 与 `backend_test.go` 由 `qwen3_asr_server.py` 及其测试移植，标 **GPL-3.0-only**；C ABI 绑定、整句模式（`sentence.go`）、回放 / Live / 打断测试为新写的 AGPL-3.0-only。
 
 依赖：`github.com/coder/websocket`（ISC）；`github.com/yalue/onnxruntime_go`（MIT，仅 `lwnative` 构建）。见根目录 `THIRD_PARTY_NOTICES.md`。
+
+
+## 打包（默认安装包）
+
+```bash
+./scripts/build_lw_engine_for_bundle.sh windows   # → src-tauri/resources/lw-engine.exe
+pnpm build:distribution                           # verify_lw_engine_bundle + 前端
+pnpm tauri build                                  # NSIS；beforeBuildCommand 会再跑 distribution
+```
+
+- 默认后端：`LW_ENGINE_BACKEND=go`（无需再设）。开发回退：`LW_ENGINE_BACKEND=python`（需本机自备 PyInstaller 归档或开发 Python，**不在安装包内**）。
+- 默认 `go build` 为纯 Go（`--backend mock` 可用）。真实 ASR：`CGO_ENABLED=1 go build -tags lwnative` 并另备原生 DLL（见上文 `lwnative`）。
+- VAD 资源 `fireredvad_vad.onnx` / `fireredvad_cmvn.json` 仍随包装入，供 native 后端使用。

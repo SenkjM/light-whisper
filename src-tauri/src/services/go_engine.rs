@@ -1,20 +1,20 @@
 // SPDX-FileCopyrightText: 2026 SenkjM
 // SPDX-License-Identifier: AGPL-3.0-only
 
-//! Go 引擎（lw-engine）接入层，PLAN 步骤 1 的 Rust 一半。
+//! Go 引擎（lw-engine）接入层，PLAN 步骤 1 / 5 的 Rust 一半。
 //!
-//! 开关：环境变量 `LW_ENGINE_BACKEND=go|python`，默认 `python`（行为与以前完全
-//! 一致，本模块什么都不做）。`go` 时：
-//! - 启动时拉起 lw-engine（`--backend` 取 `LW_ENGINE_GO_BACKEND`，默认 `mock`），
-//!   读握手、校验 api_version，崩溃后有界指数退避重启，退出时结束子进程；
-//! - 引擎字段设置（engine / models_dir / gpu_idle_seconds）的读写走 Go 的
-//!   `/v1/config`（412 冲突自动重读重试；需要 reload 的字段写入后调用
-//!   `/v1/engine/reload`，会话中 409 时保持 pending_reload）；
-//! - `/v1/events` 的状态与配置事件转发为 Tauri 事件。
+//! 开关：环境变量 `LW_ENGINE_BACKEND=go|python`，**默认 `go`**（安装包纯 Go，
+//! 不再捆绑 `engine.tar.xz` / PyInstaller）。开发者可用 `python` 回退到源码树
+//! 里的 Python 编排（不进默认安装包）。
 //!
-//! 步骤 5：`LW_ENGINE_BACKEND=go` 时识别也走 Go（`go_asr`：WS 实时流、
-//! HTTP 整段转录、`/v1/jobs`）。默认 `python` 时本模块只负责设置代理（若启用
-//! go）或完全空操作；Python 代码与路径保持不变。
+//! `go` 时：
+//! - 启动时拉起 lw-engine（`--backend` 取 `LW_ENGINE_GO_BACKEND`，默认 `mock`；
+//!   真实推理需 `-tags lwnative` 构建并带原生 DLL，见 `engine/README.md`）；
+//! - 设置读写走 `/v1/config`；`/v1/events` 转发为 Tauri 事件；
+//! - 识别走 `go_asr`（WS 流、HTTP 转录、`/v1/jobs`）。
+//!
+//! `python` 时本模块不拉起进程；funasr_service 仍可解压/启动历史 Python 引擎
+//!（仅本地调试，默认包不再提供归档）。
 
 use std::path::PathBuf;
 use std::sync::OnceLock;
@@ -51,13 +51,13 @@ pub enum EngineBackend {
 
 fn parse_backend(value: Option<&str>) -> EngineBackend {
     match value.map(|v| v.trim().to_ascii_lowercase()) {
-        Some(v) if v == "go" => EngineBackend::Go,
-        Some(v) if v.is_empty() || v == "python" => EngineBackend::Python,
+        Some(v) if v == "python" => EngineBackend::Python,
+        Some(v) if v.is_empty() || v == "go" => EngineBackend::Go,
         Some(other) => {
-            log::warn!("LW_ENGINE_BACKEND={other} 无法识别，使用 python");
-            EngineBackend::Python
+            log::warn!("LW_ENGINE_BACKEND={other} 无法识别，使用 go");
+            EngineBackend::Go
         }
-        None => EngineBackend::Python,
+        None => EngineBackend::Go,
     }
 }
 
@@ -98,7 +98,7 @@ pub fn start(app: &tauri::AppHandle) {
         dev_engine_dir().as_deref(),
     ) else {
         let msg = format!(
-            "LW_ENGINE_BACKEND=go 但找不到 {}（可用 LW_ENGINE_PATH 指定，或放到 resources/ 下）",
+            "找不到 Go 引擎 {}（可用 LW_ENGINE_PATH 指定，或先运行 scripts/build_lw_engine_for_bundle.sh）",
             lw_engine_client::binary_file_name()
         );
         log::error!("{msg}");
@@ -361,11 +361,12 @@ mod tests {
     use super::*;
 
     #[test]
-    fn backend_defaults_to_python() {
-        assert_eq!(parse_backend(None), EngineBackend::Python);
-        assert_eq!(parse_backend(Some("")), EngineBackend::Python);
-        assert_eq!(parse_backend(Some("python")), EngineBackend::Python);
-        assert_eq!(parse_backend(Some("rust")), EngineBackend::Python);
+    fn backend_defaults_to_go() {
+        assert_eq!(parse_backend(None), EngineBackend::Go);
+        assert_eq!(parse_backend(Some("")), EngineBackend::Go);
+        assert_eq!(parse_backend(Some("go")), EngineBackend::Go);
+        assert_eq!(parse_backend(Some("rust")), EngineBackend::Go);
         assert_eq!(parse_backend(Some(" Go ")), EngineBackend::Go);
+        assert_eq!(parse_backend(Some("python")), EngineBackend::Python);
     }
 }
