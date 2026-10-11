@@ -17,7 +17,6 @@ pub(crate) const INTERIM_INTERVAL_DOWN_STEP_MS: u64 = 24;
 pub(crate) const INTERIM_INTERVAL_UP_STEP_MS: u64 = 42;
 pub(crate) const INTERIM_HEAVY_COST_MS: u64 = 420;
 pub(crate) const INTERIM_LIGHT_COST_MS: u64 = 180;
-pub(crate) const INTERIM_MAX_AUDIO_WINDOW_SEC: f64 = 12.0;
 
 pub(crate) const RESULT_HIDE_DELAY_MS: u64 = 2500;
 pub(crate) const EMPTY_RESULT_HIDE_DELAY_MS: u64 = 360;
@@ -90,7 +89,6 @@ macro_rules! build_input_stream_dispatch {
 
 mod capture;
 mod finalize;
-mod interim;
 mod monitor;
 mod native_capture;
 #[cfg(test)]
@@ -110,7 +108,6 @@ mod windows_capture;
 
 pub use capture::{list_input_devices_sync, spawn_audio_capture_thread, spawn_waveform_emitter};
 pub use finalize::{discard_recording, finalize_recording};
-pub use interim::spawn_interim_loop;
 pub use monitor::{
     start_microphone_level_monitor, stop_microphone_level_monitor, test_microphone_sync,
 };

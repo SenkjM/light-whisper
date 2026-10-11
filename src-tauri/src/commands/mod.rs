@@ -10,6 +10,7 @@ pub mod grok_build_oauth;
 pub mod history;
 pub mod hotkey;
 pub mod jev;
+pub mod preferences;
 pub mod profile;
 pub mod selection;
 pub mod updater;

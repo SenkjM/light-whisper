@@ -17,7 +17,7 @@ import {
   setScreenContextMode,
   setWebSearchMode,
   setPolishMode,
-  getAiPolishApiKey,
+  getAiPolishApiKey, hasAiPolishApiKey,
   getGrokBuildOauthStatus,
   getOpenaiCodexOauthStatus,
   getUserProfile,
@@ -26,7 +26,7 @@ import {
   removeHotWord,
   setLlmProviderConfig,
   setScreenVisionConfig,
-  getScreenVisionApiKey,
+  getScreenVisionApiKey, hasScreenVisionApiKey,
   setScreenVisionApiKey,
   setSoundEnabled,
   setTranslationTarget,
@@ -40,7 +40,7 @@ import {
   setAssistantSystemPrompt,
   getLlmReasoningSupport,
   setAssistantApiKey,
-  getAssistantApiKey,
+  getAssistantApiKey, hasAssistantApiKey,
   loginGrokBuildOauth,
   loginOpenaiCodexOauth,
   startGrokBuildOauthDeviceCode,
@@ -53,7 +53,7 @@ import {
   setOpenaiFastMode,
   setWebSearchConfig,
   setWebSearchApiKey,
-  getWebSearchApiKey,
+  getWebSearchApiKey, hasWebSearchApiKey,
   hideMainWindow,
 } from "@/api/tauri";
 import type { ContextMode, CustomProvider, UserProfile, ApiFormat, GrokBuildOauthDeviceCodeChallenge, GrokBuildOauthStatus, LlmReasoningMode, LlmReasoningSupport, OpenaiAuthMode, OpenaiCodexOauthDeviceCodeChallenge, OpenaiCodexOauthStatus, PolishStructureLevel, WebSearchProvider, XaiAuthMode } from "@/types";
@@ -640,10 +640,10 @@ export default function SettingsPage({
 
   const refreshAiPolishKey = useCallback(async () => {
     try {
-      const key = (await getAiPolishApiKey()) || "";
-      setAiPolishApiKey(key);
-      await saveAiPolishApiKey(key).catch(() => {});
-      return key;
+      // Write-only: never pull the secret into the input or re-save it.
+      const has = await hasAiPolishApiKey();
+      setAiPolishApiKey("");
+      return has ? "configured" : "";
     } catch {
       setAiPolishApiKey("");
       return "";
@@ -652,9 +652,9 @@ export default function SettingsPage({
 
   const refreshAssistantKey = useCallback(async () => {
     try {
-      const key = (await getAssistantApiKey()) || "";
-      setAssistantApiKeyState(key);
-      return key;
+      const has = await hasAssistantApiKey();
+      setAssistantApiKeyState("");
+      return has ? "configured" : "";
     } catch {
       setAssistantApiKeyState("");
       return "";
@@ -664,11 +664,11 @@ export default function SettingsPage({
   const refreshScreenVisionKey = useCallback(async (provider: string) => {
     const requestId = ++screenVisionKeyRequestIdRef.current;
     try {
-      const key = (await getScreenVisionApiKey(provider)) || "";
+      const has = await hasScreenVisionApiKey(provider);
       if (requestId === screenVisionKeyRequestIdRef.current) {
-        setScreenVisionApiKeyState(key);
+        setScreenVisionApiKeyState("");
       }
-      return key;
+      return has ? "configured" : "";
     } catch {
       if (requestId === screenVisionKeyRequestIdRef.current) {
         setScreenVisionApiKeyState("");
@@ -685,11 +685,11 @@ export default function SettingsPage({
     }
     try {
       await webSearchKeySave.flush();
-      const key = (await getWebSearchApiKey(provider)) || "";
+      const has = await hasWebSearchApiKey(provider);
       if (requestId === webSearchKeyRequestIdRef.current) {
-        setWebSearchApiKeyState(key);
+        setWebSearchApiKeyState("");
       }
-      return key;
+      return has ? "configured" : "";
     } catch {
       if (requestId === webSearchKeyRequestIdRef.current) {
         setWebSearchApiKeyState("");

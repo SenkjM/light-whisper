@@ -440,6 +440,11 @@ fn toggle_mode_flag() -> &'static AtomicBool {
     FLAG.get_or_init(|| AtomicBool::new(false))
 }
 
+/// Apply toggle mode from shell preferences before hotkeys are registered.
+pub(crate) fn apply_recording_toggle_from_prefs(toggle: bool) {
+    toggle_mode_flag().store(toggle, Ordering::Release);
+}
+
 fn is_toggle_mode() -> bool {
     toggle_mode_flag().load(Ordering::Acquire)
 }
@@ -2061,6 +2066,7 @@ pub async fn set_recording_mode(
 ) -> Result<(), AppError> {
     let _configuration = hotkey_configuration_lock().lock();
     let previous_mode = toggle_mode_flag().swap(toggle, Ordering::AcqRel);
+    let _ = crate::state::app_preferences::update(|p| p.recording_toggle = toggle);
     if previous_mode == toggle {
         return Ok(());
     }

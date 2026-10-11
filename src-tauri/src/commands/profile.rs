@@ -410,19 +410,25 @@ pub async fn set_screen_vision_config(
     Ok(())
 }
 
+/// Write-only keyring (PLAN 步骤 5): never returns the secret to the frontend.
 #[tauri::command]
 pub async fn get_screen_vision_api_key(
+    _app_handle: tauri::AppHandle,
+    _provider: String,
+) -> Result<String, String> {
+    Ok(String::new())
+}
+
+#[tauri::command]
+pub async fn has_screen_vision_api_key(
     app_handle: tauri::AppHandle,
     provider: String,
-) -> Result<String, String> {
+) -> Result<bool, String> {
     let provider = provider.trim();
     if provider.is_empty() {
         return Err("视觉模型供应商不能为空".to_string());
     }
-    Ok(llm_provider::load_api_key_for_provider(
-        &app_handle,
-        provider,
-    ))
+    Ok(!llm_provider::load_api_key_for_provider(&app_handle, provider).is_empty())
 }
 
 #[tauri::command]

@@ -393,9 +393,17 @@ pub async fn set_online_asr_api_key(
     Ok(())
 }
 
+/// Write-only keyring (PLAN 步骤 5): never returns the secret to the frontend.
 #[tauri::command]
-pub async fn get_online_asr_api_key(state: tauri::State<'_, AppState>) -> Result<String, AppError> {
-    Ok(state.read_online_asr_api_key())
+pub async fn get_online_asr_api_key(
+    _state: tauri::State<'_, AppState>,
+) -> Result<String, AppError> {
+    Ok(String::new())
+}
+
+#[tauri::command]
+pub async fn has_online_asr_api_key(state: tauri::State<'_, AppState>) -> Result<bool, AppError> {
+    Ok(!state.read_online_asr_api_key().is_empty())
 }
 
 #[tauri::command]

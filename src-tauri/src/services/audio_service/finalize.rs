@@ -7,8 +7,8 @@ use tauri::{Emitter, Manager};
 use super::resample::ChunkedResampler;
 use super::wav::encode_wav;
 use super::{
-    EDIT_GRAB_WAIT_MS, EMPTY_RESULT_HIDE_DELAY_MS, INTERIM_MAX_AUDIO_WINDOW_SEC,
-    MIN_AUDIO_DURATION_SEC, PASTE_DELAY_MS, RESULT_HIDE_DELAY_MS, TARGET_SAMPLE_RATE,
+    EDIT_GRAB_WAIT_MS, EMPTY_RESULT_HIDE_DELAY_MS, MIN_AUDIO_DURATION_SEC, PASTE_DELAY_MS,
+    RESULT_HIDE_DELAY_MS, TARGET_SAMPLE_RATE,
 };
 use crate::services::{
     ai_polish_service, alibaba_asr_service, assistant_service, funasr_service, glm_asr_service,
@@ -179,10 +179,8 @@ pub async fn finalize_recording(app_handle: tauri::AppHandle, session: Recording
         trigger,
         sample_rate,
         audio_thread,
-        interim_task,
         native_recording,
         samples,
-        interim_cache,
         foreground_app,
         edit_grab,
         ..
@@ -195,18 +193,6 @@ pub async fn finalize_recording(app_handle: tauri::AppHandle, session: Recording
         })
         .await;
     }
-    // 等待 interim 任务自然结束；超时则 abort 以释放 funasr_process 锁
-    if let Some(t) = interim_task {
-        let abort_handle = t.abort_handle();
-        if tokio::time::timeout(std::time::Duration::from_secs(5), t)
-            .await
-            .is_err()
-        {
-            log::warn!("interim 任务超时 (5s)，强制中止");
-            abort_handle.abort();
-        }
-    }
-
     // The capture thread is joined: Finish now includes its final samples and
     // the resampler tail. A native result never falls back to whole-clip ASR.
     let native_finish_start = Instant::now();
@@ -272,7 +258,6 @@ pub async fn finalize_recording(app_handle: tauri::AppHandle, session: Recording
     let history_engine = paths::read_engine_config();
 
     let final_count = samples.lock().len();
-    let cached = interim_cache.lock().clone();
     let duration_sec = final_count as f64 / sample_rate as f64;
     let mode = trigger.mode();
 
@@ -323,18 +308,7 @@ pub async fn finalize_recording(app_handle: tauri::AppHandle, session: Recording
         audio_file,
     };
 
-    // 优先复用 interim 缓存，否则重新 ASR。
-    //
-    // 复用条件（全部成立才复用，否则重跑 do_final_asr）：
-    //   1. 录音必须完整落在 interim 窗口内 (final_count <= 12s * sample_rate)。
-    //      interim 缓存的是"最后 12 秒"的转写，用它顶替更长的 final 会直接丢
-    //      录音开头那段的文本（比率 >0.9 也一样丢，只是用户感知为"前几个字没了"）。
-    //   2. 尾部间隙 <= 250ms。以前是 "覆盖率 >=90%"，在短录音 / 快语速下可能把
-    //      250ms~500ms 的尾部音节丢掉。250ms 绝对阈值比百分比更保守，在长录音上
-    //      也不会放宽门槛；最差只会丢掉一次 interim 间隔内的静音/换气。
-    //   3. interim 确实返回了非空文本。
-    let max_interim_window_samples = (sample_rate as f64 * INTERIM_MAX_AUDIO_WINDOW_SEC) as usize;
-    let tail_gap_threshold_samples = (sample_rate as f64 * 0.25) as usize;
+    // Native / Go 流式结果优先；否则整段 ASR（步骤 5 已删除 interim 缓存复用）。
     let asr_start = Instant::now();
     let (asr_text, detected_lang): (Result<String, String>, Option<String>) =
         if let Some(result) = native_result {
@@ -343,24 +317,9 @@ pub async fn finalize_recording(app_handle: tauri::AppHandle, session: Recording
                 Err(error) => (Err(error), None),
             }
         } else {
-            match cached {
-                Some(ref c)
-                    if final_count > 0
-                        && final_count <= max_interim_window_samples
-                        && c.sample_count <= final_count
-                        && (final_count - c.sample_count) <= tail_gap_threshold_samples
-                        && !c.text.trim().is_empty() =>
-                {
-                    log::info!(
-                        "复用 interim 缓存 (尾部间隙 {:.0}ms)",
-                        (final_count - c.sample_count) as f64 * 1000.0 / sample_rate as f64
-                    );
-                    (Ok(c.text.clone()), c.language.clone())
-                }
-                _ => match do_final_asr(&app_handle, state.inner(), &samples, sample_rate).await {
-                    Ok(r) => (Ok(r.text), r.language),
-                    Err(e) => (Err(e), None),
-                },
+            match do_final_asr(&app_handle, state.inner(), &samples, sample_rate).await {
+                Ok(r) => (Ok(r.text), r.language),
+                Err(e) => (Err(e), None),
             }
         };
 
@@ -833,15 +792,6 @@ pub async fn discard_recording(session: RecordingSession) {
             let _ = h.join();
         })
         .await;
-    }
-    if let Some(t) = session.interim_task {
-        let abort_handle = t.abort_handle();
-        if tokio::time::timeout(std::time::Duration::from_secs(5), t)
-            .await
-            .is_err()
-        {
-            abort_handle.abort();
-        }
     }
     if let Some(recording) = session.native_recording {
         if let Err(error) = recording.cancel().await {

@@ -118,12 +118,21 @@ pub async fn set_web_search_mode(
     Ok(())
 }
 
+/// Write-only keyring (PLAN 步骤 5): never returns the secret to the frontend.
 #[tauri::command]
 pub async fn get_jev_api_key(
+    _app_handle: tauri::AppHandle,
+    _provider: JevProvider,
+) -> Result<String, String> {
+    Ok(String::new())
+}
+
+#[tauri::command]
+pub async fn has_jev_api_key(
     app_handle: tauri::AppHandle,
     provider: JevProvider,
-) -> Result<String, String> {
-    jev_service::load_api_key_for_provider(&app_handle, provider)
+) -> Result<bool, String> {
+    Ok(!jev_service::load_api_key_for_provider(&app_handle, provider)?.is_empty())
 }
 
 #[tauri::command]

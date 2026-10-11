@@ -2,7 +2,7 @@ import { createContext, useContext, useEffect, useMemo, type ReactNode } from "r
 import { useRecording } from "@/hooks/useRecording";
 import { useModelStatus, type ModelStage } from "@/hooks/useModelStatus";
 import { useHotkey } from "@/hooks/useHotkey";
-import { setInputMethodCommand, setAiPolishConfig, getAiPolishApiKey, setInputDevice, setSoundEnabled, setRecordingMode } from "@/api/tauri";
+import { setInputMethodCommand, setAiPolishConfig, setInputDevice, setSoundEnabled, setRecordingMode, getAppPreferences, migrateAppPreferences } from "@/api/tauri";
 import { readLocalStorage } from "@/lib/storage";
 import { INPUT_METHOD_KEY, INPUT_DEVICE_STORAGE_KEY, AI_POLISH_ENABLED_KEY, SOUND_ENABLED_KEY, RECORDING_MODE_KEY } from "@/lib/constants";
 import type {
@@ -136,13 +136,31 @@ export function RecordingProvider({ children }: { children: ReactNode }) {
     }
     if (aiPolishEnabled) {
       tasks.push({
-        name: "getAiPolishApiKey/setAiPolishConfig",
-        run: () =>
-          getAiPolishApiKey().then((apiKey) =>
-            setAiPolishConfig(aiPolishEnabled, apiKey),
-          ),
+        name: "setAiPolishConfig",
+        // Write-only: empty key keeps keyring value (PLAN 步骤 5).
+        run: () => setAiPolishConfig(aiPolishEnabled, ""),
       });
     }
+
+    // One-shot localStorage → shell preferences migration (idempotent on Rust side).
+    tasks.push({
+      name: "migrateAppPreferences",
+      run: async () => {
+        const existing = await getAppPreferences();
+        if (existing.migratedFromLocalStorage) return;
+        await migrateAppPreferences({
+          schemaVersion: 1,
+          hotkey: null,
+          recordingToggle: storedRecordingMode === "toggle",
+          inputDevice: storedInputDevice,
+          inputMethod: storedInputMethod === "clipboard" ? "clipboard" : storedInputMethod,
+          soundEnabled: storedSoundEnabled !== "false",
+          micLevelMonitorEnabled: false,
+          aiPolishEnabled,
+          migratedFromLocalStorage: true,
+        });
+      },
+    });
 
     if (tasks.length === 0) return;
 

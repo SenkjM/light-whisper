@@ -4,7 +4,7 @@ import { useTranslation } from "react-i18next";
 import {
   getAlibabaAsrConfig,
   getEngine,
-  getOnlineAsrApiKey,
+  getOnlineAsrApiKey, hasOnlineAsrApiKey,
   getOnlineAsrEndpoint,
   listAlibabaAsrModels,
   setAlibabaAsrModel,
@@ -33,6 +33,7 @@ export function useAsrEngineSettings({
   const [engine, setEngineState] = useState("qwen3-asr-0.6b");
   const [engineLoading, setEngineLoading] = useState(true);
   const [onlineAsrApiKey, setOnlineAsrApiKeyState] = useState("");
+  const [onlineAsrKeyConfigured, setOnlineAsrKeyConfigured] = useState(false);
   const [onlineAsrRegion, setOnlineAsrRegion] = useState("international");
   const [onlineAsrUrl, setOnlineAsrUrl] = useState("");
   const [onlineAsrRegionLoading, setOnlineAsrRegionLoading] = useState(false);
@@ -74,8 +75,12 @@ export function useAsrEngineSettings({
       setEngineState(value);
       setEngineLoading(false);
     }).catch(() => { if (current()) setEngineLoading(false); });
-    getOnlineAsrApiKey().then((key) => {
-      if (current() && keyVersion === keyReadVersion.current) setOnlineAsrApiKeyState(key || "");
+    // Write-only: never load the secret into the input; only whether one exists.
+    hasOnlineAsrApiKey().then((has) => {
+      if (current() && keyVersion === keyReadVersion.current) {
+        setOnlineAsrApiKeyState("");
+        setOnlineAsrKeyConfigured(has);
+      }
     }).catch(() => {});
     getOnlineAsrEndpoint().then((endpoint) => {
       if (!current()) return;
@@ -109,7 +114,7 @@ export function useAsrEngineSettings({
     }
   }, []);
 
-  const alibabaHasKey = engine === "alibaba-asr" && onlineAsrApiKey.trim().length > 0;
+  const alibabaHasKey = engine === "alibaba-asr" && (onlineAsrKeyConfigured || onlineAsrApiKey.trim().length > 0);
   useEffect(() => {
     if (engine !== "alibaba-asr" || !alibabaHasKey) return;
     void refreshAlibabaModels();
@@ -137,11 +142,12 @@ export function useAsrEngineSettings({
       // The backend reloads the keyring slot for the new online engine.
       if (newEngine === "glm-asr" || newEngine === "alibaba-asr") {
         try {
-          const [key, endpoint] = await Promise.all([
-            getOnlineAsrApiKey(),
+          const [has, endpoint] = await Promise.all([
+            hasOnlineAsrApiKey(),
             getOnlineAsrEndpoint(),
           ]);
-          setOnlineAsrApiKeyState(key || "");
+          setOnlineAsrApiKeyState("");
+          setOnlineAsrKeyConfigured(has);
           setOnlineAsrRegion(endpoint.region);
           setOnlineAsrUrl(endpoint.url);
         } catch {
@@ -176,8 +182,9 @@ export function useAsrEngineSettings({
       setOnlineAsrUrl(endpoint.url);
       if (engine === "alibaba-asr") {
         try {
-          const key = await getOnlineAsrApiKey();
-          setOnlineAsrApiKeyState(key || "");
+          const has = await hasOnlineAsrApiKey();
+          setOnlineAsrApiKeyState("");
+          setOnlineAsrKeyConfigured(has);
         } catch {
           toast.error(t("toast.onlineAsrConfigReadFailed"));
         }
@@ -194,6 +201,7 @@ export function useAsrEngineSettings({
     if (transitioning.current) return;
     keyReadVersion.current += 1;
     setOnlineAsrApiKeyState(value);
+    setOnlineAsrKeyConfigured(value.trim().length > 0 || onlineAsrKeyConfigured);
     onlineAsrKeySave.schedule(
       value,
       computeOnlineAsrKeyringUser(engine, onlineAsrRegion),
@@ -223,6 +231,7 @@ export function useAsrEngineSettings({
     handleOnlineAsrApiKeyChange,
     handleOnlineAsrRegionChange,
     onlineAsrApiKey,
+    onlineAsrKeyConfigured,
     onlineAsrRegion,
     onlineAsrRegionLoading,
     onlineAsrUrl,

@@ -168,9 +168,6 @@ pub(crate) async fn start_recording_with_start_owner(
 
     let samples: Arc<parking_lot::Mutex<Vec<i16>>> =
         Arc::new(parking_lot::Mutex::new(Vec::with_capacity(16000 * 30)));
-    let interim_cache: Arc<parking_lot::Mutex<Option<crate::state::InterimCache>>> =
-        Arc::new(parking_lot::Mutex::new(None));
-
     let capture_task = {
         let capture_stop = stop_flag.clone();
         let capture_samples = samples.clone();
@@ -207,9 +204,7 @@ pub(crate) async fn start_recording_with_start_owner(
                 samples,
                 sample_rate: actual_sample_rate,
                 audio_thread: Some(audio_thread),
-                interim_task: None,
                 native_recording: None,
-                interim_cache,
                 foreground_app: foreground_app.clone(),
                 edit_grab: edit_grab.take(),
             })
@@ -275,44 +270,27 @@ pub(crate) async fn start_recording_with_start_owner(
         }
     };
 
-    // PLAN 步骤 5: Go 后端下本地引擎一律走 WS 实时流（R2T2 streaming /
-    // Qwen3 sentence）；python 模式保持原分支（R2T2 native IPC / Qwen interim）。
+    // PLAN 步骤 5: 删除 interim.rs 伪实时。Go 本地引擎走 WS 流；python R2T2 走
+    // native IPC 流；python Qwen3 / 云端听写无实时字幕，松开后整段 ASR。
     let engine_name = crate::utils::paths::read_engine_config();
-    let (interim_task, native_recording) = if crate::services::go_engine::is_go()
+    let native_recording = if crate::services::go_engine::is_go()
         && !crate::utils::paths::is_online_engine(&engine_name)
     {
-        (
-            None,
-            Some(crate::services::go_asr::spawn_go_recording(
-                app_handle.clone(),
-                session_id,
-                samples.clone(),
-                actual_sample_rate,
-            )),
-        )
+        Some(crate::services::go_asr::spawn_go_recording(
+            app_handle.clone(),
+            session_id,
+            samples.clone(),
+            actual_sample_rate,
+        ))
     } else if engine_name == "confucius4-r2t2" {
-        (
-            None,
-            Some(audio_service::spawn_native_recording(
-                app_handle.clone(),
-                session_id,
-                samples.clone(),
-                actual_sample_rate,
-            )),
-        )
+        Some(audio_service::spawn_native_recording(
+            app_handle.clone(),
+            session_id,
+            samples.clone(),
+            actual_sample_rate,
+        ))
     } else {
-        (
-            Some(audio_service::spawn_interim_loop(
-                app_handle.clone(),
-                session_id,
-                stop_flag.clone(),
-                stop_notify.clone(),
-                samples.clone(),
-                actual_sample_rate,
-                interim_cache.clone(),
-            )),
-            None,
-        )
+        None
     };
 
     audio_service::spawn_waveform_emitter(
@@ -332,9 +310,7 @@ pub(crate) async fn start_recording_with_start_owner(
         samples,
         sample_rate: actual_sample_rate,
         audio_thread: Some(audio_thread),
-        interim_task,
         native_recording,
-        interim_cache,
         foreground_app,
         edit_grab: edit_grab.take(),
     });
@@ -540,7 +516,8 @@ pub async fn set_input_device(
     state: tauri::State<'_, AppState>,
     name: Option<String>,
 ) -> Result<(), AppError> {
-    state.set_selected_input_device_name(name);
+    state.set_selected_input_device_name(name.clone());
+    let _ = crate::state::app_preferences::update(|p| p.input_device = name);
     Ok(())
 }
 
@@ -549,7 +526,11 @@ pub async fn start_microphone_level_monitor(
     app_handle: tauri::AppHandle,
     state: tauri::State<'_, AppState>,
 ) -> Result<String, AppError> {
-    audio_service::start_microphone_level_monitor(app_handle, state.inner())
+    let result = audio_service::start_microphone_level_monitor(app_handle, state.inner());
+    if result.is_ok() {
+        let _ = crate::state::app_preferences::update(|p| p.mic_level_monitor_enabled = true);
+    }
+    result
 }
 
 #[tauri::command]
@@ -557,6 +538,7 @@ pub async fn stop_microphone_level_monitor(
     state: tauri::State<'_, AppState>,
 ) -> Result<(), AppError> {
     audio_service::stop_microphone_level_monitor(state.inner());
+    let _ = crate::state::app_preferences::update(|p| p.mic_level_monitor_enabled = false);
     Ok(())
 }
 

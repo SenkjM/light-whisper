@@ -55,6 +55,39 @@ pub fn run() {
                 utils::paths::get_data_dir()
             );
 
+            // PLAN 步骤 5: 壳内偏好（从 localStorage 迁入的热键/录音模式/麦克风等）
+            {
+                let prefs = state::app_preferences::init_from_disk();
+                let state = app_handle.state::<AppState>();
+                state
+                    .ui
+                    .sound_enabled
+                    .store(prefs.sound_enabled, std::sync::atomic::Ordering::Release);
+                if let Some(method) = prefs.input_method.clone() {
+                    if method == "sendInput" || method == "clipboard" {
+                        *state.ui.input_method.lock() = method;
+                    }
+                }
+                if let Some(device) = prefs.input_device.clone() {
+                    state.set_selected_input_device_name(Some(device));
+                }
+                state.profile.ai_polish_enabled.store(
+                    prefs.ai_polish_enabled,
+                    std::sync::atomic::Ordering::Release,
+                );
+                if prefs.recording_toggle {
+                    // Best-effort: set toggle mode without full hotkey re-register
+                    // (hotkeys register later in setup). The FE may still call
+                    // set_recording_mode; this covers relaunch before FE mounts.
+                    let _ =
+                        commands::hotkey::apply_recording_toggle_from_prefs(prefs.recording_toggle);
+                }
+                log::info!(
+                    "已加载 app_preferences.json (migrated={})",
+                    prefs.migrated_from_local_storage
+                );
+            }
+
             // 启动时加载用户画像
             {
                 let state = app_handle.state::<AppState>();
@@ -239,6 +272,9 @@ pub fn run() {
             commands::funasr::restart_funasr,
             commands::funasr::get_engine,
             commands::go_engine::get_go_engine_status,
+            commands::preferences::get_app_preferences,
+            commands::preferences::migrate_app_preferences,
+            commands::preferences::set_app_preference_hotkey,
             commands::go_jobs::submit_go_transcription_job,
             commands::go_jobs::get_go_transcription_job,
             commands::go_jobs::list_go_transcription_jobs,
@@ -248,6 +284,7 @@ pub fn run() {
             commands::funasr::set_gpu_idle_seconds,
             commands::funasr::set_online_asr_api_key,
             commands::funasr::get_online_asr_api_key,
+            commands::funasr::has_online_asr_api_key,
             commands::funasr::get_online_asr_endpoint,
             commands::funasr::set_online_asr_endpoint,
             commands::funasr::get_alibaba_asr_config,
@@ -291,12 +328,14 @@ pub fn run() {
             commands::funasr::set_r2t2_config,
             commands::ai_polish::set_ai_polish_config,
             commands::ai_polish::get_ai_polish_api_key,
+            commands::ai_polish::has_ai_polish_api_key,
             commands::ai_polish::set_ai_polish_api_key,
             commands::ai_polish::set_ai_polish_screen_context_enabled,
             commands::ai_polish::set_screen_context_enabled,
             commands::ai_polish::list_ai_models,
             commands::ai_polish::set_assistant_api_key,
             commands::ai_polish::get_assistant_api_key,
+            commands::ai_polish::has_assistant_api_key,
             commands::jev::set_jev_config,
             commands::jev::set_jev_provider,
             commands::jev::set_polish_mode,
@@ -304,6 +343,7 @@ pub fn run() {
             commands::jev::set_screen_context_mode,
             commands::jev::set_web_search_mode,
             commands::jev::get_jev_api_key,
+            commands::jev::has_jev_api_key,
             commands::jev::set_jev_api_key,
             commands::profile::get_user_profile,
             commands::profile::set_history_settings,
@@ -313,6 +353,7 @@ pub fn run() {
             commands::profile::set_llm_provider_config,
             commands::profile::set_screen_vision_config,
             commands::profile::get_screen_vision_api_key,
+            commands::profile::has_screen_vision_api_key,
             commands::profile::set_screen_vision_api_key,
             commands::profile::get_llm_reasoning_support,
             commands::profile::export_user_profile,
@@ -341,9 +382,11 @@ pub fn run() {
             commands::assistant::set_web_search_config,
             commands::assistant::set_web_search_api_key,
             commands::assistant::get_web_search_api_key,
+            commands::assistant::has_web_search_api_key,
             commands::selection::set_selection_assistant_config,
             commands::selection::set_selection_api_key,
             commands::selection::get_selection_api_key,
+            commands::selection::has_selection_api_key,
             commands::selection::resize_selection_window,
             commands::selection::hide_selection_assistant,
             commands::selection::start_selection_window_drag,
@@ -593,9 +636,6 @@ fn stop_funasr_on_exit(app: &tauri::AppHandle) {
                 s.stop_flag
                     .store(true, std::sync::atomic::Ordering::Relaxed);
                 s.stop_notify.notify_waiters();
-                if let Some(task) = s.interim_task {
-                    task.abort();
-                }
             }
         }
     }

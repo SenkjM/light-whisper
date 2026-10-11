@@ -199,6 +199,10 @@ export function getAiPolishApiKey(): Promise<string> {
   return invokeCommand<string>("get_ai_polish_api_key");
 }
 
+export function hasAiPolishApiKey(): Promise<boolean> {
+  return invokeCommand<boolean>("has_ai_polish_api_key");
+}
+
 export function setJevConfig(enabled: boolean, provider: JevProvider): Promise<void> {
   return invokeCommand<void>("set_jev_config", { enabled, provider });
 }
@@ -235,6 +239,10 @@ export function setR2T2Config(context: string, language: string | null): Promise
 
 export function getJevApiKey(provider: JevProvider): Promise<string> {
   return invokeCommand<string>("get_jev_api_key", { provider });
+}
+
+export function hasJevApiKey(provider: JevProvider): Promise<boolean> {
+  return invokeCommand<boolean>("has_jev_api_key", { provider });
 }
 
 export function setJevApiKey(provider: JevProvider, apiKey: string): Promise<void> {
@@ -370,6 +378,10 @@ export function getScreenVisionApiKey(provider: string): Promise<string> {
   return invokeCommand<string>("get_screen_vision_api_key", { provider });
 }
 
+export function hasScreenVisionApiKey(provider: string): Promise<boolean> {
+  return invokeCommand<boolean>("has_screen_vision_api_key", { provider });
+}
+
 export function setScreenVisionApiKey(provider: string, apiKey: string): Promise<void> {
   return invokeCommand<void>("set_screen_vision_api_key", { provider, apiKey });
 }
@@ -380,6 +392,10 @@ export function setAssistantApiKey(apiKey: string): Promise<void> {
 
 export function getAssistantApiKey(): Promise<string> {
   return invokeCommand<string>("get_assistant_api_key", {});
+}
+
+export function hasAssistantApiKey(): Promise<boolean> {
+  return invokeCommand<boolean>("has_assistant_api_key");
 }
 
 export function getLlmReasoningSupport(
@@ -469,6 +485,10 @@ export function setSelectionApiKey(provider: string, apiKey: string): Promise<vo
 
 export function getSelectionApiKey(provider: string): Promise<string> {
   return invokeCommand<string>("get_selection_api_key", { provider });
+}
+
+export function hasSelectionApiKey(provider: string): Promise<boolean> {
+  return invokeCommand<boolean>("has_selection_api_key", { provider });
 }
 
 export function resizeSelectionWindow(expanded: boolean): Promise<void> {
@@ -566,6 +586,10 @@ export function getWebSearchApiKey(provider: WebSearchProvider): Promise<string>
   return invokeCommand<string>("get_web_search_api_key", { provider });
 }
 
+export function hasWebSearchApiKey(provider: WebSearchProvider): Promise<boolean> {
+  return invokeCommand<boolean>("has_web_search_api_key", { provider });
+}
+
 export function addCustomProvider(
   name: string,
   baseUrl: string,
@@ -641,6 +665,10 @@ export function getOnlineAsrApiKey(): Promise<string> {
   return invokeCommand<string>("get_online_asr_api_key");
 }
 
+export function hasOnlineAsrApiKey(): Promise<boolean> {
+  return invokeCommand<boolean>("has_online_asr_api_key");
+}
+
 export function getOnlineAsrEndpoint(): Promise<{ region: string; url: string }> {
   return invokeCommand<{ region: string; url: string }>("get_online_asr_endpoint");
 }
@@ -691,3 +719,23 @@ export function setModelsDir(path: string | null, migrate: boolean): Promise<Mod
 }
 
 export { enableAutostart, disableAutostart, isAutostartEnabled };
+
+export type AppPreferences = {
+  schemaVersion: number;
+  hotkey?: string | null;
+  recordingToggle?: boolean;
+  inputDevice?: string | null;
+  inputMethod?: string | null;
+  soundEnabled?: boolean;
+  micLevelMonitorEnabled?: boolean;
+  aiPolishEnabled?: boolean;
+  migratedFromLocalStorage?: boolean;
+};
+
+export function getAppPreferences(): Promise<AppPreferences> {
+  return invokeCommand<AppPreferences>("get_app_preferences");
+}
+
+export function migrateAppPreferences(preferences: AppPreferences): Promise<AppPreferences> {
+  return invokeCommand<AppPreferences>("migrate_app_preferences", { preferences });
+}

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
 
-import { getJevApiKey, setJevApiKey, setJevProvider, setJevFeatures, validateCorrections } from "@/api/tauri";
+import { getJevApiKey, hasJevApiKey, setJevApiKey, setJevProvider, setJevFeatures, validateCorrections } from "@/api/tauri";
 import SecretInput from "@/components/SecretInput";
 import { SettingsReveal } from "./SettingsReveal";
 import { useDebouncedCallback } from "@/hooks/useDebouncedCallback";
@@ -64,7 +64,8 @@ export default function JevSettingsSection({ profile, onSaved, polishEnabled = t
     const requestId = ++keyRequestIdRef.current;
     setKeyLoadError(false);
     try {
-      const value = await getJevApiKey(targetProvider);
+      await hasJevApiKey(targetProvider);
+      const value = ""; // write-only: never show secret
       if (
         requestId === keyRequestIdRef.current
         && providerRef.current === targetProvider

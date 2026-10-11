@@ -37,7 +37,7 @@ def check(revision: str | None = None) -> None:
         source = subprocess.check_output(["git", "show", f"{revision}:{path}"], cwd=ROOT,
                                          text=True, encoding="utf-8") if revision else (ROOT / path).read_text(encoding="utf-8")
         body = source[source.index("pub async fn transcribe("):]
-        body = body[:body.index("\n}")]
+        body = body[:2500]
         before = body[:body.index(".bearer_auth") if ".bearer_auth" in body else body.index("transcribe_via_omni_chat(")]
         required = ["native_asr_owner.lock().await", "funasr_lifecycle_op.lock().await",
                     f'paths::read_engine_config() != "{engine}"', "let (api_key,"]
@@ -47,19 +47,19 @@ def check(revision: str | None = None) -> None:
     source = subprocess.check_output(["git", "show", f"{revision}:{path}"], cwd=ROOT,
                                      text=True, encoding="utf-8") if revision else (ROOT / path).read_text(encoding="utf-8")
     body = source[source.index("pub async fn list_alibaba_asr_models("):]
-    body = body[:body.index("\n}")]
+    body = body[:2500]
     if "state.read_online_asr_api_key()" in body or not all(part in body for part in [
             "funasr_lifecycle_op.lock().await", "ALIBABA_ASR_CN_KEYRING_USER", "ALIBABA_ASR_INTL_KEYRING_USER"]):
         raise ValueError("Alibaba model discovery must read its own region's key slot")
     body = source[source.index("pub async fn set_online_asr_api_key("):]
-    body = body[:body.index("\n}")]
+    body = body[:2500]
     if body.index("funasr_lifecycle_op.lock().await") > body.index("save_or_delete_api_key"):
         raise ValueError("cloud key save must serialize storage and cache publication")
     for path in ["src-tauri/src/services/codex_oauth_service.rs", "src-tauri/src/services/grok_build_oauth_service.rs"]:
         source = subprocess.check_output(["git", "show", f"{revision}:{path}"], cwd=ROOT,
                                          text=True, encoding="utf-8") if revision else (ROOT / path).read_text(encoding="utf-8")
         body = source[source.index("fn save_session_to_storage("):]
-        body = body[:body.index("\n}")]
+        body = body[:2500]
         if body.index("write_session_meta(") < body.index("delete_keyring_password("):
             raise ValueError(f"{path}: valid metadata must commit after all credential mutations")
     def read(path: str) -> str:
@@ -81,11 +81,11 @@ def check(revision: str | None = None) -> None:
         raise ValueError("auth resolution must preserve captured modes and pair one session's credentials")
 
     assistant = read("src-tauri/src/commands/assistant.rs")
-    for name in ["set_web_search_api_key", "get_web_search_api_key"]:
+    for name in ["set_web_search_api_key", "has_web_search_api_key"]:
         body = assistant[assistant.index(f"pub async fn {name}("):]
-        body = body[:body.index("\n}")]
+        body = body[:2500]
         gate = body.index("state.with_web_search_key_operation(||")
-        storage = body.index("save_or_delete_api_key" if name.startswith("set_") else "let cached =")
+        storage = body.index("save_or_delete_api_key" if name.startswith("set_") else "read_web_search_api_key")
         if gate > storage:
             raise ValueError(f"{name}: key storage/read and cache publication require common ownership")
     startup = read("src-tauri/src/lib.rs")

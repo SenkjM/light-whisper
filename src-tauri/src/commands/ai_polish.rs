@@ -33,11 +33,15 @@ pub async fn set_ai_polish_config(
     enabled: bool,
     api_key: String,
 ) -> Result<(), String> {
-    update_ai_polish_api_key(&app_handle, state.inner(), api_key)?;
+    // Empty api_key = leave keyring untouched (write-only UI does not re-send secrets).
+    if !api_key.is_empty() {
+        update_ai_polish_api_key(&app_handle, state.inner(), api_key)?;
+    }
     state
         .profile
         .ai_polish_enabled
         .store(enabled, Ordering::Release);
+    let _ = crate::state::app_preferences::update(|p| p.ai_polish_enabled = enabled);
 
     log::info!("AI polish enabled state updated: {}", enabled);
     Ok(())
@@ -73,15 +77,21 @@ pub async fn set_ai_polish_api_key(
     update_ai_polish_api_key(&app_handle, state.inner(), api_key)
 }
 
+/// Write-only keyring (PLAN 步骤 5): never returns the secret to the frontend.
 #[tauri::command]
 pub async fn get_ai_polish_api_key(
+    _app_handle: tauri::AppHandle,
+    _state: tauri::State<'_, AppState>,
+) -> Result<String, String> {
+    Ok(String::new())
+}
+
+#[tauri::command]
+pub async fn has_ai_polish_api_key(
     app_handle: tauri::AppHandle,
     state: tauri::State<'_, AppState>,
-) -> Result<String, String> {
-    Ok(llm_provider::load_api_key_for_active_provider(
-        &app_handle,
-        state.inner(),
-    ))
+) -> Result<bool, String> {
+    Ok(!llm_provider::load_api_key_for_active_provider(&app_handle, state.inner()).is_empty())
 }
 
 #[tauri::command]
@@ -873,14 +883,20 @@ pub async fn set_assistant_api_key(
     Ok(())
 }
 
+/// Write-only keyring (PLAN 步骤 5): never returns the secret to the frontend.
 #[tauri::command]
 pub async fn get_assistant_api_key(
+    _app_handle: tauri::AppHandle,
+    _state: tauri::State<'_, AppState>,
+) -> Result<String, String> {
+    Ok(String::new())
+}
+
+#[tauri::command]
+pub async fn has_assistant_api_key(
     app_handle: tauri::AppHandle,
     state: tauri::State<'_, AppState>,
-) -> Result<String, String> {
+) -> Result<bool, String> {
     let provider = state.with_profile(|p| p.llm_provider.resolve_assistant_provider());
-    Ok(llm_provider::load_api_key_for_provider(
-        &app_handle,
-        &provider,
-    ))
+    Ok(!llm_provider::load_api_key_for_provider(&app_handle, &provider).is_empty())
 }

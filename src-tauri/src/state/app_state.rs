@@ -129,13 +129,6 @@ impl RecordingTrigger {
     }
 }
 
-#[derive(Clone)]
-pub struct InterimCache {
-    pub text: String,
-    pub sample_count: usize,
-    pub language: Option<String>,
-}
-
 pub struct RecordingSession {
     pub session_id: u64,
     pub subtitle_show_gen: u64,
@@ -145,9 +138,7 @@ pub struct RecordingSession {
     pub samples: Arc<parking_lot::Mutex<Vec<i16>>>,
     pub sample_rate: u32,
     pub audio_thread: Option<JoinHandle<()>>,
-    pub interim_task: Option<tokio::task::JoinHandle<()>>,
     pub native_recording: Option<crate::services::audio_service::NativeRecording>,
-    pub interim_cache: Arc<parking_lot::Mutex<Option<InterimCache>>>,
     /// 录音热键触发时的前台应用快照。规则、历史元数据和截图授权都必须基于
     /// 同一个边界，避免收尾阶段切换窗口后套用错误的隐私策略。
     pub foreground_app: Option<crate::utils::foreground::ForegroundApp>,
@@ -707,9 +698,7 @@ mod recording_snapshot_tests {
             samples: Arc::new(parking_lot::Mutex::new(Vec::new())),
             sample_rate: 16_000,
             audio_thread: None,
-            interim_task: None,
             native_recording: None,
-            interim_cache: Arc::new(parking_lot::Mutex::new(None)),
             foreground_app: None,
             edit_grab: None,
         })
