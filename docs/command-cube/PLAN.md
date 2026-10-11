@@ -547,6 +547,11 @@ flowchart TD
   - **无 Tauri 调试**：`./scripts/dev_go_engine.sh` + `pnpm dev` → `http://localhost:1422/?view=dev-engine`（Vite 代理 `/lw-engine`，引擎设置 PATCH + 文件 job）。
   - **未做**：Windows 真人 E2E；lwnative+DLL 默认随包；步骤 7 工具链。纯 Go 默认安装包已在步骤 5 打包段完成。
 
+
+### CI：Command-Cube smoke（可下载产物）
+
+独立工作流 [`.github/workflows/command-cube-smoke.yml`](../../.github/workflows/command-cube-smoke.yml)（仅 `Command-Cube` 分支 / `workflow_dispatch`，`windows-2022`）：构建 `lw-engine.exe`（纯 Go / mock 即可）+ 前端 + 尽量产出 Tauri NSIS/应用二进制，上传 artifact（约 14 天）。下载：GitHub → Actions → **Command-Cube smoke** → 最新成功 run → `command-cube-windows-app` / `command-cube-lw-engine`。此产物用于架构冒烟，**不是**带原生 DLL 的正式听写包。
+
 ### 步骤 7：后续工具（低优先级，非拆分门槛）
 
 - 歌词 LRC / 视频字幕 SRT/VTT（文件转录 job + VAD 句级时间，推荐 Qwen3；伴奏可能需要人声分离）；agent 占位能力。

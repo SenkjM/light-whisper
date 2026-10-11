@@ -170,3 +170,4 @@ pnpm tauri build                                  # NSIS；beforeBuildCommand �
 - 默认后端：`LW_ENGINE_BACKEND=go`（无需再设）。开发回退：`LW_ENGINE_BACKEND=python`（需本机自备 PyInstaller 归档或开发 Python，**不在安装包内**）。
 - 默认 `go build` 为纯 Go（`--backend mock` 可用）。真实 ASR：`CGO_ENABLED=1 go build -tags lwnative` 并另备原生 DLL（见上文 `lwnative`）。
 - VAD 资源 `fireredvad_vad.onnx` / `fireredvad_cmvn.json` 仍随包装入，供 native 后端使用。
+- CI 冒烟包：Actions 工作流 **Command-Cube smoke**（`command-cube-smoke.yml`）上传 `command-cube-lw-engine` / `command-cube-windows-app`（mock 后端，架构验证用）。

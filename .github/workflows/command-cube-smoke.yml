@@ -1,0 +1,178 @@
+# SPDX-FileCopyrightText: 2026 SenkjM
+# SPDX-License-Identifier: AGPL-3.0-only
+#
+# Separate smoke build for the Command-Cube (pure Go) architecture.
+# Produces downloadable Windows artifacts. Bundled lw-engine is the default
+# pure-Go binary (mock inference OK) — native audiocpp/transcribe DLLs are
+# not required for this workflow.
+
+name: Command-Cube smoke
+
+on:
+  push:
+    branches:
+      - Command-Cube
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  windows-smoke:
+    name: Windows Go + Tauri smoke
+    runs-on: windows-2022
+    timeout-minutes: 90
+    defaults:
+      run:
+        shell: pwsh
+    env:
+      CI: "true"
+      CARGO_TERM_COLOR: always
+      # Architecture smoke: mock Go backend is enough (no native DLLs).
+      LW_ENGINE_GO_BACKEND: mock
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Go
+        uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5 # v5.5.0
+        with:
+          go-version-file: engine/go.mod
+          cache-dependency-path: engine/go.sum
+
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22.14.0
+          package-manager-cache: false
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6.0.9
+        with:
+          version: 10.28.2
+          run_install: false
+
+      - name: Set up Rust
+        run: |
+          $PSNativeCommandUseErrorActionPreference = $true
+          rustup toolchain install 1.93.0 --profile minimal
+          rustup default 1.93.0
+          rustc --version
+          cargo --version
+
+      - name: Cache Rust dependencies and build outputs
+        uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            src-tauri/target
+            !src-tauri/target/**/incremental/**
+          key: command-cube-smoke-${{ runner.os }}-1.93.0-${{ hashFiles('src-tauri/Cargo.lock') }}-${{ hashFiles('src-tauri/src/**/*.rs', 'src-tauri/crates/**/*.rs', 'src-tauri/build.rs', 'src-tauri/Cargo.toml', 'src-tauri/tauri.conf.json') }}
+          restore-keys: |
+            command-cube-smoke-${{ runner.os }}-1.93.0-${{ hashFiles('src-tauri/Cargo.lock') }}-
+            command-cube-smoke-${{ runner.os }}-1.93.0-
+
+      - name: Install NSIS (for Tauri Windows installer)
+        run: choco install nsis -y --no-progress
+
+      - name: Build lw-engine.exe for Windows
+        shell: bash
+        run: ./scripts/build_lw_engine_for_bundle.sh windows
+
+      - name: Verify pure-Go bundle resources
+        run: node scripts/verify_lw_engine_bundle.mjs
+
+      - name: Upload lw-engine.exe
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: command-cube-lw-engine
+          path: src-tauri/resources/lw-engine.exe
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Install frontend dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build frontend (distribution verify + vite)
+        run: pnpm build:distribution
+
+      - name: Upload frontend dist
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: command-cube-frontend-dist
+          path: dist/
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Build Tauri Windows app (NSIS)
+        id: tauri_build
+        continue-on-error: true
+        run: |
+          $PSNativeCommandUseErrorActionPreference = $true
+          pnpm tauri build
+
+      - name: Collect Tauri bundle outputs
+        if: always()
+        run: |
+          $out = "smoke-upload"
+          New-Item -ItemType Directory -Force -Path $out | Out-Null
+          $nsis = Get-ChildItem -Path "src-tauri/target/release/bundle/nsis" -Filter "*.exe" -ErrorAction SilentlyContinue
+          $msi = Get-ChildItem -Path "src-tauri/target/release/bundle/msi" -Filter "*.msi" -ErrorAction SilentlyContinue
+          $app = Get-ChildItem -Path "src-tauri/target/release" -Filter "*.exe" -File -ErrorAction SilentlyContinue |
+            Where-Object { $_.Name -notmatch 'uninstall' }
+          if ($nsis) {
+            Copy-Item $nsis.FullName -Destination $out
+            Write-Host "Found NSIS: $($nsis.Name)"
+          }
+          if ($msi) {
+            Copy-Item $msi.FullName -Destination $out
+            Write-Host "Found MSI: $($msi.Name)"
+          }
+          # Prefer the main app binary next to release/
+          $main = Get-ChildItem -Path "src-tauri/target/release" -Filter "轻语 Whisper.exe" -File -ErrorAction SilentlyContinue
+          if (-not $main) {
+            $main = Get-ChildItem -Path "src-tauri/target/release" -Filter "light-whisper.exe" -File -ErrorAction SilentlyContinue
+          }
+          if (-not $main) {
+            $main = $app | Select-Object -First 1
+          }
+          if ($main) {
+            Copy-Item $main.FullName -Destination (Join-Path $out "app.exe")
+            Write-Host "Found app binary: $($main.Name)"
+          }
+          Get-ChildItem $out -ErrorAction SilentlyContinue | Format-Table Name, Length
+          if (-not (Get-ChildItem $out -ErrorAction SilentlyContinue)) {
+            Write-Host "No Tauri bundle outputs found (tauri build may have failed)."
+          }
+
+      - name: Upload Windows app / installer artifacts
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: command-cube-windows-app
+          path: smoke-upload/
+          if-no-files-found: warn
+          retention-days: 14
+
+      - name: Fail if neither installer nor app binary was produced
+        if: always()
+        run: |
+          $items = Get-ChildItem "smoke-upload" -ErrorAction SilentlyContinue
+          if (-not $items) {
+            if ("${{ steps.tauri_build.outcome }}" -ne "success") {
+              Write-Host "::warning::Tauri build did not produce uploadable binaries. lw-engine.exe and frontend dist were still uploaded."
+              # Soft-fail the job only when tauri failed AND nothing to upload —
+              # keep the workflow red so the gap is visible, but artifacts above remain.
+              exit 1
+            }
+            exit 1
+          }
+          Write-Host "Uploaded: $($items.Name -join ', ')"
