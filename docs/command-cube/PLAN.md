@@ -533,7 +533,7 @@ flowchart TD
     - **壳内偏好**：`<data_dir>/app_preferences.json`（热键/录音模式/麦克风/输入方式/提示音/电平监测/润色开关）；启动加载；`set_*` 持久化；`migrate_app_preferences` 一次性从 localStorage 迁入。主题 / UI 语言 / 引导仍前端 localStorage（步骤 6）。
     - **打包**：`scripts/build_lw_engine_for_bundle.sh` → `resources/lw-engine.exe`；默认包已去掉 `engine.tar.xz`；`LW_ENGINE_BACKEND=python` 仅开发者本机可选。
     - **formal/**：`verification.json` 登记 `go_jobs::*`、`has_*`、`preferences::*`、`go-engine-job-progress`；`COVERAGE.md` 更新步骤 5。
-  - **打包（已切默认纯 Go）**：`tauri.conf.json` 资源为 `lw-engine.exe` + VAD onnx/cmvn + 许可证；**不含** `engine.tar.xz` / PyInstaller / Python 脚本。`LW_ENGINE_BACKEND` **默认 `go`**；`python` 仅源码调试（需自备引擎归档或开发 Python）。`build:distribution` / `release.sh` 走 `build_lw_engine_for_bundle.sh` + `verify_lw_engine_bundle.mjs`。默认 `go build` 为纯 Go（mock）；真实 ASR 仍需 `-tags lwnative` + 原生 DLL（未默认随包）。
+  - **打包（已切默认纯 Go）**：`tauri.conf.json` 资源为 `lw-engine.exe` + VAD onnx/cmvn + 许可证；**不含** `engine.tar.xz` / PyInstaller / Python 脚本。`LW_ENGINE_BACKEND` **默认 `go`**；`python` 仅源码调试（需自备引擎归档或开发 Python）。`build:distribution` / `release.sh` 走 `build_lw_engine_for_bundle.sh` + `verify_lw_engine_bundle.mjs`。默认 `go build` 为纯 Go（mock）；真实 ASR 仍需 `-tags lwnative` + 原生 DLL（未默认随包）。 `build.rs` 正式构建默认校验 `lw-engine.exe`（`LW_ENGINE_BACKEND=python` 时才要求 `engine.tar.xz`）。
   - **仍未做 / 推迟**：端到端真人听写；lwnative 二进制与 audiocpp/transcribe/onnxruntime DLL 默认随包；Go 调度 / WS 的 TLA+ 模型（§6 #6 → 步骤 7 前）。业务 localStorage 已在步骤 6 迁出。
   - 测试：同上 client 集成测试；本轮 `cargo check`；`scripts/check_formal.py` 清单校对。
 

@@ -114,13 +114,11 @@ jobs:
 
       - name: Build Tauri Windows app (NSIS)
         id: tauri_build
-        continue-on-error: true
         run: |
           $PSNativeCommandUseErrorActionPreference = $true
           pnpm tauri build
 
       - name: Collect Tauri bundle outputs
-        if: always()
         run: |
           $out = "smoke-upload"
           New-Item -ItemType Directory -Force -Path $out | Out-Null
@@ -154,22 +152,21 @@ jobs:
           }
 
       - name: Upload Windows app / installer artifacts
-        if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: command-cube-windows-app
           path: smoke-upload/
-          if-no-files-found: warn
+          if-no-files-found: error
           retention-days: 14
 
-      - name: Summarize smoke artifacts
-        if: always()
+      - name: Require NSIS or app binary artifact
         run: |
           $items = @(Get-ChildItem "smoke-upload" -ErrorAction SilentlyContinue)
-          if ($items.Count -gt 0) {
-            Write-Host "Windows app artifacts: $($items.Name -join ', ')"
-          } else {
-            Write-Host "::warning::No Tauri NSIS/app binary in this run. Download command-cube-lw-engine and command-cube-frontend-dist for architecture smoke (mock Go backend)."
+          if ($items.Count -lt 1) {
+            throw "Tauri build produced no NSIS/MSI/app.exe under smoke-upload/. Pure-Go packaging should ship an installer after build.rs accepts lw-engine.exe."
           }
-          # Job succeeds when lw-engine + frontend dist uploaded earlier; Tauri
-          # installer is best-effort (continue-on-error on the build step).
+          $hasInstaller = $items | Where-Object { $_.Name -match '\.(exe|msi)$' }
+          if (-not $hasInstaller) {
+            throw "Expected an .exe or .msi in smoke-upload/; found: $($items.Name -join ', ')"
+          }
+          Write-Host "Windows app artifacts: $($items.Name -join ', ')"

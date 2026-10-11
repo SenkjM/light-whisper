@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 SenkjM
+// SPDX-License-Identifier: GPL-3.0-only
+
 use sha2::{Digest, Sha256};
 use std::env;
 use std::fs;
@@ -6,25 +9,32 @@ use std::path::{Path, PathBuf};
 
 mod build_support;
 
-use build_support::{select_engine_archive, ENGINE_ARCHIVE_CANDIDATES};
+use build_support::{
+    select_packaging_fingerprint_source, ENGINE_ARCHIVE_CANDIDATES, GO_ENGINE_CANDIDATES,
+};
 
 fn emit_rerun_hints() {
     for path in ENGINE_ARCHIVE_CANDIDATES {
         println!("cargo:rerun-if-changed={path}");
     }
+    for path in GO_ENGINE_CANDIDATES {
+        println!("cargo:rerun-if-changed={path}");
+    }
+    println!("cargo:rerun-if-changed=resources/lw-engine.placeholder");
+    println!("cargo:rerun-if-env-changed=LW_ENGINE_BACKEND");
     println!("cargo:rerun-if-changed=windows-app-manifest.xml");
 }
 
 fn compute_file_fingerprint(path: &Path) -> String {
     let file = fs::File::open(path)
-        .unwrap_or_else(|err| panic!("无法读取引擎归档 {}: {}", path.display(), err));
+        .unwrap_or_else(|err| panic!("无法读取打包指纹文件 {}: {}", path.display(), err));
     let mut reader = BufReader::with_capacity(8 * 1024 * 1024, file);
     let mut hasher = Sha256::new();
     let mut buffer = vec![0_u8; 8 * 1024 * 1024];
     loop {
         let read = reader
             .read(&mut buffer)
-            .unwrap_or_else(|err| panic!("无法计算引擎归档摘要 {}: {}", path.display(), err));
+            .unwrap_or_else(|err| panic!("无法计算打包指纹 {}: {}", path.display(), err));
         if read == 0 {
             break;
         }
@@ -49,11 +59,11 @@ fn main() {
         println!("cargo:rustc-link-arg-bin=light-whisper=/MANIFEST:NO");
     }
     let allow_placeholder = env::var("PROFILE").map_or(true, |profile| profile != "release");
-    let engine_archive = select_engine_archive(&manifest_dir, allow_placeholder)
+    let fingerprint_source = select_packaging_fingerprint_source(&manifest_dir, allow_placeholder)
         .unwrap_or_else(|message| panic!("{message}"));
     println!(
         "cargo:rustc-env=LIGHT_WHISPER_ENGINE_ARCHIVE_FINGERPRINT={}",
-        compute_file_fingerprint(&engine_archive)
+        compute_file_fingerprint(&fingerprint_source)
     );
 
     let attributes = tauri_build::Attributes::new().windows_attributes(

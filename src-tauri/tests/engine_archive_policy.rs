@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 SenkjM
+// SPDX-License-Identifier: AGPL-3.0-only
+
 #[path = "../build_support.rs"]
 mod build_support;
 
@@ -108,4 +111,38 @@ fn directories_are_not_treated_as_archives() {
         .expect("create same-name directory");
 
     assert!(build_support::select_engine_archive(test_dir.path(), false).is_err());
+}
+
+#[test]
+fn release_go_build_requires_lw_engine_binary() {
+    let test_dir = TestDir::new("go-release-missing");
+    let error = build_support::select_go_engine_binary(test_dir.path(), false)
+        .expect_err("release Go packaging must require lw-engine");
+    assert!(error.contains("lw-engine"));
+    assert!(error.contains("build_lw_engine_for_bundle"));
+}
+
+#[test]
+fn release_go_build_accepts_lw_engine_exe() {
+    let test_dir = TestDir::new("go-release-exe");
+    let exe = test_dir.path().join("resources/lw-engine.exe");
+    fs::write(&exe, b"go-engine").expect("write go binary");
+    assert_eq!(
+        build_support::select_go_engine_binary(test_dir.path(), false).expect("select go exe"),
+        exe
+    );
+}
+
+#[test]
+fn default_fingerprint_source_is_go_engine() {
+    let test_dir = TestDir::new("fingerprint-go");
+    let exe = test_dir.path().join("resources/lw-engine.exe");
+    fs::write(&exe, b"go-engine").expect("write go binary");
+    // Ensure python archive presence does not override default Go path.
+    fs::write(test_dir.path().join("resources/engine.tar.xz"), b"archive").expect("write archive");
+    assert_eq!(
+        build_support::select_packaging_fingerprint_source(test_dir.path(), false)
+            .expect("select go fingerprint"),
+        exe
+    );
 }
