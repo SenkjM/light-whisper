@@ -23,7 +23,7 @@ API 契约：[`docs/command-cube/api/`](../docs/command-cube/api/README.md)。
 | 文件转录 job（步骤 4）：`/v1/jobs`，VAD 分段、按单元让出 / 被抢占后续做、`job_progress` 事件、取消 | ✅ |
 | 模型下载、CUDA 运行时下载 | ⏳ 契约占位 |
 | Rust 客户端：拉起、握手、版本校验、崩溃重启、config 读写、事件转发（`src-tauri/crates/lw-engine-client`，开关 `LW_ENGINE_BACKEND=go`） | ✅ |
-| Rust 经 Go API 识别（步骤 5，`LW_ENGINE_BACKEND=go`）：WS 流 + pre-started 缓冲、transcribe、jobs、Job Object | ✅ 开关已接通；去 Python 打包 / 删 interim 等未做 |
+| Rust 经 Go API 识别（步骤 5，`LW_ENGINE_BACKEND=go`）：WS 流 + pre-started 缓冲、transcribe、jobs、Job Object；删 interim；密钥只写；app_preferences | ✅；默认 python 包仍含 engine.tar.xz；Go 包见 `scripts/build_lw_engine_for_bundle.sh` |
 
 ## 目录
 

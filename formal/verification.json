@@ -453,6 +453,52 @@
     ],
     "commands::funasr::set_gpu_idle_seconds": [
       "gpu-idle"
+    ],
+    "commands::go_jobs::submit_go_transcription_job": [
+      "engine",
+      "transport"
+    ],
+    "commands::go_jobs::get_go_transcription_job": [
+      "engine",
+      "transport"
+    ],
+    "commands::go_jobs::list_go_transcription_jobs": [
+      "engine",
+      "transport"
+    ],
+    "commands::go_jobs::cancel_go_transcription_job": [
+      "engine",
+      "transport"
+    ],
+    "commands::preferences::get_app_preferences": [
+      "preferences"
+    ],
+    "commands::preferences::migrate_app_preferences": [
+      "preferences"
+    ],
+    "commands::preferences::set_app_preference_hotkey": [
+      "preferences"
+    ],
+    "commands::funasr::has_online_asr_api_key": [
+      "keys"
+    ],
+    "commands::ai_polish::has_ai_polish_api_key": [
+      "keys"
+    ],
+    "commands::ai_polish::has_assistant_api_key": [
+      "keys"
+    ],
+    "commands::jev::has_jev_api_key": [
+      "keys"
+    ],
+    "commands::assistant::has_web_search_api_key": [
+      "keys"
+    ],
+    "commands::selection::has_selection_api_key": [
+      "keys"
+    ],
+    "commands::profile::has_screen_vision_api_key": [
+      "keys"
     ]
   },
   "events": {
@@ -520,6 +566,10 @@
     ],
     "waveform": [
       "capture"
+    ],
+    "go-engine-job-progress": [
+      "engine",
+      "transport"
     ]
   },
   "lifecycle": {
@@ -733,14 +783,19 @@
         "src-tauri/src/services/glm_asr_service.rs",
         "src/hooks/useModelStatus.ts",
         "src-tauri/src/services/go_engine.rs",
-        "src-tauri/crates/lw-engine-client/src/supervisor.rs"
+        "src-tauri/crates/lw-engine-client/src/supervisor.rs",
+        "src-tauri/src/services/go_asr.rs",
+        "src-tauri/src/commands/go_jobs.rs",
+        "src-tauri/crates/lw-engine-client/src/stream.rs"
       ],
       "evidence": [
         "src-tauri/src/commands/funasr.rs",
         "src/hooks/__tests__/useAsrEngineSettings.test.tsx",
         "src/hooks/__tests__/useModelStatus.test.tsx",
         "scripts/check_request_snapshot.py",
-        "src-tauri/crates/lw-engine-client/tests/go_engine.rs#supervisor_restarts_after_crash_and_stops"
+        "src-tauri/crates/lw-engine-client/tests/go_engine.rs#supervisor_restarts_after_crash_and_stops",
+        "src-tauri/crates/lw-engine-client/tests/go_engine.rs#stream_buffers_before_started_then_flushes",
+        "src-tauri/crates/lw-engine-client/tests/go_engine.rs#jobs_submit_progress_cancel"
       ],
       "assumptions": "Four engine classes; model output correctness and filesystem/driver/network primitives are outside proof. Ready/error values are environmental inputs."
     },
@@ -869,7 +924,7 @@
         "src-tauri/src/state/web_search_key_tests.rs",
         "scripts/check_request_snapshot.py"
       ],
-      "assumptions": "Single keyring operations are atomic; physical OAuth multi-store commits are modeled separately. Getter failure is an unavailable credential, never proof of deletion."
+      "assumptions": "Single keyring operations are atomic; physical OAuth multi-store commits are modeled separately. Getter failure is an unavailable credential, never proof of deletion. PLAN 步骤 5: get_*_api_key commands return empty to the frontend; has_* reports presence. Getter failure is an unavailable credential, never proof of deletion."
     },
     "profile-save": {
       "obligation": "Each profile update queues its own current version under the same ordering lock; settled disk is latest.",
@@ -904,7 +959,9 @@
       "implementation": [
         "src-tauri/src/commands/profile.rs",
         "src-tauri/src/commands/jev.rs",
-        "src-tauri/src/commands/audio.rs"
+        "src-tauri/src/commands/audio.rs",
+        "src-tauri/src/state/app_preferences.rs",
+        "src-tauri/src/commands/preferences.rs"
       ],
       "evidence": [
         "src-tauri/src/commands/profile.rs",
@@ -1215,7 +1272,9 @@
         "src-tauri/src/services/llm_client.rs",
         "src-tauri/resources/server_common.py",
         "src-tauri/crates/lw-engine-client/src/client.rs",
-        "src-tauri/crates/lw-engine-client/src/events.rs"
+        "src-tauri/crates/lw-engine-client/src/events.rs",
+        "src-tauri/crates/lw-engine-client/src/stream.rs",
+        "src-tauri/src/services/go_asr.rs"
       ],
       "evidence": [
         "src-tauri/src/services/funasr_service.rs#request_identity_tests",
@@ -1913,6 +1972,20 @@
     "commands::history::export_transcription_history": "src-tauri/src/commands/history.rs#fn export_transcription_history(",
     "commands::history::reprocess_transcription_history": "src-tauri/src/commands/history.rs#fn reprocess_transcription_history(",
     "commands::funasr::get_gpu_idle_seconds": "src-tauri/src/commands/funasr.rs#fn get_gpu_idle_seconds(",
-    "commands::funasr::set_gpu_idle_seconds": "src-tauri/src/commands/funasr.rs#fn set_gpu_idle_seconds("
+    "commands::funasr::set_gpu_idle_seconds": "src-tauri/src/commands/funasr.rs#fn set_gpu_idle_seconds(",
+    "commands::go_jobs::submit_go_transcription_job": "src-tauri/src/commands/go_jobs.rs#fn submit_go_transcription_job(",
+    "commands::go_jobs::get_go_transcription_job": "src-tauri/src/commands/go_jobs.rs#fn get_go_transcription_job(",
+    "commands::go_jobs::list_go_transcription_jobs": "src-tauri/src/commands/go_jobs.rs#fn list_go_transcription_jobs(",
+    "commands::go_jobs::cancel_go_transcription_job": "src-tauri/src/commands/go_jobs.rs#fn cancel_go_transcription_job(",
+    "commands::preferences::get_app_preferences": "src-tauri/src/commands/preferences.rs#fn get_app_preferences(",
+    "commands::preferences::migrate_app_preferences": "src-tauri/src/commands/preferences.rs#fn migrate_app_preferences(",
+    "commands::preferences::set_app_preference_hotkey": "src-tauri/src/commands/preferences.rs#fn set_app_preference_hotkey(",
+    "commands::funasr::has_online_asr_api_key": "src-tauri/src/commands/funasr.rs#fn has_online_asr_api_key(",
+    "commands::ai_polish::has_ai_polish_api_key": "src-tauri/src/commands/ai_polish.rs#fn has_ai_polish_api_key(",
+    "commands::ai_polish::has_assistant_api_key": "src-tauri/src/commands/ai_polish.rs#fn has_assistant_api_key(",
+    "commands::jev::has_jev_api_key": "src-tauri/src/commands/jev.rs#fn has_jev_api_key(",
+    "commands::assistant::has_web_search_api_key": "src-tauri/src/commands/assistant.rs#fn has_web_search_api_key(",
+    "commands::selection::has_selection_api_key": "src-tauri/src/commands/selection.rs#fn has_selection_api_key(",
+    "commands::profile::has_screen_vision_api_key": "src-tauri/src/commands/profile.rs#fn has_screen_vision_api_key("
   }
 }

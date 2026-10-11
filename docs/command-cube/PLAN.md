@@ -1,7 +1,7 @@
 # Command-Cube 规划：前后端分离（Go 引擎后端 + Rust 薄壳 + 独立前端）
 
 > 分支：`Command-Cube`  
-> 状态：规划文档；实施进度见 §7 各步骤的「进度」（步骤 1 已完成；步骤 2 FireRedVAD 的 Go 移植已完成并与 Python 对齐；步骤 3 R2T2 会话与分段已移植，在 Linux CPU 上与 Python 逐调用、逐字一致，Windows / CUDA 与延迟基线未实测；步骤 4 Qwen3 / 调度 / job 已实现；步骤 5 Rust 在 `LW_ENGINE_BACKEND=go` 下经 HTTP/WS 做识别（含 pre-started 缓冲、Job Object），python 默认路径不变；打包移除 Python / 密钥只写 / localStorage 迁入等仍待后续）  
+> 状态：规划文档；实施进度见 §7 各步骤的「进度」（步骤 1 已完成；步骤 2 FireRedVAD 的 Go 移植已完成并与 Python 对齐；步骤 3 R2T2 会话与分段已移植，在 Linux CPU 上与 Python 逐调用、逐字一致，Windows / CUDA 与延迟基线未实测；步骤 4 Qwen3 / 调度 / job 已实现；步骤 5 识别切换 + 删除 interim + 密钥只写 getter + 壳内 app_preferences + formal 清单已完成；默认 python 打包仍含 engine.tar.xz，Go 打包用 `scripts/build_lw_engine_for_bundle.sh`；端到端真人听写与完全去掉 Python 安装包仍待后续 / 步骤 6）  
 > 基于：对 `main` @ `151a61c` 的只读调研  
 > **本文主线**：用独立 Go 后端服务取代 Python 编排层；Rust（Tauri）只做系统集成与应用层；前端独立。
 
@@ -527,8 +527,14 @@ flowchart TD
     - 整段 / 历史重识别：`POST /v1/asr/transcribe`（缺省优先级 = 引擎 `default_priority_voice`）。
     - 文件 job：Tauri 命令 `submit_go_transcription_job` / `get_go_transcription_job` / `list_go_transcription_jobs` / `cancel_go_transcription_job`；进度事件 `go-engine-job-progress`。
     - 错误：409 / `invalid_priority` / 引擎不可用 / 缓冲溢出与启动超时 → 现有 `AppError::Asr` 文案路径。
-  - **未做（本步骤后续 / 步骤 5 完成标准剩余项）**：删除 `interim.rs`（python 路径仍用）；密钥 API 改为只写；localStorage → 壳内设置；安装包去掉 Python / `engine.tar.xz`、把 `lw-engine` 写入 `tauri.conf.json` 打包资源；`formal/` 回归；端到端真人听写。
-  - 测试：`lw-engine-client` 集成测试覆盖缓冲 flush、transcribe+priority、job 进度/取消、409/invalid_priority；`cargo check` / clippy `-D warnings`（client）在 Windows `x86_64-pc-windows-gnu` + toolchain 1.93.0；`go test -race ./...` 通过。
+  - **续作（本轮）**：
+    - **删除 `interim.rs`**：python Qwen3 听写不再做 12 s 伪实时，松开后整段 ASR；Go 路径仍用 WS `sentence`/`streaming` 字幕。
+    - **密钥只写**：所有 `get_*_api_key` 对前端返回空串；新增 `has_*_api_key`；设置页 / RecordingContext 不再把密钥读回输入框或回写空串。
+    - **壳内偏好**：`<data_dir>/app_preferences.json`（热键/录音模式/麦克风/输入方式/提示音/电平监测/润色开关）；启动加载；`set_*` 持久化；`migrate_app_preferences` 一次性从 localStorage 迁入。主题 / UI 语言 / 引导仍前端 localStorage（步骤 6）。
+    - **打包**：`scripts/build_lw_engine_for_bundle.sh` 产出 `resources/lw-engine[.exe]`；**不**从默认 python 包移除 `engine.tar.xz`（避免打断 `LW_ENGINE_BACKEND=python`）。Go 包需手动把二进制写入 `tauri.conf.json` `bundle.resources`。
+    - **formal/**：`verification.json` 登记 `go_jobs::*`、`has_*`、`preferences::*`、`go-engine-job-progress`；`COVERAGE.md` 更新步骤 5。
+  - **仍未做 / 推迟**：端到端真人听写；安装包默认改为纯 Go、去掉 Python/`engine.tar.xz`；前端彻底停用业务 localStorage（步骤 6）；Go 调度 / WS 的 TLA+ 模型（§6 #6 → 步骤 7 前）。
+  - 测试：同上 client 集成测试；本轮 `cargo check`；`scripts/check_formal.py` 清单校对。
 
 ### 步骤 6：独立前端
 
@@ -661,7 +667,7 @@ docs/r2t2-native.md                               ← R2T2 流式 / commit 语�
 docs/development.md
 src-tauri/src/services/funasr_service.rs          ← 现 Python 进程管理（将改为 API 客户端）
 src-tauri/src/services/funasr_service/protocol.rs ← 现 stdio JSON 契约
-src-tauri/src/services/audio_service/interim.rs   ← 将删除
+src-tauri/src/services/audio_service/interim.rs   ← 已删除（步骤 5）
 src-tauri/src/services/audio_service/native_recording.rs
 src-tauri/src/services/audio_service/native_capture.rs
 src-tauri/src/utils/paths.rs                      ← engine.json 读写
