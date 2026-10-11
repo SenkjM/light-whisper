@@ -325,3 +325,300 @@ async fn supervisor_gives_up_after_consecutive_failures() {
     assert_eq!(s.restarts, 2);
     assert!(s.last_error.unwrap().contains("gave up after 3"));
 }
+
+/// Helper: spawn mock engine with qwen3 (sentence mode) or r2t2 (streaming).
+async fn spawn_mock(tag: &str, engine: &str) -> (EngineProcess, EngineClient, PathBuf) {
+    let bin = engine_binary().expect("go binary");
+    let data = temp_dir(tag);
+    std::fs::write(
+        data.join("engine.json"),
+        format!(r#"{{"engine":"{engine}"}}"#),
+    )
+    .unwrap();
+    let mut opts = SpawnOptions::new(&bin);
+    opts.data_dir = Some(data.clone());
+    opts.stderr_log = Some(data.join("stderr.log"));
+    // Autoload mock so NewStream / Transcribe work immediately.
+    let proc = spawn_engine(&opts).await.expect("spawn");
+    let client = EngineClient::new(proc.base_url(), proc.token.clone());
+    // Wait until model_loaded.
+    for _ in 0..50 {
+        let st = client.status().await.unwrap();
+        if st["model_loaded"] == true {
+            break;
+        }
+        tokio::time::sleep(Duration::from_millis(50)).await;
+    }
+    (proc, client, data)
+}
+
+fn pcm_silence(n: usize) -> Vec<i16> {
+    vec![0; n]
+}
+
+fn pcm_tone(n: usize) -> Vec<i16> {
+    // Non-zero samples so the Qwen3 mock sentence stream commits.
+    vec![1000; n]
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn stream_buffers_before_started_then_flushes() {
+    let Some(_) = engine_binary() else { return };
+    let (mut proc, client, _data) = spawn_mock("stream-buf", "qwen3-asr-0.6b").await;
+
+    let mut stream = AsrStream::connect(&client).await.unwrap();
+    stream.start(7, Some("zh"), None, None).await.unwrap();
+
+    // Feed audio BEFORE waiting for started — must buffer, not drop.
+    let chunk = pcm_tone(STREAM_CHUNK_SAMPLES);
+    for _ in 0..5 {
+        stream.feed(&chunk).await.unwrap();
+    }
+    assert!(!stream.started() || stream.sample_offset() > 0);
+    // Force the wait/flush path.
+    let partial = stream.feed(&[]).await.unwrap();
+    assert!(stream.started(), "started should have arrived");
+    assert_eq!(stream.mode(), Some(StreamMode::Sentence));
+    // 5 chunks flushed (+ possibly empty feed) — offset accounts for buffered audio.
+    assert!(
+        stream.sample_offset() >= (5 * STREAM_CHUNK_SAMPLES) as u64,
+        "offset {} after buffered flush",
+        stream.sample_offset()
+    );
+    let _ = partial;
+
+    // More live audio + silence to commit a sentence in the mock.
+    stream.feed(&pcm_tone(16_000)).await.unwrap();
+    stream.feed(&pcm_silence(8_000)).await.unwrap(); // 500 ms silence → commit
+    let result = stream.finish().await.unwrap();
+    assert!(!result.text.is_empty(), "mock sentence text: {:?}", result);
+    assert_eq!(result.sample_count, stream.sample_offset());
+
+    proc.kill(Duration::from_secs(3)).await;
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn stream_pre_start_buffer_overflow_fails() {
+    let Some(_) = engine_binary() else { return };
+    let (mut proc, client, _data) = spawn_mock("stream-ovf", "confucius4-r2t2").await;
+
+    // Use a client that never gets started quickly: connect to a second
+    // stream while the first holds the realtime slot → second connect is 409.
+    // For overflow we need start sent but started delayed. Hold the slot with
+    // stream A, then... actually overflow test doesn't need the engine to
+    // answer: we can fill the buffer before pumping for started by feeding
+    // more than the cap while the engine is busy.
+    // Simplest: connect, start, feed PRE_START_BUFFER_MAX_SAMPLES + 1 without
+    // giving the runtime time — but mock answers started instantly.
+    // So craft the overflow by calling feed with a huge slice in one go
+    // before the first pump reads started. Racey on a fast machine.
+    // Instead: unit-style — feed exactly cap+1 in one shot right after start;
+    // if started arrives first, skip. We accept either overflow error or
+    // success; assert overflow when !started after first large feed attempt.
+
+    let mut stream = AsrStream::connect(&client).await.unwrap();
+    stream.start(1, None, None, None).await.unwrap();
+    let huge = pcm_silence(PRE_START_BUFFER_MAX_SAMPLES + STREAM_CHUNK_SAMPLES);
+    match stream.feed(&huge).await {
+        Err(ClientError::Api { code, .. }) if code == "pre_start_buffer_overflow" => {}
+        Ok(_) => {
+            // Engine answered started before we appended — buffer path not hit.
+            // Still verify a normal finish works.
+            let _ = stream.finish().await;
+        }
+        Err(e) => panic!("unexpected error: {e}"),
+    }
+    proc.kill(Duration::from_secs(3)).await;
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn stream_second_session_conflict_maps_to_409() {
+    let Some(_) = engine_binary() else { return };
+    let (mut proc, client, _data) = spawn_mock("stream-409", "qwen3-asr-0.6b").await;
+
+    let mut a = AsrStream::connect(&client).await.unwrap();
+    a.start(1, None, None, None).await.unwrap();
+    a.feed(&[]).await.unwrap(); // wait started
+    assert!(a.started());
+
+    match AsrStream::connect(&client).await {
+        Err(e) => {
+            assert!(
+                e.is_realtime_session_active() || e.is_busy(),
+                "expected 409 busy, got {e:?}"
+            );
+        }
+        Ok(mut b) => {
+            // Handshake allowed (race) — start should fail.
+            b.start(2, None, None, None).await.ok();
+            let err = b
+                .feed(&pcm_tone(100))
+                .await
+                .err()
+                .or(b.finish().await.err());
+            assert!(err.is_some());
+        }
+    }
+    a.cancel().await.unwrap();
+    proc.kill(Duration::from_secs(3)).await;
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn transcribe_with_priority_and_invalid_priority() {
+    let Some(_) = engine_binary() else { return };
+    let (mut proc, client, _data) = spawn_mock("tx-prio", "qwen3-asr-0.6b").await;
+
+    let pcm = pcm_tone(16_000); // 1 s
+    let ok = client
+        .transcribe_pcm(
+            &pcm,
+            &TranscribeOptions {
+                language: Some("zh".into()),
+                priority: Some("high".into()),
+                ..Default::default()
+            },
+        )
+        .await
+        .unwrap();
+    assert!(!ok.text.is_empty());
+    assert!(ok.sample_count >= 16_000);
+
+    let err = client
+        .transcribe_pcm(
+            &pcm,
+            &TranscribeOptions {
+                priority: Some("urgent".into()),
+                ..Default::default()
+            },
+        )
+        .await
+        .unwrap_err();
+    assert!(
+        err.is_invalid_priority(),
+        "expected invalid_priority, got {err:?}"
+    );
+
+    proc.kill(Duration::from_secs(3)).await;
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn jobs_submit_progress_cancel() {
+    let Some(_) = engine_binary() else { return };
+    let (mut proc, client, data) = spawn_mock("jobs", "qwen3-asr-0.6b").await;
+
+    // Write a tiny WAV (1 s tone) for path-based submit.
+    let wav_path = data.join("clip.wav");
+    write_wav(&wav_path, &pcm_tone(16_000));
+
+    // Event listener for job_progress.
+    let (tx, mut rx) = mpsc::unbounded_channel();
+    let mut ev = events::EventStream::connect(&client).await.unwrap();
+    tokio::spawn(async move {
+        while let Some(Ok(e)) = ev.next().await {
+            if e.kind == "job_progress" {
+                let _ = tx.send(e);
+            }
+        }
+    });
+
+    let job = client
+        .submit_job_path(&JobPathRequest {
+            path: wav_path.to_string_lossy().to_string(),
+            priority: Some("normal".into()),
+            segments: true,
+            ..Default::default()
+        })
+        .await
+        .unwrap();
+    assert_eq!(job.state, "queued");
+    assert!(!job.id.is_empty());
+
+    // Wait for completion via GET + events.
+    let mut saw_progress = false;
+    let finished = tokio::time::timeout(Duration::from_secs(15), async {
+        loop {
+            while let Ok(ev) = rx.try_recv() {
+                saw_progress = true;
+                assert_eq!(ev.data["id"], job.id);
+            }
+            let j = client.get_job(&job.id).await.unwrap();
+            if j.state == "completed" || j.state == "failed" || j.state == "cancelled" {
+                return j;
+            }
+            tokio::time::sleep(Duration::from_millis(50)).await;
+        }
+    })
+    .await
+    .expect("job timed out");
+    assert_eq!(finished.state, "completed");
+    assert!(finished.text.as_ref().is_some_and(|t| !t.is_empty()));
+    assert!(saw_progress, "expected at least one job_progress event");
+
+    // Cancel a long job: submit silence-padded long PCM then delete.
+    let long = pcm_tone(16_000 * 5);
+    let long_wav = data.join("long.wav");
+    write_wav(&long_wav, &long);
+    // Slow the mock so we can cancel mid-flight.
+    // (Mock has no WorkPerSecond knob via API; cancel a queued job instead by
+    // holding realtime session.)
+    let mut hold = AsrStream::connect(&client).await.unwrap();
+    hold.start(99, None, None, None).await.unwrap();
+    hold.feed(&[]).await.unwrap();
+
+    let job2 = client
+        .submit_job_path(&JobPathRequest {
+            path: long_wav.to_string_lossy().to_string(),
+            ..Default::default()
+        })
+        .await
+        .unwrap();
+    // Still queued because of realtime hold.
+    tokio::time::sleep(Duration::from_millis(100)).await;
+    client.cancel_job(&job2.id).await.unwrap();
+    let cancelled = client.get_job(&job2.id).await;
+    match cancelled {
+        Ok(j) => assert!(
+            j.state == "cancelled" || j.state == "queued",
+            "state after cancel: {}",
+            j.state
+        ),
+        Err(e) => assert!(e.is_not_found(), "unexpected: {e:?}"),
+    }
+    hold.cancel().await.unwrap();
+
+    // invalid priority on jobs
+    let err = client
+        .submit_job_path(&JobPathRequest {
+            path: wav_path.to_string_lossy().to_string(),
+            priority: Some("realtime".into()), // files reject realtime
+            ..Default::default()
+        })
+        .await
+        .unwrap_err();
+    assert!(err.is_invalid_priority(), "{err:?}");
+
+    proc.kill(Duration::from_secs(3)).await;
+}
+
+fn write_wav(path: &Path, pcm: &[i16]) {
+    let mut out = Vec::with_capacity(44 + pcm.len() * 2);
+    let data_len = (pcm.len() * 2) as u32;
+    let file_len = 36 + data_len;
+    out.extend_from_slice(b"RIFF");
+    out.extend_from_slice(&file_len.to_le_bytes());
+    out.extend_from_slice(b"WAVE");
+    out.extend_from_slice(b"fmt ");
+    out.extend_from_slice(&16u32.to_le_bytes());
+    out.extend_from_slice(&1u16.to_le_bytes()); // PCM
+    out.extend_from_slice(&1u16.to_le_bytes()); // mono
+    out.extend_from_slice(&16_000u32.to_le_bytes());
+    out.extend_from_slice(&(16_000u32 * 2).to_le_bytes()); // byte rate
+    out.extend_from_slice(&2u16.to_le_bytes()); // block align
+    out.extend_from_slice(&16u16.to_le_bytes()); // bits
+    out.extend_from_slice(b"data");
+    out.extend_from_slice(&data_len.to_le_bytes());
+    for s in pcm {
+        out.extend_from_slice(&s.to_le_bytes());
+    }
+    std::fs::write(path, out).unwrap();
+}

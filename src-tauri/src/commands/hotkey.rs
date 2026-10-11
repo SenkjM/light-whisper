@@ -1311,6 +1311,7 @@ fn stop_unified_hotkey_monitor() {}
 /// HHOOK is *mut c_void in windows-sys
 type HookHandle = *mut std::ffi::c_void;
 
+#[cfg(target_os = "windows")]
 fn install_hook_on_thread() -> Result<HookHandle, String> {
     let module = unsafe { GetModuleHandleW(std::ptr::null()) };
     let hook = unsafe {
@@ -1437,6 +1438,7 @@ fn build_hook_state(
     build_hook_state_with_backend(app_handle, spec, trigger, backend)
 }
 
+#[cfg(target_os = "windows")]
 fn build_hook_state_with_backend(
     app_handle: tauri::AppHandle,
     spec: HotkeySpec,

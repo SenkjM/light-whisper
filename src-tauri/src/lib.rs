@@ -239,6 +239,10 @@ pub fn run() {
             commands::funasr::restart_funasr,
             commands::funasr::get_engine,
             commands::go_engine::get_go_engine_status,
+            commands::go_jobs::submit_go_transcription_job,
+            commands::go_jobs::get_go_transcription_job,
+            commands::go_jobs::list_go_transcription_jobs,
+            commands::go_jobs::cancel_go_transcription_job,
             commands::funasr::set_engine,
             commands::funasr::get_gpu_idle_seconds,
             commands::funasr::set_gpu_idle_seconds,
@@ -374,6 +378,38 @@ fn spawn_funasr_startup(app_handle: tauri::AppHandle) {
     tauri::async_runtime::spawn(async move {
         let engine = utils::paths::read_engine_config();
         let state = app_handle.state::<AppState>();
+
+        // PLAN 步骤 5: Go 后端模式下本地识别走 lw-engine，不再拉起 Python。
+        // 云端引擎仍只检查 API Key（与 python 模式相同）。
+        if services::go_engine::is_go() {
+            if utils::paths::is_online_engine(&engine) {
+                let has_key = !state.read_online_asr_api_key().is_empty();
+                state.set_funasr_ready(has_key);
+                let label = match engine.as_str() {
+                    "alibaba-asr" => "Alibaba DashScope",
+                    _ => "GLM-ASR",
+                };
+                let _ = app_handle.emit(
+                    "funasr-status",
+                    serde_json::json!({
+                        "status": if has_key { "ready" } else { "need_api_key" },
+                        "message": if has_key {
+                            format!("{} 在线服务就绪", label)
+                        } else {
+                            format!("请配置 {} API Key", label)
+                        },
+                        "device": "cloud",
+                        "gpu_name": serde_json::Value::Null,
+                        "models_present": true,
+                        "missing_models": [],
+                    }),
+                );
+                return;
+            }
+            log::info!("LW_ENGINE_BACKEND=go：等待 Go 引擎就绪（跳过 Python）");
+            services::go_engine::bootstrap_ready(&app_handle).await;
+            return;
+        }
 
         if utils::paths::is_online_engine(&engine) {
             let has_key = !state.read_online_asr_api_key().is_empty();

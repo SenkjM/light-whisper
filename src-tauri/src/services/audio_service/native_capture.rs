@@ -17,7 +17,7 @@ pub(crate) enum NativeCaptureControl {
     Cancel,
 }
 
-pub(super) trait NativeCaptureSink: Send {
+pub(crate) trait NativeCaptureSink: Send {
     fn feed(
         &mut self,
         samples: &[i16],
@@ -60,7 +60,7 @@ impl PendingOutput {
     }
 }
 
-pub(super) async fn run_capture<S: NativeCaptureSink>(
+pub(crate) async fn run_capture<S: NativeCaptureSink>(
     mut sink: S,
     samples: Arc<parking_lot::Mutex<Vec<i16>>>,
     sample_rate: u32,

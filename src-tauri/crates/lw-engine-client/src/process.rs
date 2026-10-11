@@ -50,15 +50,87 @@ pub enum SpawnError {
     Handshake(#[from] HandshakeError),
 }
 
+/// Windows Job Object that kills assigned children when the last handle closes.
+/// Held for the lifetime of [`EngineProcess`] so a crashed / killed shell
+/// tears down `lw-engine` even if stdin inheritance or `kill_on_drop` fail.
+#[cfg(windows)]
+struct KillOnCloseJob(windows_sys::Win32::Foundation::HANDLE);
+
+#[cfg(windows)]
+impl KillOnCloseJob {
+    fn create() -> Option<Self> {
+        use windows_sys::Win32::Foundation::CloseHandle;
+        use windows_sys::Win32::System::JobObjects::{
+            CreateJobObjectW, JobObjectExtendedLimitInformation, SetInformationJobObject,
+            JOBOBJECT_EXTENDED_LIMIT_INFORMATION, JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE,
+        };
+        // SAFETY: CreateJobObjectW with null name/attrs returns an owned handle or null.
+        let handle = unsafe { CreateJobObjectW(std::ptr::null(), std::ptr::null()) };
+        if handle.is_null() || handle == windows_sys::Win32::Foundation::INVALID_HANDLE_VALUE {
+            log::warn!("lw-engine: CreateJobObjectW failed; falling back to stdin/kill_on_drop");
+            return None;
+        }
+        let mut info = unsafe { std::mem::zeroed::<JOBOBJECT_EXTENDED_LIMIT_INFORMATION>() };
+        info.BasicLimitInformation.LimitFlags = JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE;
+        // SAFETY: info is fully initialized for the fields SetInformationJobObject reads.
+        let ok = unsafe {
+            SetInformationJobObject(
+                handle,
+                JobObjectExtendedLimitInformation,
+                &info as *const _ as *const _,
+                std::mem::size_of_val(&info) as u32,
+            )
+        };
+        if ok == 0 {
+            log::warn!("lw-engine: SetInformationJobObject(KILL_ON_JOB_CLOSE) failed; closing job");
+            unsafe { CloseHandle(handle) };
+            return None;
+        }
+        Some(Self(handle))
+    }
+
+    fn assign(&self, process: windows_sys::Win32::Foundation::HANDLE) -> bool {
+        use windows_sys::Win32::System::JobObjects::AssignProcessToJobObject;
+        // SAFETY: both handles are valid and owned by us / the Child.
+        unsafe { AssignProcessToJobObject(self.0, process) != 0 }
+    }
+}
+
+#[cfg(windows)]
+impl Drop for KillOnCloseJob {
+    fn drop(&mut self) {
+        // Closing the job with KILL_ON_JOB_CLOSE terminates remaining children.
+        unsafe { windows_sys::Win32::Foundation::CloseHandle(self.0) };
+    }
+}
+
+#[cfg(windows)]
+impl std::fmt::Debug for KillOnCloseJob {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_tuple("KillOnCloseJob").field(&self.0).finish()
+    }
+}
+
+// HANDLEs are process-wide opaque integers; we uniquely own this job object.
+#[cfg(windows)]
+unsafe impl Send for KillOnCloseJob {}
+#[cfg(windows)]
+unsafe impl Sync for KillOnCloseJob {}
+
 /// A running engine process. Dropping it kills the process.
 ///
 /// stdin stays open for the process lifetime: the engine runs with
 /// `--exit-on-stdin-close`, so it also exits if this (parent) process dies
-/// without cleaning up.
+/// without cleaning up. On Windows an additional Job Object with
+/// `KILL_ON_JOB_CLOSE` covers the case where the shell is terminated
+/// without running Drop (task manager, crash).
 #[derive(Debug)]
 pub struct EngineProcess {
     child: Child,
     _stdin: Option<ChildStdin>,
+    /// Kept alive so the job's KILL_ON_JOB_CLOSE fires when the shell exits.
+    #[cfg(windows)]
+    _job: Option<KillOnCloseJob>,
     pub handshake: Handshake,
     pub token: String,
 }
@@ -149,9 +221,35 @@ pub async fn spawn_engine(opts: &SpawnOptions) -> Result<EngineProcess, SpawnErr
         }
     });
 
+    #[cfg(windows)]
+    let job = {
+        match KillOnCloseJob::create() {
+            Some(job) => match child.raw_handle() {
+                Some(raw) => {
+                    let handle = raw as windows_sys::Win32::Foundation::HANDLE;
+                    if job.assign(handle) {
+                        Some(job)
+                    } else {
+                        log::warn!(
+                            "lw-engine: AssignProcessToJobObject failed; relying on stdin/kill_on_drop"
+                        );
+                        None
+                    }
+                }
+                None => {
+                    log::warn!("lw-engine: child has no raw handle; relying on stdin/kill_on_drop");
+                    None
+                }
+            },
+            None => None,
+        }
+    };
+
     Ok(EngineProcess {
         child,
         _stdin: stdin,
+        #[cfg(windows)]
+        _job: job,
         handshake,
         token,
     })

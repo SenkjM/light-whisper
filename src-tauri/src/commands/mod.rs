@@ -5,6 +5,7 @@ pub mod clipboard;
 pub mod codex_oauth;
 pub mod funasr;
 pub mod go_engine;
+pub mod go_jobs;
 pub mod grok_build_oauth;
 pub mod history;
 pub mod hotkey;

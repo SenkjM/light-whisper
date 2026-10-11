@@ -23,5 +23,11 @@ reqwest = { version = "0.12", default-features = false, features = ["json"] }
 # would add duplicate rand 0.10 / sha1 0.11 trees for no functional gain.
 tokio-tungstenite = { version = "0.28", default-features = false, features = ["connect", "handshake"] }
 
+[target.'cfg(windows)'.dependencies]
+# Job Object (KILL_ON_JOB_CLOSE) so lw-engine dies with the shell; Threading already
+# covers CREATE_NO_WINDOW. Keep the feature set minimal — this crate has no UI deps.
+windows-sys = { version = "0.59", features = ["Win32_Foundation", "Win32_Security", "Win32_System", "Win32_System_JobObjects", "Win32_System_Threading"] }
+
 [dev-dependencies]
 tokio = { version = "1", features = ["rt-multi-thread", "macros", "time", "process", "io-util"] }
+tempfile = "3"

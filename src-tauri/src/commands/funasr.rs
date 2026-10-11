@@ -143,6 +143,29 @@ pub async fn restart_funasr(
     let lifecycle_guard = state.engine.funasr_lifecycle_op.lock().await;
     let asr_guard = lock_idle_asr(state.inner())?;
     let engine = paths::read_engine_config();
+    if go_engine::is_go() {
+        drop(asr_guard);
+        drop(lifecycle_guard);
+        if paths::is_online_engine(&engine) {
+            let has_key = !state.read_online_asr_api_key().is_empty();
+            state.set_funasr_ready(has_key);
+            return Ok("在线引擎状态已刷新".to_string());
+        }
+        // Ask Go to reload the local engine; readiness follows engine_status events.
+        if let Some(client) = go_engine::client_ready().await {
+            match client.reload().await {
+                Ok(_) => {
+                    go_engine::bootstrap_ready(&app_handle).await;
+                    return Ok("Go 引擎已重新加载".to_string());
+                }
+                Err(e) if e.is_busy() => {
+                    return Err(AppError::Other("实时会话进行中，无法重载 Go 引擎".into()));
+                }
+                Err(e) => return Err(AppError::Other(format!("Go 引擎 reload 失败: {e}"))),
+            }
+        }
+        return Err(AppError::Other("Go 引擎未运行".into()));
+    }
     if paths::is_online_engine(&engine) {
         // 在线引擎无需重启 Python，仅刷新就绪状态
         let has_key = !state.read_online_asr_api_key().is_empty();

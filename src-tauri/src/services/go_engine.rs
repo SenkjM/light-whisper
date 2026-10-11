@@ -12,8 +12,9 @@
 //!   `/v1/engine/reload`，会话中 409 时保持 pending_reload）；
 //! - `/v1/events` 的状态与配置事件转发为 Tauri 事件。
 //!
-//! 推理仍走现有 Python 引擎：Go 后端在步骤 1 只是 mock，二者共享同一个
-//! engine.json，所以 Python 下次启动会读到 Go 写入的设置。
+//! 步骤 5：`LW_ENGINE_BACKEND=go` 时识别也走 Go（`go_asr`：WS 实时流、
+//! HTTP 整段转录、`/v1/jobs`）。默认 `python` 时本模块只负责设置代理（若启用
+//! go）或完全空操作；Python 代码与路径保持不变。
 
 use std::path::PathBuf;
 use std::sync::OnceLock;
@@ -23,7 +24,7 @@ use lw_engine_client::{
     locate_engine_binary, ClientError, ConfigSnapshot, PatchResult, SpawnOptions, Supervisor,
     SupervisorEvent, SupervisorOptions, SupervisorState,
 };
-use serde_json::{Map, Value};
+use serde_json::{json, Map, Value};
 use tauri::{Emitter, Manager};
 
 use crate::utils::error::AppError;
@@ -35,6 +36,8 @@ pub const GO_ENGINE_PROCESS_EVENT: &str = "go-engine-process";
 pub const GO_ENGINE_STATUS_EVENT: &str = "go-engine-status";
 /// 引擎 `config_changed` 事件，载荷为 `{seq,type,time,data}`。
 pub const GO_ENGINE_CONFIG_EVENT: &str = "go-engine-config-changed";
+/// 引擎 `job_progress` 事件，载荷为 `{seq,type,time,data}`（data = Job，无 text/segments）。
+pub const GO_ENGINE_JOB_EVENT: &str = "go-engine-job-progress";
 
 const READY_TIMEOUT: Duration = Duration::from_secs(10);
 const CONFLICT_RETRIES: u32 = 3;
@@ -128,9 +131,14 @@ pub fn start(app: &tauri::AppHandle) {
         SupervisorEvent::Engine(ev) => match ev.kind.as_str() {
             "engine_status" => {
                 let _ = handle.emit(GO_ENGINE_STATUS_EVENT, &ev);
+                // Keep AppState.funasr_ready in sync so recording start checks pass.
+                sync_ready_from_status(&handle, &ev.data);
             }
             "config_changed" => {
                 let _ = handle.emit(GO_ENGINE_CONFIG_EVENT, &ev);
+            }
+            "job_progress" => {
+                let _ = handle.emit(GO_ENGINE_JOB_EVENT, &ev);
             }
             other => log::debug!("Go 引擎事件 {other} 未转发"),
         },
@@ -255,6 +263,97 @@ pub async fn snapshot() -> Value {
         "engine_status": engine_status,
         "config": config,
     })
+}
+
+fn sync_ready_from_status(app: &tauri::AppHandle, data: &Value) {
+    let state = app.state::<crate::state::AppState>();
+    let ready = data
+        .get("model_loaded")
+        .and_then(|v| v.as_bool())
+        .unwrap_or(false)
+        && data
+            .get("local_engine")
+            .and_then(|v| v.as_bool())
+            .unwrap_or(true);
+    let was = state.is_funasr_ready();
+    if ready != was {
+        state.set_funasr_ready(ready);
+        let status = if ready { "ready" } else { "loading" };
+        let message = if ready {
+            "Go 引擎就绪"
+        } else {
+            "Go 引擎加载中…"
+        };
+        let _ = app.emit(
+            "funasr-status",
+            serde_json::json!({
+                "status": status,
+                "message": message,
+                "device": data.get("device").cloned().unwrap_or(Value::Null),
+                "gpu_name": data.get("gpu_name").cloned().unwrap_or(Value::Null),
+                "models_present": true,
+                "missing_models": data.get("missing_models").cloned().unwrap_or(json!([])),
+                "engine": data.get("configured_engine").cloned()
+                    .or_else(|| data.get("engine").cloned())
+                    .unwrap_or(Value::Null),
+            }),
+        );
+    }
+}
+
+/// Wait until the supervisor has a client (engine handshake done), up to `READY_TIMEOUT`.
+pub async fn client_ready() -> Option<lw_engine_client::EngineClient> {
+    let sup = SUPERVISOR.get()?;
+    sup.wait_ready(READY_TIMEOUT).await
+}
+
+/// Map Go engine API errors onto the existing UI error paths (`AppError::Asr` /
+/// `AppError::Other`). 409 busy / no_local_engine and invalid_priority stay
+/// recognizable via the message text the overlay already shows.
+pub fn map_recognition_error(e: ClientError) -> AppError {
+    match &e {
+        ClientError::Api { code, message, .. } if code == "realtime_session_active" => {
+            AppError::Asr(format!("实时会话进行中，请稍后再试（{message}）"))
+        }
+        ClientError::Api { code, message, .. } if code == "no_local_engine" => {
+            AppError::Asr(format!("当前为云端引擎，本地识别不可用（{message}）"))
+        }
+        ClientError::Api { code, message, .. } if code == "invalid_priority" => {
+            AppError::Asr(format!("无效的优先级（{message}）"))
+        }
+        ClientError::Api { code, message, .. }
+            if code == "pre_start_buffer_overflow" || code == "start_timeout" =>
+        {
+            AppError::Asr(format!("实时会话启动失败：{message}"))
+        }
+        ClientError::Unauthorized => AppError::Asr("Go 引擎拒绝了访问令牌".into()),
+        ClientError::Transport(msg) => AppError::Asr(format!("Go 引擎不可用：{msg}")),
+        other => AppError::Asr(format!("Go 引擎识别错误：{other}")),
+    }
+}
+
+/// Mark the shell "ASR ready" from the current Go engine status (startup path).
+pub async fn bootstrap_ready(app: &tauri::AppHandle) {
+    let Some(client) = client_ready().await else {
+        let state = app.state::<crate::state::AppState>();
+        state.set_funasr_ready(false);
+        let _ = app.emit(
+            "funasr-status",
+            serde_json::json!({
+                "status": "error",
+                "message": "Go 引擎未能在时限内就绪",
+            }),
+        );
+        return;
+    };
+    match client.status().await {
+        Ok(data) => sync_ready_from_status(app, &data),
+        Err(e) => {
+            log::warn!("读取 Go 引擎状态失败: {e}");
+            let state = app.state::<crate::state::AppState>();
+            state.set_funasr_ready(false);
+        }
+    }
 }
 
 #[cfg(test)]

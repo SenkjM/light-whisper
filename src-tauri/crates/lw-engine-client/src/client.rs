@@ -75,6 +75,30 @@ impl ClientError {
     pub fn is_busy(&self) -> bool {
         matches!(self, ClientError::Api { status: 409, .. })
     }
+
+    /// Engine error `code` when this is an [`ClientError::Api`], else `None`.
+    pub fn code(&self) -> Option<&str> {
+        match self {
+            ClientError::Api { code, .. } => Some(code.as_str()),
+            _ => None,
+        }
+    }
+
+    pub fn is_realtime_session_active(&self) -> bool {
+        self.code() == Some("realtime_session_active")
+    }
+
+    pub fn is_no_local_engine(&self) -> bool {
+        self.code() == Some("no_local_engine")
+    }
+
+    pub fn is_invalid_priority(&self) -> bool {
+        self.code() == Some("invalid_priority")
+    }
+
+    pub fn is_not_found(&self) -> bool {
+        matches!(self, ClientError::Api { status: 404, code, .. } if code == "not_found")
+    }
 }
 
 /// Health payload.
@@ -219,4 +243,250 @@ impl EngineClient {
     pub async fn reload(&self) -> Result<Value, ClientError> {
         Self::send(self.req(reqwest::Method::POST, "/v1/engine/reload")).await
     }
+}
+
+/// Options for `POST /v1/asr/transcribe`.
+#[derive(Debug, Clone, Default)]
+pub struct TranscribeOptions {
+    pub language: Option<String>,
+    pub context: Option<String>,
+    pub hot_words: Vec<String>,
+    /// `realtime` / `high` / `normal`; `None` → engine default_priority_voice.
+    pub priority: Option<String>,
+}
+
+/// Result of `POST /v1/asr/transcribe`.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct TranscribeResult {
+    pub text: String,
+    #[serde(default)]
+    pub language: String,
+    pub sample_count: u64,
+    pub duration: f64,
+}
+
+/// One VAD unit in a completed job (`segments=true`).
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct JobSegment {
+    pub start: f64,
+    pub end: f64,
+    pub text: String,
+}
+
+/// File-transcription job (`GET /v1/jobs/{id}`, `job_progress` events omit text/segments).
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct Job {
+    pub id: String,
+    pub state: String,
+    pub priority: String,
+    #[serde(default)]
+    pub engine: String,
+    #[serde(default)]
+    pub created_at: String,
+    #[serde(default)]
+    pub started_at: Option<String>,
+    #[serde(default)]
+    pub finished_at: Option<String>,
+    #[serde(default)]
+    pub duration: f64,
+    #[serde(default)]
+    pub segments_total: u32,
+    #[serde(default)]
+    pub segments_done: u32,
+    #[serde(default)]
+    pub progress: f64,
+    #[serde(default)]
+    pub preemptions: u32,
+    #[serde(default)]
+    pub text: Option<String>,
+    #[serde(default)]
+    pub language: String,
+    #[serde(default)]
+    pub segments: Option<Vec<JobSegment>>,
+    #[serde(default)]
+    pub error: String,
+}
+
+/// Body for `POST /v1/jobs` with a file path (absolute WAV).
+#[derive(Debug, Clone, Serialize, Default)]
+pub struct JobPathRequest {
+    pub path: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub language: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub context: Option<String>,
+    #[serde(skip_serializing_if = "Vec::is_empty", default)]
+    pub hot_words: Vec<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub priority: Option<String>,
+    #[serde(skip_serializing_if = "std::ops::Not::not", default)]
+    pub segments: bool,
+}
+
+impl EngineClient {
+    /// `POST /v1/asr/transcribe` with raw PCM s16le 16 kHz mono.
+    pub async fn transcribe_pcm(
+        &self,
+        pcm: &[i16],
+        opts: &TranscribeOptions,
+    ) -> Result<TranscribeResult, ClientError> {
+        let mut bytes = Vec::with_capacity(pcm.len() * 2);
+        for s in pcm {
+            bytes.extend_from_slice(&s.to_le_bytes());
+        }
+        self.transcribe_bytes(&bytes, "application/octet-stream", opts)
+            .await
+    }
+
+    /// `POST /v1/asr/transcribe` with a WAV body (PCM 16-bit mono 16 kHz).
+    pub async fn transcribe_wav(
+        &self,
+        wav: &[u8],
+        opts: &TranscribeOptions,
+    ) -> Result<TranscribeResult, ClientError> {
+        self.transcribe_bytes(wav, "audio/wav", opts).await
+    }
+
+    async fn transcribe_bytes(
+        &self,
+        body: &[u8],
+        content_type: &str,
+        opts: &TranscribeOptions,
+    ) -> Result<TranscribeResult, ClientError> {
+        let mut url = format!("{}/v1/asr/transcribe", self.base);
+        let mut q: Vec<String> = Vec::new();
+        if let Some(lang) = opts.language.as_deref().filter(|s| !s.is_empty()) {
+            q.push(format!("language={}", enc(lang)));
+        }
+        if let Some(ctx) = opts.context.as_deref().filter(|s| !s.is_empty()) {
+            q.push(format!("context={}", enc(ctx)));
+        }
+        for w in &opts.hot_words {
+            q.push(format!("hot_word={}", enc(w)));
+        }
+        if let Some(p) = opts.priority.as_deref().filter(|s| !s.is_empty()) {
+            q.push(format!("priority={}", enc(p)));
+        }
+        if !q.is_empty() {
+            url.push('?');
+            url.push_str(&q.join("&"));
+        }
+        Self::send(
+            self.http
+                .request(reqwest::Method::POST, url)
+                .bearer_auth(&self.token)
+                .header("Content-Type", content_type)
+                .body(body.to_vec()),
+        )
+        .await
+    }
+
+    /// `POST /v1/jobs` with JSON `{path, ...}` → 202 Job.
+    pub async fn submit_job_path(&self, req: &JobPathRequest) -> Result<Job, ClientError> {
+        Self::send(self.req(reqwest::Method::POST, "/v1/jobs").json(req)).await
+    }
+
+    /// `POST /v1/jobs` with a WAV / PCM body (query options).
+    pub async fn submit_job_wav(
+        &self,
+        wav: &[u8],
+        opts: &TranscribeOptions,
+        segments: bool,
+    ) -> Result<Job, ClientError> {
+        let mut url = format!("{}/v1/jobs", self.base);
+        let mut q: Vec<String> = Vec::new();
+        if let Some(lang) = opts.language.as_deref().filter(|s| !s.is_empty()) {
+            q.push(format!("language={}", enc(lang)));
+        }
+        if let Some(ctx) = opts.context.as_deref().filter(|s| !s.is_empty()) {
+            q.push(format!("context={}", enc(ctx)));
+        }
+        for w in &opts.hot_words {
+            q.push(format!("hot_word={}", enc(w)));
+        }
+        if let Some(p) = opts.priority.as_deref().filter(|s| !s.is_empty()) {
+            q.push(format!("priority={}", enc(p)));
+        }
+        if segments {
+            q.push("segments=true".into());
+        }
+        if !q.is_empty() {
+            url.push('?');
+            url.push_str(&q.join("&"));
+        }
+        Self::send(
+            self.http
+                .request(reqwest::Method::POST, url)
+                .bearer_auth(&self.token)
+                .header("Content-Type", "audio/wav")
+                .body(wav.to_vec()),
+        )
+        .await
+    }
+
+    pub async fn get_job(&self, id: &str) -> Result<Job, ClientError> {
+        Self::send(self.req(reqwest::Method::GET, &format!("/v1/jobs/{id}"))).await
+    }
+
+    pub async fn list_jobs(&self) -> Result<Vec<Job>, ClientError> {
+        #[derive(Deserialize)]
+        struct List {
+            jobs: Vec<Job>,
+        }
+        let list: List = Self::send(self.req(reqwest::Method::GET, "/v1/jobs")).await?;
+        Ok(list.jobs)
+    }
+
+    /// `DELETE /v1/jobs/{id}` → 204.
+    pub async fn cancel_job(&self, id: &str) -> Result<(), ClientError> {
+        let resp = self
+            .req(reqwest::Method::DELETE, &format!("/v1/jobs/{id}"))
+            .send()
+            .await
+            .map_err(|e| ClientError::Transport(e.to_string()))?;
+        let status = resp.status().as_u16();
+        if status == 204 || (200..300).contains(&status) {
+            return Ok(());
+        }
+        let bytes = resp
+            .bytes()
+            .await
+            .map_err(|e| ClientError::Transport(e.to_string()))?;
+        let body: Option<ErrorBody> = serde_json::from_slice(&bytes).ok();
+        let (code, message) = match body {
+            Some(b) => (b.error.code, b.error.message),
+            None => (String::new(), String::from_utf8_lossy(&bytes).into_owned()),
+        };
+        Err(match status {
+            401 => ClientError::Unauthorized,
+            404 => ClientError::Api {
+                status,
+                code: if code.is_empty() {
+                    "not_found".into()
+                } else {
+                    code
+                },
+                message,
+            },
+            _ => ClientError::Api {
+                status,
+                code,
+                message,
+            },
+        })
+    }
+}
+
+fn enc(s: &str) -> String {
+    // Query-escape without pulling in the url crate (not in the tree).
+    let mut out = String::with_capacity(s.len());
+    for b in s.bytes() {
+        match b {
+            b'A'..=b'Z' | b'a'..=b'z' | b'0'..=b'9' | b'-' | b'_' | b'.' | b'~' => {
+                out.push(b as char)
+            }
+            _ => out.push_str(&format!("%{b:02X}")),
+        }
+    }
+    out
 }

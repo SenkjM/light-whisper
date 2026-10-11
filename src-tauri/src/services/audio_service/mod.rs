@@ -114,6 +114,7 @@ pub use interim::spawn_interim_loop;
 pub use monitor::{
     start_microphone_level_monitor, stop_microphone_level_monitor, test_microphone_sync,
 };
+pub(crate) use native_capture::{run_capture, NativeCaptureControl, NativeCaptureSink};
 pub(crate) use native_recording::spawn_native_recording;
 pub use native_recording::NativeRecording;
 pub use wav::encode_wav;

@@ -275,31 +275,45 @@ pub(crate) async fn start_recording_with_start_owner(
         }
     };
 
-    let (interim_task, native_recording) =
-        if crate::utils::paths::read_engine_config() == "confucius4-r2t2" {
-            (
-                None,
-                Some(audio_service::spawn_native_recording(
-                    app_handle.clone(),
-                    session_id,
-                    samples.clone(),
-                    actual_sample_rate,
-                )),
-            )
-        } else {
-            (
-                Some(audio_service::spawn_interim_loop(
-                    app_handle.clone(),
-                    session_id,
-                    stop_flag.clone(),
-                    stop_notify.clone(),
-                    samples.clone(),
-                    actual_sample_rate,
-                    interim_cache.clone(),
-                )),
-                None,
-            )
-        };
+    // PLAN 步骤 5: Go 后端下本地引擎一律走 WS 实时流（R2T2 streaming /
+    // Qwen3 sentence）；python 模式保持原分支（R2T2 native IPC / Qwen interim）。
+    let engine_name = crate::utils::paths::read_engine_config();
+    let (interim_task, native_recording) = if crate::services::go_engine::is_go()
+        && !crate::utils::paths::is_online_engine(&engine_name)
+    {
+        (
+            None,
+            Some(crate::services::go_asr::spawn_go_recording(
+                app_handle.clone(),
+                session_id,
+                samples.clone(),
+                actual_sample_rate,
+            )),
+        )
+    } else if engine_name == "confucius4-r2t2" {
+        (
+            None,
+            Some(audio_service::spawn_native_recording(
+                app_handle.clone(),
+                session_id,
+                samples.clone(),
+                actual_sample_rate,
+            )),
+        )
+    } else {
+        (
+            Some(audio_service::spawn_interim_loop(
+                app_handle.clone(),
+                session_id,
+                stop_flag.clone(),
+                stop_notify.clone(),
+                samples.clone(),
+                actual_sample_rate,
+                interim_cache.clone(),
+            )),
+            None,
+        )
+    };
 
     audio_service::spawn_waveform_emitter(
         app_handle.clone(),

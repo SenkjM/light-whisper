@@ -572,6 +572,17 @@ pub async fn transcribe(
 ) -> Result<TranscriptionResult, AppError> {
     let _asr_guard = state.engine.native_asr_owner.lock().await;
     let hot_words = profile_hot_words(state);
+    if crate::services::go_engine::is_go() {
+        let (language, context) = profile_go_voice_options(state);
+        return crate::services::go_asr::transcribe_wav_bytes(
+            &audio_data,
+            language,
+            context,
+            hot_words,
+            None, // default_priority_voice
+        )
+        .await;
+    }
     transcribe_wav_bytes_via_path(state, audio_data, hot_words, app_handle).await
 }
 
@@ -587,6 +598,21 @@ pub async fn transcribe_pcm16(
         return Err(AppError::Asr(
             "语音识别引擎尚未就绪，请等待初始化完成".to_string(),
         ));
+    }
+
+    if crate::services::go_engine::is_go() {
+        // Go 引擎只接受 16 kHz；与最终 ASR 路径一致，先重采样由调用方完成。
+        if sample_rate != TARGET_SAMPLE_RATE_FOR_INLINE_AUDIO {
+            return Err(AppError::Asr(format!(
+                "Go 引擎需要 {TARGET_SAMPLE_RATE_FOR_INLINE_AUDIO} Hz PCM，收到 {sample_rate} Hz"
+            )));
+        }
+        let hot_words = profile_hot_words(state);
+        let (language, context) = profile_go_voice_options(state);
+        return crate::services::go_asr::transcribe_pcm16(
+            samples, language, context, hot_words, None,
+        )
+        .await;
     }
 
     // 本地引擎对过短输入的处理不稳定。interim 路径的首个 tick 可能只有
@@ -657,6 +683,19 @@ fn profile_hot_words(state: &AppState) -> Option<Vec<String>> {
 fn profile_r2t2_options(state: &AppState) -> Option<crate::state::user_profile::R2T2Config> {
     (paths::read_engine_config() == "confucius4-r2t2")
         .then(|| state.with_profile(|profile| profile.r2t2.clone()))
+}
+
+fn profile_go_voice_options(state: &AppState) -> (Option<String>, Option<String>) {
+    // R2T2 profile language/context are the shell-side per-request knobs for
+    // both local engines when talking to Go (PLAN: hot words / language per request).
+    let r2t2 = state.with_profile(|profile| profile.r2t2.clone());
+    let language = r2t2.language.filter(|s| !s.is_empty());
+    let context = if r2t2.context.is_empty() {
+        None
+    } else {
+        Some(r2t2.context)
+    };
+    (language, context)
 }
 
 fn encode_pcm16_base64(samples: &[i16]) -> String {
@@ -962,6 +1001,94 @@ pub async fn check_status(
     state: &AppState,
     app_handle: &tauri::AppHandle,
 ) -> Result<FunASRStatus, AppError> {
+    if crate::services::go_engine::is_go() {
+        let engine = paths::read_engine_config();
+        if paths::is_online_engine(&engine) {
+            let has_key = !state.read_online_asr_api_key().is_empty();
+            let label = match engine.as_str() {
+                "alibaba-asr" => "Alibaba DashScope",
+                _ => "GLM-ASR",
+            };
+            return Ok(FunASRStatus {
+                running: true,
+                ready: has_key,
+                model_loaded: true,
+                device: Some("cloud".into()),
+                gpu_name: None,
+                gpu_memory_total: None,
+                message: if has_key {
+                    format!("{} 在线服务就绪", label)
+                } else {
+                    format!("请配置 {} API Key", label)
+                },
+                engine: Some(engine),
+                models_present: Some(true),
+                missing_models: Some(Vec::new()),
+            });
+        }
+        return match crate::services::go_engine::client_ready().await {
+            Some(client) => match client.status().await {
+                Ok(st) => {
+                    let model_loaded = st
+                        .get("model_loaded")
+                        .and_then(|v| v.as_bool())
+                        .unwrap_or(false);
+                    let ready = state.is_funasr_ready() || model_loaded;
+                    Ok(FunASRStatus {
+                        running: true,
+                        ready,
+                        model_loaded,
+                        device: st
+                            .get("device")
+                            .and_then(|v| v.as_str())
+                            .map(str::to_string),
+                        gpu_name: st
+                            .get("gpu_name")
+                            .and_then(|v| v.as_str())
+                            .map(str::to_string),
+                        gpu_memory_total: st.get("gpu_memory_total").and_then(|v| v.as_f64()),
+                        message: if ready {
+                            "Go 引擎运行中".into()
+                        } else {
+                            "Go 引擎加载中…".into()
+                        },
+                        engine: st
+                            .get("configured_engine")
+                            .or_else(|| st.get("engine"))
+                            .and_then(|v| v.as_str())
+                            .map(str::to_string)
+                            .or(Some(engine)),
+                        models_present: Some(
+                            st.get("missing_models")
+                                .and_then(|v| v.as_array())
+                                .map(|a| a.is_empty())
+                                .unwrap_or(true),
+                        ),
+                        missing_models: st.get("missing_models").and_then(|v| v.as_array()).map(
+                            |a| {
+                                a.iter()
+                                    .filter_map(|x| x.as_str().map(str::to_string))
+                                    .collect()
+                            },
+                        ),
+                    })
+                }
+                Err(e) => Ok(status_with_defaults(
+                    false,
+                    false,
+                    false,
+                    format!("Go 引擎通信失败: {e}"),
+                )),
+            },
+            None => Ok(status_with_defaults(
+                false,
+                false,
+                false,
+                "Go 引擎未运行".into(),
+            )),
+        };
+    }
+
     // 先检查进程是否存在
     let has_process = {
         let guard = state.engine.funasr_process.lock().await;

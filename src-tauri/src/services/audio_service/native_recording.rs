@@ -62,6 +62,13 @@ fn finished_caption_update(
 }
 
 impl NativeRecording {
+    pub(crate) fn from_parts(
+        control: Option<oneshot::Sender<NativeCaptureControl>>,
+        task: tokio::task::JoinHandle<Result<Option<TranscriptionResult>, AppError>>,
+    ) -> Self {
+        Self { control, task }
+    }
+
     pub(crate) async fn finish(mut self) -> Result<TranscriptionResult, AppError> {
         if let Some(control) = self.control.take() {
             let _ = control.send(NativeCaptureControl::Finish);
