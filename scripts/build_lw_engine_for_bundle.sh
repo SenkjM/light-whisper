@@ -2,18 +2,16 @@
 # SPDX-FileCopyrightText: 2026 SenkjM
 # SPDX-License-Identifier: AGPL-3.0-only
 #
-# Build lw-engine into src-tauri/resources/ for the default (pure Go) install
-# package. Replaces the former PyInstaller engine.tar.xz path.
+# Build lw-engine into src-tauri/resources/ for the install package.
 #
 # Usage:
-#   ./scripts/build_lw_engine_for_bundle.sh           # host OS binary
-#   ./scripts/build_lw_engine_for_bundle.sh windows   # Windows .exe (GOOS=windows)
-#   ./scripts/build_lw_engine_for_bundle.sh all       # host + windows .exe
+#   ./scripts/build_lw_engine_for_bundle.sh           # host OS binary (mock)
+#   ./scripts/build_lw_engine_for_bundle.sh windows   # Windows .exe mock (cross)
+#   ./scripts/build_lw_engine_for_bundle.sh all
 #
-# NSIS packaging (tauri.conf.json targets: nsis) requires resources/lw-engine.exe.
-# Default `go build` is pure Go (mock inference). For real ASR use:
-#   CGO_ENABLED=1 go build -tags lwnative …
-# and ship native DLLs separately (see engine/README.md).
+# Native (lwnative + cgo) — set LW_ENGINE_NATIVE=1 (Windows CI / local with MinGW):
+#   LW_ENGINE_NATIVE=1 ./scripts/build_lw_engine_for_bundle.sh windows
+# Cross-compiling native Windows from Linux is not supported (needs Windows CGO).
 
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -22,17 +20,37 @@ mkdir -p "$OUT_DIR"
 TARGET="${1:-host}"
 cd "$ROOT/engine"
 
+NATIVE="${LW_ENGINE_NATIVE:-0}"
+
+build_flags=()
+if [[ "$NATIVE" == "1" || "$NATIVE" == "true" ]]; then
+  export CGO_ENABLED=1
+  build_flags=(-tags lwnative)
+  echo "Building with -tags lwnative (CGO_ENABLED=1)"
+else
+  export CGO_ENABLED=0
+fi
+
 build_host() {
   local name="lw-engine"
-  if [[ "$(uname -s)" == MINGW* || "$(uname -s)" == MSYS* || "$(uname -s)" == CYGWIN* ]]; then
+  if [[ "$(uname -s)" == MINGW* || "$(uname -s)" == MSYS* || "$(uname -s)" == CYGWIN* || "$(uname -s)" == Windows_NT ]]; then
     name="lw-engine.exe"
   fi
-  go build -o "$OUT_DIR/$name" ./cmd/lw-engine
+  go build "${build_flags[@]}" -o "$OUT_DIR/$name" ./cmd/lw-engine
   echo "Built $OUT_DIR/$name"
 }
 
 build_windows() {
-  GOOS=windows GOARCH=amd64 go build -o "$OUT_DIR/lw-engine.exe" ./cmd/lw-engine
+  if [[ "$NATIVE" == "1" || "$NATIVE" == "true" ]]; then
+    if [[ "$(uname -s)" != MINGW* && "$(uname -s)" != MSYS* && "$(uname -s)" != CYGWIN* && "${OS:-}" != "Windows_NT" ]]; then
+      echo "ERROR: LW_ENGINE_NATIVE=1 Windows build must run on Windows (CGO)." >&2
+      exit 1
+    fi
+    export GOOS=windows GOARCH=amd64
+  else
+    export GOOS=windows GOARCH=amd64
+  fi
+  go build "${build_flags[@]}" -o "$OUT_DIR/lw-engine.exe" ./cmd/lw-engine
   echo "Built $OUT_DIR/lw-engine.exe"
 }
 
@@ -41,9 +59,13 @@ case "$TARGET" in
   windows) build_windows ;;
   all)
     build_host
-    # On Windows host, host already produced .exe; still ensure name.
     if [[ "$(uname -s)" != MINGW* && "$(uname -s)" != MSYS* && "$(uname -s)" != CYGWIN* ]]; then
-      build_windows
+      # Cross mock only from non-Windows
+      NATIVE_SAVE="$NATIVE"
+      LW_ENGINE_NATIVE=0 NATIVE=0
+      GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -o "$OUT_DIR/lw-engine.exe" ./cmd/lw-engine
+      NATIVE="$NATIVE_SAVE"
+      echo "Built $OUT_DIR/lw-engine.exe (cross mock)"
     fi
     ;;
   *)
@@ -52,5 +74,4 @@ case "$TARGET" in
     ;;
 esac
 
-echo "Default install package uses this binary (LW_ENGINE_BACKEND defaults to go)."
-echo "Python / engine.tar.xz are not bundled; set LW_ENGINE_BACKEND=python only for local source-tree debugging."
+echo "Bundle binary ready. Models are not included — download separately."

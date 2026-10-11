@@ -200,3 +200,8 @@ autoresearch*.tsv
 
 # PLAN step 6 blog Go engine token
 .lw-engine-dev.token
+# Command-Cube withcore native (fetched/built locally or in CI)
+src-tauri/resources/transcribe-native/
+src-tauri/resources/onnxruntime/
+src-tauri/resources/onnxruntime.dll
+build/r2t2/

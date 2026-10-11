@@ -63,6 +63,13 @@ export async function verifyLwEngineBundle() {
   await mustExist("src-tauri/resources/fireredvad_vad.onnx");
   await mustExist("src-tauri/resources/fireredvad_cmvn.json");
 
+  if (process.env.VERIFY_WITHCORE === "1") {
+    await mustExist("src-tauri/resources/onnxruntime.dll");
+    await mustExist("src-tauri/resources/transcribe-native/transcribe.dll");
+    await mustExist("src-tauri/resources/r2t2-native/cpu/audiocpp.dll");
+    console.log("withcore native DLLs present (CPU R2T2 + transcribe + onnxruntime)");
+  }
+
   const size = (await stat(join(RESOURCES, "lw-engine.exe"))).size;
   console.log(
     `Go 引擎包资源已就绪: lw-engine.exe (${size} bytes); engine.tar.xz 未打包`,
