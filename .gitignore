@@ -190,3 +190,6 @@ autoresearch*.tsv
 .omc/
 
 .codex/
+
+# PLAN step 6 blog Go engine token
+.lw-engine-dev.token

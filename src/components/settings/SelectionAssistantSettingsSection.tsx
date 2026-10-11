@@ -15,7 +15,7 @@ import {
   reasoningModeOptions,
 } from "@/lib/llmModelOptions";
 import {
-  getSelectionApiKey, hasSelectionApiKey,
+  hasSelectionApiKey,
   listAiModels,
   setSelectionApiKey,
   setSelectionAssistantConfig,
@@ -190,7 +190,7 @@ export default function SelectionAssistantSettingsSection({
     // Write-only: never load the secret into the input.
     void hasSelectionApiKey(provider).then((_has) => {
       if (!disposed) setApiKey("");
-      void has; // configured indicator could use has later
+      void _has;
     }).catch(() => {
       if (!disposed) setApiKey("");
     });

@@ -37,7 +37,7 @@ import type {
   RecordingMode,
 } from "@/types";
 
-type View = "main" | "settings" | "history";
+type View = "main" | "settings" | "history" | "dev-engine";
 type StatusFilter = "" | "success" | "failed";
 
 function errorMessage(error: unknown): string {

@@ -34,5 +34,19 @@ export default defineConfig(async () => ({
     watch: {
       ignored: ["**/src-tauri/**"],
     },
+    // PLAN 步骤 6: browser → Vite → lw-engine (strip Origin so Go does not need CORS).
+    proxy: {
+      "/lw-engine": {
+        target: process.env.VITE_LW_ENGINE_TARGET || "http://127.0.0.1:8741",
+        changeOrigin: true,
+        rewrite: (p) => p.replace(/^\/lw-engine/, ""),
+        ws: true,
+        configure: (proxy) => {
+          proxy.on("proxyReq", (proxyReq) => {
+            proxyReq.removeHeader("origin");
+          });
+        },
+      },
+    },
   },
 }));

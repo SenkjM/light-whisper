@@ -17,7 +17,7 @@ import {
   setScreenContextMode,
   setWebSearchMode,
   setPolishMode,
-  getAiPolishApiKey, hasAiPolishApiKey,
+  hasAiPolishApiKey,
   getGrokBuildOauthStatus,
   getOpenaiCodexOauthStatus,
   getUserProfile,
@@ -26,7 +26,7 @@ import {
   removeHotWord,
   setLlmProviderConfig,
   setScreenVisionConfig,
-  getScreenVisionApiKey, hasScreenVisionApiKey,
+  hasScreenVisionApiKey,
   setScreenVisionApiKey,
   setSoundEnabled,
   setTranslationTarget,
@@ -40,7 +40,7 @@ import {
   setAssistantSystemPrompt,
   getLlmReasoningSupport,
   setAssistantApiKey,
-  getAssistantApiKey, hasAssistantApiKey,
+  hasAssistantApiKey,
   loginGrokBuildOauth,
   loginOpenaiCodexOauth,
   startGrokBuildOauthDeviceCode,
@@ -53,7 +53,7 @@ import {
   setOpenaiFastMode,
   setWebSearchConfig,
   setWebSearchApiKey,
-  getWebSearchApiKey, hasWebSearchApiKey,
+  hasWebSearchApiKey,
   hideMainWindow,
 } from "@/api/tauri";
 import type { ContextMode, CustomProvider, UserProfile, ApiFormat, GrokBuildOauthDeviceCodeChallenge, GrokBuildOauthStatus, LlmReasoningMode, LlmReasoningSupport, OpenaiAuthMode, OpenaiCodexOauthDeviceCodeChallenge, OpenaiCodexOauthStatus, PolishStructureLevel, WebSearchProvider, XaiAuthMode } from "@/types";
@@ -75,7 +75,8 @@ import { SettingsDisclosure, SettingsReveal } from "@/components/settings/Settin
 import ScreenVisionModelPicker from "@/components/settings/ScreenVisionModelPicker";
 import R2T2SettingsSection from "@/components/settings/R2T2SettingsSection";
 import { prefersReducedMotion } from "@/lib/motion";
-import { PADDING, INPUT_METHOD_KEY, DEFAULT_HOTKEY, AI_POLISH_ENABLED_KEY, SOUND_ENABLED_KEY, RECORDING_MODE_KEY } from "@/lib/constants";
+import { PADDING, DEFAULT_HOTKEY } from "@/lib/constants";
+import { loadAppPreferences, updateAppPreferences } from "@/lib/appPreferences";
 import { formatAsrEngineDescription, getAsrEngineCapability } from "@/lib/asrEngineCapabilities";
 import {
   resolveAssistantModelForProviderChange,
@@ -133,7 +134,7 @@ const asrCapabilityTagKeys = (engineKey: string) => {
   if (!capability) return [];
   return [
     capability.execution === "local" ? "settings.capabilityLocal" : "settings.capabilityCloud",
-    capability.interim ? "settings.capabilityFinalInterim" : "settings.capabilityFinalOnly",
+    capability.interim ? "settings.capabilityStreaming" : "settings.capabilitySentence",
   ];
 };
 
@@ -222,7 +223,7 @@ export default function SettingsPage({
   active,
   animClass = "",
 }: {
-  onNavigate: (v: "main" | "settings" | "history") => void;
+  onNavigate: (v: "main" | "settings" | "history" | "dev-engine") => void;
   active: boolean;
   animClass?: string;
 }) {
@@ -377,14 +378,25 @@ export default function SettingsPage({
   });
 
   // --- Core state ---
-  const [recordingMode, setRecordingModeState] = useState<"hold" | "toggle">(() => {
-    return readLocalStorage(RECORDING_MODE_KEY) === "toggle" ? "toggle" : "hold";
-  });
-  const [inputMethod, setInputMethod] = useState<"sendInput" | "clipboard">(() => {
-    return readLocalStorage(INPUT_METHOD_KEY) === "clipboard" ? "clipboard" : "sendInput";
-  });
-  const [soundEnabled, setSoundEnabledState] = useState(() => readLocalStorage(SOUND_ENABLED_KEY) !== "false");
-  const [aiPolishEnabled, setAiPolishEnabled] = useState(() => readLocalStorage(AI_POLISH_ENABLED_KEY) === "true");
+  const [recordingMode, setRecordingModeState] = useState<"hold" | "toggle">("hold");
+  const [inputMethod, setInputMethod] = useState<"sendInput" | "clipboard">("sendInput");
+  const [soundEnabled, setSoundEnabledState] = useState(true);
+  const [aiPolishEnabled, setAiPolishEnabled] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    void loadAppPreferences().then((prefs) => {
+      if (cancelled) return;
+      setRecordingModeState(prefs.recordingToggle ? "toggle" : "hold");
+      setInputMethod(prefs.inputMethod === "clipboard" ? "clipboard" : "sendInput");
+      setSoundEnabledState(prefs.soundEnabled !== false);
+      setAiPolishEnabled(!!prefs.aiPolishEnabled);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   const [aiPolishApiKey, setAiPolishApiKey] = useState("");
   const [openaiCodexOauthStatus, setOpenaiCodexOauthStatus] = useState<OpenaiCodexOauthStatus>({ loggedIn: false });
   const [openaiCodexOauthLoading, setOpenaiCodexOauthLoading] = useState(false);
@@ -1744,7 +1756,7 @@ export default function SettingsPage({
       if (autoEnabled) {
         aiPolishKeySave.cancel();
         setAiPolishEnabled(true);
-        writeLocalStorage(AI_POLISH_ENABLED_KEY, "true");
+        void updateAppPreferences({ aiPolishEnabled: true });
         await setAiPolishConfig(true, aiPolishApiKey).catch(() => {});
         toast.success(t("toast.translationAutoPolish"));
       }
@@ -1994,7 +2006,7 @@ export default function SettingsPage({
   const handleRecordingModeChange = useCallback((mode: "hold" | "toggle") => {
     setRecordingModeState(mode);
     picker.close();
-    writeLocalStorage(RECORDING_MODE_KEY, mode);
+    void updateAppPreferences({ recordingToggle: mode === "toggle" });
     setRecordingMode(mode === "toggle").catch(() => {});
   }, []);
 
@@ -2013,7 +2025,7 @@ export default function SettingsPage({
         await aiPolishKeySave.flush();
         await setPolishMode(mode);
         setAiPolishEnabled(mode !== "off");
-        writeLocalStorage(AI_POLISH_ENABLED_KEY, String(mode !== "off"));
+        void updateAppPreferences({ aiPolishEnabled: mode !== "off" });
       } else if (kind === "screen") {
         await setScreenContextMode(mode);
         setScreenContextEnabledState(mode !== "off");
@@ -2648,7 +2660,7 @@ export default function SettingsPage({
                   aria-pressed={inputMethod === key}
                   onClick={() => {
                     setInputMethod(key);
-                    writeLocalStorage(INPUT_METHOD_KEY, key);
+                    void updateAppPreferences({ inputMethod: key });
                     setInputMethodCommand(key).catch(() => {});
                   }}
                 >
@@ -2669,7 +2681,7 @@ export default function SettingsPage({
                 onClick={() => {
                   const next = !soundEnabled;
                   setSoundEnabledState(next);
-                  writeLocalStorage(SOUND_ENABLED_KEY, String(next));
+                  void updateAppPreferences({ soundEnabled: next });
                   setSoundEnabled(next).catch(() => {});
                 }}
                 className="toggle-switch"

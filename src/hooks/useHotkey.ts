@@ -1,18 +1,21 @@
+// SPDX-FileCopyrightText: 2026 SenkjM
+// SPDX-License-Identifier: AGPL-3.0-only
+
 import { listen } from "@tauri-apps/api/event";
 import { useState, useEffect, useCallback, useRef } from "react";
 import {
   getHotkeyDiagnostic,
   registerCustomHotkey,
 } from "@/api/tauri";
-import { DEFAULT_HOTKEY, HOTKEY_STORAGE_KEY } from "@/lib/constants";
+import { DEFAULT_HOTKEY } from "@/lib/constants";
 import { formatHotkeyForDisplay, normalizeHotkey } from "@/lib/hotkey";
-import { readLocalStorage, writeLocalStorage } from "@/lib/storage";
+import { hotkeyFromPrefs, loadAppPreferences } from "@/lib/appPreferences";
 import type { HotkeyDiagnostic } from "@/types";
 
 interface UseHotkeyReturn {
   /** A human-readable string describing the current hotkey (e.g. "F2"). */
   hotkeyDisplay: string;
-  /** Update hotkey, persist it locally and re-register immediately. */
+  /** Update hotkey, persist via shell preferences and re-register immediately. */
   setHotkey: (shortcut: string) => Promise<void>;
   /** Error message if registration failed. */
   error: string | null;
@@ -20,25 +23,16 @@ interface UseHotkeyReturn {
   diagnostic: HotkeyDiagnostic | null;
 }
 
-function readStoredHotkey(): string {
-  const stored = readLocalStorage(HOTKEY_STORAGE_KEY);
-  if (stored) return normalizeHotkey(stored);
-  return DEFAULT_HOTKEY;
-}
-
-function writeStoredHotkey(shortcut: string): void {
-  writeLocalStorage(HOTKEY_STORAGE_KEY, shortcut);
-}
-
 /**
  * Registers and manages the global push-to-talk hotkey.
  *
  * Recording start/stop is handled in the Rust backend so the UI only needs
  * to keep the registration in sync and surface any registration errors.
+ * Source of truth: shell `app_preferences.json` (PLAN 步骤 6).
  */
 export function useHotkey(): UseHotkeyReturn {
   const [error, setError] = useState<string | null>(null);
-  const [hotkeyRaw, setHotkeyRaw] = useState<string>(() => readStoredHotkey());
+  const [hotkeyRaw, setHotkeyRaw] = useState<string>(DEFAULT_HOTKEY);
   const [diagnostic, setDiagnostic] = useState<HotkeyDiagnostic | null>(null);
   const hotkeyDisplay = formatHotkeyForDisplay(hotkeyRaw);
 
@@ -54,17 +48,17 @@ export function useHotkey(): UseHotkeyReturn {
     setError(null);
     setHotkeyRaw(normalized);
     hotkeyRef.current = normalized;
-    writeStoredHotkey(normalized);
     return normalized;
   }, []);
 
   const register = useCallback(async () => {
     try {
       setError(null);
-      await registerShortcut(hotkeyRef.current || DEFAULT_HOTKEY);
+      const prefs = await loadAppPreferences();
+      const fromShell = hotkeyFromPrefs(prefs);
+      await registerShortcut(fromShell || DEFAULT_HOTKEY);
     } catch (err) {
-      const message =
-        err instanceof Error ? err.message : String(err);
+      const message = err instanceof Error ? err.message : String(err);
       if (!mountedRef.current) return;
       setError(message);
     }
@@ -84,8 +78,6 @@ export function useHotkey(): UseHotkeyReturn {
     }
   }, [registerShortcut]);
 
-  // Register on mount. Do not unregister all hotkeys on cleanup because
-  // translation/assistant hotkeys are owned by other settings flows.
   useEffect(() => {
     mountedRef.current = true;
     void register();
@@ -115,7 +107,7 @@ export function useHotkey(): UseHotkeyReturn {
           unlisten = null;
         }
       } catch {
-        // 忽略热键诊断监听失败
+        // ignore
       }
     })();
 

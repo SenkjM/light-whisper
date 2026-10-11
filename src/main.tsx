@@ -10,11 +10,13 @@ import i18n from "./i18n";
 import "./styles/theme.css";
 import "./styles/pages.css";
 
-type View = "main" | "settings" | "history";
+type View = "main" | "settings" | "history" | "dev-engine";
 const loadSettingsPage = () => import("./pages/SettingsPage");
 const loadHistoryPage = () => import("./pages/HistoryPage");
 const SettingsPage = lazy(loadSettingsPage);
 const HistoryPage = lazy(loadHistoryPage);
+const loadDevEngineConsole = () => import("./pages/DevEngineConsole");
+const DevEngineConsole = lazy(loadDevEngineConsole);
 
 class ErrorBoundary extends React.Component<
   { children: React.ReactNode },
@@ -50,8 +52,16 @@ class ErrorBoundary extends React.Component<
   }
 }
 
+function initialView(): View {
+  if (import.meta.env.DEV) {
+    const q = new URLSearchParams(window.location.search).get("view");
+    if (q === "dev-engine") return "dev-engine";
+  }
+  return "main";
+}
+
 export function App() {
-  const [view, setView] = useState<View>("main");
+  const [view, setView] = useState<View>(initialView);
   const [animClass, setAnimClass] = useState("");
   const isTransitioning = useRef(false);
   useTheme();
@@ -98,7 +108,12 @@ export function App() {
     };
 
     if (target !== "main") {
-      const loadTarget = target === "settings" ? loadSettingsPage : loadHistoryPage;
+      const loadTarget =
+        target === "settings"
+          ? loadSettingsPage
+          : target === "dev-engine"
+            ? loadDevEngineConsole
+            : loadHistoryPage;
       void loadTarget().then(startTransition).catch((error) => {
         isTransitioning.current = false;
         console.error(`${target} page load failed:`, error);
@@ -118,6 +133,8 @@ export function App() {
               <MainPage onNavigate={navigateTo} animClass={animClass} />
             ) : view === "settings" ? (
               <SettingsPage onNavigate={navigateTo} active animClass={animClass} />
+            ) : view === "dev-engine" ? (
+              <DevEngineConsole />
             ) : (
               <HistoryPage onNavigate={navigateTo} animClass={animClass} />
             )}

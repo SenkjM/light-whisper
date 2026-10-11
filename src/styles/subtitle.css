@@ -843,3 +843,9 @@ body,
 @media (prefers-reduced-motion: reduce) {
   .subtitle-polish-flash { animation: none; }
 }
+
+/* PLAN 步骤 6: Qwen3 whole-sentence captions */
+.subtitle-text-sentence .subtitle-interim-tentative {
+  opacity: 0.9;
+  font-style: normal;
+}

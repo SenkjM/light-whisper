@@ -50,6 +50,8 @@ interface TranscriptionResult {
   tentativeText?: string;
   polished?: boolean;
   mode?: "dictation" | "assistant";
+  /** PLAN 步骤 6: `streaming` (R2T2) vs `sentence` (Qwen3). Separate from session mode. */
+  captionMode?: "streaming" | "sentence";
 }
 
 interface InterimSegments {
@@ -167,6 +169,7 @@ export default function SubtitleOverlay() {
   const [text, setText] = useState("");
   const [polishFlash, setPolishFlash] = useState(false);
   const [interimSegments, setInterimSegments] = useState<InterimSegments | null>(null);
+  const [captionMode, setCaptionMode] = useState<"streaming" | "sentence" | null>(null);
   const [fadingOut, setFadingOut] = useState(false);
   const [outcome, setOutcome] = useState<RecordingOutcomeKind | null>(null);
   const [streamTokens, setStreamTokens] = useState(0);
@@ -192,7 +195,10 @@ export default function SubtitleOverlay() {
   // Native stable/tentative spans render immediately. Do not animate an unused
   // copy of their text and rerender the entire overlay on every animation frame.
   // Completed results must be fully readable before their hide timer starts.
-  const smoothText = useSmoothText(text, { enabled: !interimSegments && phase !== "result" });
+  // Sentence mode: show whole committed sentences immediately (no char-by-char).
+  const smoothText = useSmoothText(text, {
+    enabled: !interimSegments && phase !== "result" && captionMode !== "sentence",
+  });
   const latestSessionIdRef = useRef(0);
   const finalTranscriptionSessionIdRef = useRef(0);
   const latestRevisionRef = useRef(-1);
@@ -854,12 +860,23 @@ export default function SubtitleOverlay() {
             if (interim && sessionId === finalTranscriptionSessionIdRef.current) return;
             latestSessionIdRef.current = sessionId;
           }
-          setMode(event.payload.mode ?? "dictation");
+          {
+            const sessionMode = event.payload.mode;
+            if (sessionMode === "assistant" || sessionMode === "dictation") {
+              setMode(sessionMode);
+            } else {
+              setMode("dictation");
+            }
+          }
 
           const incomingText = event.payload.text || "";
           setOutcome(null);
           setText(incomingText);
           setInterimSegments(interim ? validInterimSegments(event.payload) : null);
+          const cm = event.payload.captionMode;
+          if (cm === "streaming" || cm === "sentence") {
+            setCaptionMode(cm);
+          }
 
           if (interim) {
             setFadingOut(false);
@@ -1341,7 +1358,7 @@ export default function SubtitleOverlay() {
             {hasText && (
               <div
                 ref={assistantTextRef}
-                className={`subtitle-text${isStreaming ? " subtitle-text-streaming" : ""}${polishFlash ? " subtitle-polish-flash" : ""}`}
+                className={`subtitle-text${isStreaming ? " subtitle-text-streaming" : ""}${captionMode === "sentence" ? " subtitle-text-sentence" : ""}${polishFlash ? " subtitle-polish-flash" : ""}`}
                 onAnimationEnd={(event) => { if (event.target === event.currentTarget) setPolishFlash(false); }}
                 role="status"
                 aria-live="polite"

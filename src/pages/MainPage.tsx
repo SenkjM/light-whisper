@@ -11,12 +11,13 @@ import TranscriptionResult from "@/components/TranscriptionResult";
 import TranscriptionHistory from "@/components/TranscriptionHistory";
 import { useDebouncedCallback } from "@/hooks/useDebouncedCallback";
 import { useTranslation } from "react-i18next";
-import { PADDING, ONBOARDING_DISMISSED_KEY, RECORDING_MODE_KEY } from "@/lib/constants";
+import { PADDING, ONBOARDING_DISMISSED_KEY } from "@/lib/constants";
 import { readLocalStorage, writeLocalStorage } from "@/lib/storage";
+import { loadAppPreferences } from "@/lib/appPreferences";
 import { prefersReducedMotion } from "@/lib/motion";
 
 export default function MainPage({ onNavigate, animClass = "" }: {
-  onNavigate: (v: "main" | "settings" | "history") => void;
+  onNavigate: (v: "main" | "settings" | "history" | "dev-engine") => void;
   animClass?: string;
 }) {
   const { t } = useTranslation();
@@ -32,7 +33,10 @@ export default function MainPage({ onNavigate, animClass = "" }: {
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [errorDismissed, setErrorDismissed] = useState(false);
   const [onboardingDismissed, setOnboardingDismissed] = useState(() => readLocalStorage(ONBOARDING_DISMISSED_KEY) === "true");
-  const isToggleMode = useRef(readLocalStorage(RECORDING_MODE_KEY) === "toggle").current;
+  const [isToggleMode, setIsToggleMode] = useState(false);
+  useEffect(() => {
+    void loadAppPreferences().then((p) => setIsToggleMode(!!p.recordingToggle));
+  }, []);
   const copyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const resultsRef = useRef<HTMLDivElement>(null);
   const previousResult = useRef<{ id: string; top: number } | null>(null);

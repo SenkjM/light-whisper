@@ -739,3 +739,9 @@ export function getAppPreferences(): Promise<AppPreferences> {
 export function migrateAppPreferences(preferences: AppPreferences): Promise<AppPreferences> {
   return invokeCommand<AppPreferences>("migrate_app_preferences", { preferences });
 }
+
+export function patchAppPreferences(
+  patch: Partial<AppPreferences>,
+): Promise<AppPreferences> {
+  return invokeCommand<AppPreferences>("patch_app_preferences", { patch });
+}

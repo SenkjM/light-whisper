@@ -9,8 +9,7 @@ import {
   testMicrophone,
 } from "@/api/tauri";
 import type { InputDeviceInfo } from "@/types";
-import { INPUT_DEVICE_STORAGE_KEY, MIC_LEVEL_MONITOR_ENABLED_KEY } from "@/lib/constants";
-import { readLocalStorage, writeLocalStorage } from "@/lib/storage";
+import { loadAppPreferences, updateAppPreferences } from "@/lib/appPreferences";
 import { useTranslation } from "react-i18next";
 
 interface MicrophoneLevelPayload {
@@ -37,9 +36,7 @@ export function useMicrophoneSettings({
   const [deviceListLoading, setDeviceListLoading] = useState(true);
   const [micLevel, setMicLevel] = useState(0);
   const [micMonitorReady, setMicMonitorReady] = useState(false);
-  const [micLevelMonitorEnabled, setMicLevelMonitorEnabled] = useState(
-    () => readLocalStorage(MIC_LEVEL_MONITOR_ENABLED_KEY) === "true",
-  );
+  const [micLevelMonitorEnabled, setMicLevelMonitorEnabled] = useState(false);
 
   const refreshInputDevices = useCallback(async () => {
     setDeviceListLoading(true);
@@ -56,7 +53,11 @@ export function useMicrophoneSettings({
 
   useEffect(() => {
     void (async () => {
-      const stored = readLocalStorage(INPUT_DEVICE_STORAGE_KEY);
+      const prefs = await loadAppPreferences();
+      const stored = prefs.inputDevice ?? null;
+      if (prefs.micLevelMonitorEnabled) {
+        setMicLevelMonitorEnabled(true);
+      }
       if (stored) {
         await setInputDevice(stored).catch(() => {});
       }
@@ -120,7 +121,7 @@ export function useMicrophoneSettings({
     setDeviceListLoading(true);
     try {
       await setInputDevice(name || null);
-      writeLocalStorage(INPUT_DEVICE_STORAGE_KEY, name || "");
+      void updateAppPreferences({ inputDevice: name || null });
       setSelectedInputDeviceName(name);
       await refreshInputDevices();
     } catch {
@@ -132,7 +133,7 @@ export function useMicrophoneSettings({
 
   const handleMicLevelMonitorToggle = useCallback((enabled: boolean) => {
     setMicLevelMonitorEnabled(enabled);
-    writeLocalStorage(MIC_LEVEL_MONITOR_ENABLED_KEY, enabled ? "true" : "false");
+    void updateAppPreferences({ micLevelMonitorEnabled: enabled });
     if (!enabled) {
       setMicMonitorReady(false);
       setMicLevel(0);

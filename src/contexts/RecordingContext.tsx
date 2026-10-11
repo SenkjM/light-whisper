@@ -2,9 +2,8 @@ import { createContext, useContext, useEffect, useMemo, type ReactNode } from "r
 import { useRecording } from "@/hooks/useRecording";
 import { useModelStatus, type ModelStage } from "@/hooks/useModelStatus";
 import { useHotkey } from "@/hooks/useHotkey";
-import { setInputMethodCommand, setAiPolishConfig, setInputDevice, setSoundEnabled, setRecordingMode, getAppPreferences, migrateAppPreferences } from "@/api/tauri";
-import { readLocalStorage } from "@/lib/storage";
-import { INPUT_METHOD_KEY, INPUT_DEVICE_STORAGE_KEY, AI_POLISH_ENABLED_KEY, SOUND_ENABLED_KEY, RECORDING_MODE_KEY } from "@/lib/constants";
+import { setInputMethodCommand, setAiPolishConfig, setInputDevice, setSoundEnabled, setRecordingMode } from "@/api/tauri";
+import { loadAppPreferences } from "@/lib/appPreferences";
 import type {
   EditGrabStatus,
   HistoryItem,
@@ -99,81 +98,62 @@ export function RecordingProvider({ children }: { children: ReactNode }) {
     diagnostic: hotkeyDiagnostic,
   } = useHotkey();
 
-  // 启动时将 localStorage 持久化的各项设置同步到后端。
-  // 任何一个 backend 调用失败都要在 console 上留痕，便于排障；
-  // 但不能让错误逃逸到 React 渲染，否则会炸整个 provider。
+  // PLAN 步骤 6: shell app_preferences.json is the source of truth for business
+  // prefs. loadAppPreferences migrates leftover localStorage once, then we push
+  // the shell snapshot into the Rust runtime.
   useEffect(() => {
-    const storedInputMethod = readLocalStorage(INPUT_METHOD_KEY);
-    const storedInputDevice = readLocalStorage(INPUT_DEVICE_STORAGE_KEY);
-    const storedSoundEnabled = readLocalStorage(SOUND_ENABLED_KEY);
-    const storedRecordingMode = readLocalStorage(RECORDING_MODE_KEY);
-    const aiPolishEnabled = readLocalStorage(AI_POLISH_ENABLED_KEY) === "true";
-
-    const tasks: Array<{ name: string; run: () => Promise<unknown> }> = [];
-    if (storedInputMethod === "clipboard") {
-      tasks.push({
-        name: "setInputMethodCommand",
-        run: () => setInputMethodCommand("clipboard"),
-      });
-    }
-    if (storedInputDevice != null) {
-      tasks.push({
-        name: "setInputDevice",
-        run: () => setInputDevice(storedInputDevice),
-      });
-    }
-    if (storedSoundEnabled === "false") {
-      tasks.push({
-        name: "setSoundEnabled",
-        run: () => setSoundEnabled(false),
-      });
-    }
-    if (storedRecordingMode === "toggle") {
-      tasks.push({
-        name: "setRecordingMode",
-        run: () => setRecordingMode(true),
-      });
-    }
-    if (aiPolishEnabled) {
-      tasks.push({
-        name: "setAiPolishConfig",
-        // Write-only: empty key keeps keyring value (PLAN 步骤 5).
-        run: () => setAiPolishConfig(aiPolishEnabled, ""),
-      });
-    }
-
-    // One-shot localStorage → shell preferences migration (idempotent on Rust side).
-    tasks.push({
-      name: "migrateAppPreferences",
-      run: async () => {
-        const existing = await getAppPreferences();
-        if (existing.migratedFromLocalStorage) return;
-        await migrateAppPreferences({
-          schemaVersion: 1,
-          hotkey: null,
-          recordingToggle: storedRecordingMode === "toggle",
-          inputDevice: storedInputDevice,
-          inputMethod: storedInputMethod === "clipboard" ? "clipboard" : storedInputMethod,
-          soundEnabled: storedSoundEnabled !== "false",
-          micLevelMonitorEnabled: false,
-          aiPolishEnabled,
-          migratedFromLocalStorage: true,
-        });
-      },
-    });
-
-    if (tasks.length === 0) return;
-
-    Promise.allSettled(tasks.map((t) => t.run())).then((results) => {
-      results.forEach((result, idx) => {
-        if (result.status === "rejected") {
-          console.error(
-            `[RecordingProvider startup] ${tasks[idx].name} failed:`,
-            result.reason,
-          );
+    let cancelled = false;
+    void (async () => {
+      try {
+        const prefs = await loadAppPreferences();
+        if (cancelled) return;
+        const tasks: Array<{ name: string; run: () => Promise<unknown> }> = [];
+        if (prefs.inputMethod === "clipboard") {
+          tasks.push({
+            name: "setInputMethodCommand",
+            run: () => setInputMethodCommand("clipboard"),
+          });
         }
-      });
-    });
+        if (prefs.inputDevice) {
+          tasks.push({
+            name: "setInputDevice",
+            run: () => setInputDevice(prefs.inputDevice ?? null),
+          });
+        }
+        if (!prefs.soundEnabled) {
+          tasks.push({
+            name: "setSoundEnabled",
+            run: () => setSoundEnabled(false),
+          });
+        }
+        if (prefs.recordingToggle) {
+          tasks.push({
+            name: "setRecordingMode",
+            run: () => setRecordingMode(true),
+          });
+        }
+        if (prefs.aiPolishEnabled) {
+          tasks.push({
+            name: "setAiPolishConfig",
+            run: () => setAiPolishConfig(true, ""),
+          });
+        }
+        const results = await Promise.allSettled(tasks.map((t) => t.run()));
+        results.forEach((result, idx) => {
+          if (result.status === "rejected") {
+            console.error(
+              `[RecordingProvider startup] ${tasks[idx].name} failed:`,
+              result.reason,
+            );
+          }
+        });
+      } catch (err) {
+        console.error("[RecordingProvider startup] loadAppPreferences failed:", err);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const contextValue: RecordingContextValue = useMemo(() => ({
