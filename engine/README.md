@@ -26,6 +26,7 @@ API 契约：[`docs/command-cube/api/`](../docs/command-cube/api/README.md)。
 | Rust 经 Go API 识别（步骤 5）：WS 流 + jobs、Job Object；删 interim；密钥只写；app_preferences | ✅；**默认 `LW_ENGINE_BACKEND=go`**，安装包打 `lw-engine.exe`（无 engine.tar.xz） |
 | 独立前端（步骤 6）：壳 prefs 为业务设置源、streaming/sentence UI、`pnpm dev`+Go 调试台 | ✅ 见 `scripts/dev_go_engine.sh` 与 `?view=dev-engine` |
 | 鉴权 / 统计（§11）：root/admin/user + SQLite `management.sqlite`，`GET /v1/auth/*`、`GET /v1/stats` | ✅ v1 |
+| withcore Windows：`lwnative` + CPU audiocpp / transcribe / onnxruntime 随包；模型另下 | ✅ CI `command-cube-withcore.yml` |
 | 默认纯 Go 安装包 | ✅ `tauri.conf.json` + `scripts/build_lw_engine_for_bundle.sh`；python/`engine.tar.xz` 不进包 |
 
 ## 目录

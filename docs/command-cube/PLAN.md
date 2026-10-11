@@ -1,7 +1,7 @@
 # Command-Cube 规划：前后端分离（Go 引擎后端 + Rust 薄壳 + 独立前端）
 
 > 分支：`Command-Cube`  
-> 状态：规划文档；实施进度见 §7 各步骤的「进度」（步骤 1 已完成；步骤 2 FireRedVAD 的 Go 移植已完成并与 Python 对齐；步骤 3 R2T2 会话与分段已移植，在 Linux CPU 上与 Python 逐调用、逐字一致，Windows / CUDA 与延迟基线未实测；步骤 4 Qwen3 / 调度 / job 已实现；步骤 5–6 完成；默认安装包纯 Go（`lw-engine.exe`，无 `engine.tar.xz` / PyInstaller）；`LW_ENGINE_BACKEND` 默认 `go`；Windows 真人 E2E、lwnative+原生 DLL 随包、步骤 7 工具仍待；§11 产品壳「命令方块」垂直切片进行中）  
+> 状态：规划文档；实施进度见 §7 各步骤的「进度」（步骤 1 已完成；步骤 2 FireRedVAD 的 Go 移植已完成并与 Python 对齐；步骤 3 R2T2 会话与分段已移植，在 Linux CPU 上与 Python 逐调用、逐字一致，Windows / CUDA 与延迟基线未实测；步骤 4 Qwen3 / 调度 / job 已实现；步骤 5–6 完成；默认安装包纯 Go（`lw-engine.exe`，无 `engine.tar.xz` / PyInstaller）；`LW_ENGINE_BACKEND` 默认 `go`；§11 产品壳进行中；withcore CI 打 CPU native（audiocpp+transcribe+ORT）；CUDA 随包仍可选；模型仍单独下载；步骤 7 工具 / 真人 E2E 仍待）  
 > 基于：对 `main` @ `151a61c` 的只读调研  
 > **本文主线**：用独立 Go 后端服务取代 Python 编排层；Rust（Tauri）只做系统集成与应用层；前端独立。
 
@@ -765,5 +765,7 @@ formal/
 - [x] 连接：状态 + auth/me + stats + autofill + URL/path + 壳侧云端点（polish/assistant/decision）
 - [x] 关于：命令方块、许可说明、图标占位致谢
 - [x] 壳侧云 API 路由：`cloud_*_endpoint` 覆盖 polish / assistant / decision(Jev) / cloud ASR；密钥走既有 keyring；**Go 后端永不实现云能力**
+- [x] withcore：`fetch_native_deps_windows.py` + `build_r2t2_runtime.py --backend cpu` + `LW_ENGINE_NATIVE=1`；壳自动选 `native`（缺库则 mock）；模型不随包
+- [x] 红电话占位应用图标；ASR/job 统计计数；`package_flavor.sh` → stage withcore/without
 
 
