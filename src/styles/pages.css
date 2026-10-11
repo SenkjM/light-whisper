@@ -2459,3 +2459,73 @@
 .correction-modal { transition: opacity var(--dur-exit) var(--ease-out-expo); }
 .correction-modal[data-closing="true"] { opacity: 0; pointer-events: none; }
 @starting-style { .correction-modal { opacity: 0; } }
+
+/* 命令方块 shell (PLAN §11) */
+.cube-shell {
+  display: flex;
+  height: 100%;
+  width: 100%;
+  background: var(--color-bg-primary, #0f1115);
+  color: var(--color-text-primary, #e8eaed);
+}
+.cube-nav {
+  width: 200px;
+  flex-shrink: 0;
+  border-right: 1px solid var(--color-border, #2a2f3a);
+  display: flex;
+  flex-direction: column;
+  padding: 16px 12px;
+  gap: 16px;
+}
+.cube-brand {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  padding: 4px 8px;
+}
+.cube-brand-icon { width: 28px; height: 28px; }
+.cube-brand-title { font-weight: 650; font-size: 15px; }
+.cube-brand-sub { font-size: 11px; opacity: 0.55; }
+.cube-nav-list { display: flex; flex-direction: column; gap: 4px; }
+.cube-nav-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  text-align: left;
+  font-size: 13px;
+}
+.cube-nav-item:hover { background: color-mix(in srgb, currentColor 8%, transparent); }
+.cube-nav-item.is-active { background: color-mix(in srgb, #e11d48 18%, transparent); color: #fb7185; }
+.cube-main { flex: 1; overflow: auto; padding: 20px 24px; }
+.cube-page-header h1 { font-size: 20px; margin: 0 0 6px; }
+.cube-muted { color: var(--color-text-secondary, #9aa3b2); font-size: 13px; }
+.cube-card {
+  margin-top: 16px;
+  padding: 16px;
+  border-radius: 12px;
+  border: 1px solid var(--color-border, #2a2f3a);
+  background: var(--color-bg-secondary, #161a22);
+}
+.cube-card h2 { font-size: 14px; margin: 0 0 12px; }
+.cube-dl { display: grid; gap: 8px; margin: 0 0 12px; }
+.cube-dl > div { display: grid; grid-template-columns: 120px 1fr; gap: 8px; font-size: 13px; }
+.cube-dl dt { opacity: 0.65; }
+.cube-dl .mono, .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; word-break: break-all; }
+.cube-field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; font-size: 13px; }
+.cube-field input {
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--color-border, #2a2f3a);
+  background: var(--color-bg-primary, #0f1115);
+  color: inherit;
+}
+.cube-check { display: flex; gap: 8px; align-items: center; margin-bottom: 12px; font-size: 13px; }
+.cube-error { color: #f87171; font-size: 13px; }
+.cube-stub-list { margin: 0; padding-left: 18px; font-size: 13px; }
+.cube-about { display: flex; flex-direction: column; align-items: center; gap: 8px; text-align: center; }

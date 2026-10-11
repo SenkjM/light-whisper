@@ -10,13 +10,15 @@ import i18n from "./i18n";
 import "./styles/theme.css";
 import "./styles/pages.css";
 
-type View = "main" | "settings" | "history" | "dev-engine";
+type View = "cube" | "main" | "settings" | "history" | "dev-engine";
 const loadSettingsPage = () => import("./pages/SettingsPage");
 const loadHistoryPage = () => import("./pages/HistoryPage");
 const SettingsPage = lazy(loadSettingsPage);
 const HistoryPage = lazy(loadHistoryPage);
 const loadDevEngineConsole = () => import("./pages/DevEngineConsole");
 const DevEngineConsole = lazy(loadDevEngineConsole);
+const loadCubeShell = () => import("./pages/cube/CubeShell");
+const CubeShell = lazy(loadCubeShell);
 
 class ErrorBoundary extends React.Component<
   { children: React.ReactNode },
@@ -56,8 +58,9 @@ function initialView(): View {
   if (import.meta.env.DEV) {
     const q = new URLSearchParams(window.location.search).get("view");
     if (q === "dev-engine") return "dev-engine";
+    if (q === "legacy") return "main";
   }
-  return "main";
+  return "cube";
 }
 
 export function App() {
@@ -109,11 +112,13 @@ export function App() {
 
     if (target !== "main") {
       const loadTarget =
-        target === "settings"
-          ? loadSettingsPage
-          : target === "dev-engine"
-            ? loadDevEngineConsole
-            : loadHistoryPage;
+        target === "cube"
+          ? loadCubeShell
+          : target === "settings"
+            ? loadSettingsPage
+            : target === "dev-engine"
+              ? loadDevEngineConsole
+              : loadHistoryPage;
       void loadTarget().then(startTransition).catch((error) => {
         isTransitioning.current = false;
         console.error(`${target} page load failed:`, error);
@@ -129,7 +134,9 @@ export function App() {
       <div style={{ height: "100%", width: "100%" }}>
         <div style={{ height: "100%", width: "100%" }}>
           <Suspense fallback={<div style={{ height: "100%", width: "100%" }} />}>
-            {view === "main" ? (
+            {view === "cube" ? (
+              <CubeShell animClass={animClass} />
+            ) : view === "main" ? (
               <MainPage onNavigate={navigateTo} animClass={animClass} />
             ) : view === "settings" ? (
               <SettingsPage onNavigate={navigateTo} active animClass={animClass} />

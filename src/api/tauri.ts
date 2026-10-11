@@ -730,7 +730,34 @@ export type AppPreferences = {
   micLevelMonitorEnabled?: boolean;
   aiPolishEnabled?: boolean;
   migratedFromLocalStorage?: boolean;
+  managementUrl?: string | null;
+  managementEnginePath?: string | null;
+  managementAutofillToken?: boolean;
+  packageFlavor?: string;
 };
+
+export type ManagementConnection = {
+  backend: string;
+  baseUrl?: string | null;
+  rootToken?: string | null;
+  autofillToken: boolean;
+  enginePath?: string | null;
+  packageFlavor: string;
+  ready: boolean;
+};
+
+export function getManagementConnection(): Promise<ManagementConnection> {
+  return invokeCommand<ManagementConnection>("get_management_connection");
+}
+
+export function setManagementSettings(patch: {
+  managementUrl?: string | null;
+  managementEnginePath?: string | null;
+  managementAutofillToken?: boolean;
+  packageFlavor?: string;
+}): Promise<AppPreferences> {
+  return invokeCommand<AppPreferences>("set_management_settings", patch);
+}
 
 export function getAppPreferences(): Promise<AppPreferences> {
   return invokeCommand<AppPreferences>("get_app_preferences");
