@@ -1,7 +1,7 @@
 # Command-Cube 规划：前后端分离（Go 引擎后端 + Rust 薄壳 + 独立前端）
 
 > 分支：`Command-Cube`  
-> 状态：规划文档；实施进度见 §7 各步骤的「进度」（步骤 1 已完成；步骤 2 FireRedVAD 的 Go 移植已完成并与 Python 对齐；步骤 3 R2T2 会话与分段已移植，在 Linux CPU 上与 Python 逐调用、逐字一致，Windows / CUDA 与延迟基线未实测；步骤 4 Qwen3 / 调度 / job 已实现；步骤 5–6 完成；默认安装包纯 Go（`lw-engine.exe`，无 `engine.tar.xz` / PyInstaller）；`LW_ENGINE_BACKEND` 默认 `go`；Windows 真人 E2E、lwnative+原生 DLL 随包、步骤 7 工具仍待）  
+> 状态：规划文档；实施进度见 §7 各步骤的「进度」（步骤 1 已完成；步骤 2 FireRedVAD 的 Go 移植已完成并与 Python 对齐；步骤 3 R2T2 会话与分段已移植，在 Linux CPU 上与 Python 逐调用、逐字一致，Windows / CUDA 与延迟基线未实测；步骤 4 Qwen3 / 调度 / job 已实现；步骤 5–6 完成；默认安装包纯 Go（`lw-engine.exe`，无 `engine.tar.xz` / PyInstaller）；`LW_ENGINE_BACKEND` 默认 `go`；Windows 真人 E2E、lwnative+原生 DLL 随包、步骤 7 工具仍待；§11 产品壳「命令方块」垂直切片进行中）  
 > 基于：对 `main` @ `151a61c` 的只读调研  
 > **本文主线**：用独立 Go 后端服务取代 Python 编排层；Rust（Tauri）只做系统集成与应用层；前端独立。
 
@@ -697,3 +697,66 @@ scripts/build_r2t2_runtime.py
 scripts/patches/audio-cpp-r2t2-windows-streaming.patch
 formal/
 ```
+
+
+## 11. 产品壳「命令方块 / command-cube」（UI · 鉴权 · 打包口味）
+
+> 用户确认后开干的垂直切片。本节只记**已定决策**；实现进度见文末「进度」。
+
+### 11.1 品牌与图标
+
+| 项 | 决策 |
+|----|------|
+| 产品名 | **命令方块**（中文）/ **command-cube**（英文标识） |
+| 图标 | 先用开源库的**红色电话**占位（优先 MIT / ISC，如 Lucide `Phone` 着色）；用户后续自行重设计，不要在正式素材上花时间 |
+| 旧名 | 「轻语 Whisper」字符串逐步改为命令方块；技术目录名 `light-whisper` / crate 名暂不强制改 |
+
+### 11.2 窗口与导航
+
+| 项 | 决策 |
+|----|------|
+| 主窗口 | 约 **960×640**（可再调），不再用 420×560 小窗作为主壳 |
+| 布局 | **左侧主 Tab** + **顶栏子 Tab** |
+| 主 Tab | **连接** \| **工作台** \| **后端管理** \| **壳设置** \| **关于** |
+| 工作台 | 合并听写 + 历史入口；**详细历史仍只在前端**（后端不存转写正文） |
+| 无 | 不做「打包 / 调试」两套 UX 分叉 |
+
+### 11.3 连接页与职责边界
+
+**连接页**：后端进程状态 + 统计；管理后端 URL（默认相对路径指向捆绑的 `lw-engine`）；壳以**子进程**拉起后端；**自动填入管理 Token**（可关）。另：配置**壳自己**调用的云 API 端点（润色 / 助手 / 决策 / 日后 dah）——**由壳实现，管理后端不实现**。
+
+**管理后端（Go）拥有**：ASR / 模型 / 设备 / GPU 空闲卸载 / 统计 / Token 与权限。
+
+**管理后端不拥有**：润色、历史正文、云 LLM 调用。
+
+**自动配置策略 B**：前端发命令 → 后端执行 → 事件回报状态（不做「壳代写配置文件」的 A 方案）。
+
+### 11.4 Token 角色（v1）
+
+| 角色 | 能力 |
+|------|------|
+| **root** | 进程每次启动随机生成；**不能删除 / 修改**；admin **看不到完整值**（仅拉起该进程的壳 / 窗口可见）；等价超管 |
+| **admin** | 管理用户与 Token、提升/撤销 admin、看统计与元数据（root 仅脱敏） |
+| **user** | 仅调用（ASR / job 等 invoke 能力） |
+
+- 统计与 Token **元数据**持久化在 Go 侧 **SQLite**；**不存转写历史正文**。
+- 现有 `Authorization: Bearer` 握手：stdout `ready.token` = 本轮 **root**。
+
+### 11.5 打包口味（先打桩）
+
+| 口味 | 内容 |
+|------|------|
+| **withcore** | 捆绑 `lw-engine`（当前默认路径） |
+| **without** | 不捆绑引擎，只连已有管理后端 URL |
+
+先用 feature / `tauri.conf` resources / 脚本开关打通；双 CI 矩阵可后置。
+
+### 11.6 进度（垂直切片）
+
+- [x] PLAN §11（本文）
+- [x] Go：SQLite + root/admin/user + capabilities + stats API（`internal/auth`，`/v1/auth/*`，`/v1/stats`）
+- [x] Rust：`get_management_connection` / `set_management_settings`；prefs 字段；子进程路径覆盖
+- [x] 前端：`CubeShell` 默认壳；旧主页 `?view=legacy`
+- [x] 文案 + Lucide 红电话占位（`src/assets/command-cube-phone.svg`）
+- [x] `scripts/package_flavor.sh` 打桩
+
