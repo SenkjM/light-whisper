@@ -90,7 +90,14 @@ pub fn start(app: &tauri::AppHandle) {
     if !is_go() {
         return;
     }
-    let override_path = std::env::var_os("LW_ENGINE_PATH").map(PathBuf::from);
+    let override_path = std::env::var_os("LW_ENGINE_PATH")
+        .map(PathBuf::from)
+        .or_else(|| {
+            crate::state::app_preferences::snapshot()
+                .management_engine_path
+                .filter(|p| !p.trim().is_empty())
+                .map(PathBuf::from)
+        });
     let resource_dir = app.path().resource_dir().ok();
     let Some(binary) = locate_engine_binary(
         override_path.as_deref(),

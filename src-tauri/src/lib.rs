@@ -272,6 +272,8 @@ pub fn run() {
             commands::funasr::restart_funasr,
             commands::funasr::get_engine,
             commands::go_engine::get_go_engine_status,
+            commands::management::get_management_connection,
+            commands::management::set_management_settings,
             commands::preferences::get_app_preferences,
             commands::preferences::migrate_app_preferences,
             commands::preferences::set_app_preference_hotkey,

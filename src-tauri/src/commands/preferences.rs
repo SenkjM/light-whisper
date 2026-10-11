@@ -63,6 +63,21 @@ pub async fn patch_app_preferences(
         if let Some(v) = obj.get("aiPolishEnabled").and_then(|x| x.as_bool()) {
             p.ai_polish_enabled = v;
         }
+        if let Some(v) = obj.get("managementUrl") {
+            p.management_url = v.as_str().filter(|s| !s.is_empty()).map(str::to_string);
+        }
+        if let Some(v) = obj.get("managementEnginePath") {
+            p.management_engine_path = v.as_str().filter(|s| !s.is_empty()).map(str::to_string);
+        }
+        if let Some(v) = obj.get("managementAutofillToken").and_then(|x| x.as_bool()) {
+            p.management_autofill_token = v;
+        }
+        if let Some(v) = obj.get("packageFlavor").and_then(|x| x.as_str()) {
+            let f = v.trim().to_ascii_lowercase();
+            if f == "withcore" || f == "without" {
+                p.package_flavor = f;
+            }
+        }
     })
     .map_err(AppError::Other)
 }

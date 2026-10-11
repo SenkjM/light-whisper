@@ -42,6 +42,18 @@ pub struct AppPreferences {
     /// Set after a one-shot localStorage → shell migration.
     #[serde(default)]
     pub migrated_from_local_storage: bool,
+    /// Override management-backend base URL (empty = use spawned child).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub management_url: Option<String>,
+    /// Optional path to lw-engine binary (empty = locate default).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub management_engine_path: Option<String>,
+    /// When true, Connection page receives the root token from the shell.
+    #[serde(default = "default_true")]
+    pub management_autofill_token: bool,
+    /// Package flavor hint: "withcore" (default) or "without".
+    #[serde(default = "default_withcore")]
+    pub package_flavor: String,
 }
 
 fn default_schema() -> u32 {
@@ -50,6 +62,10 @@ fn default_schema() -> u32 {
 
 fn default_true() -> bool {
     true
+}
+
+fn default_withcore() -> String {
+    "withcore".into()
 }
 
 impl AppPreferences {
@@ -84,6 +100,8 @@ impl AppPreferences {
         Self {
             schema_version: SCHEMA_VERSION,
             sound_enabled: true,
+            management_autofill_token: true,
+            package_flavor: default_withcore(),
             ..Self::default()
         }
     }
