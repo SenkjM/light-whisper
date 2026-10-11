@@ -157,8 +157,12 @@ func run(ctx context.Context, args []string, stdin io.Reader, stdout, stderr io.
 	case "mock":
 		backend = asr.NewMock()
 	case "native":
-		if backend, err = native.New(native.OptionsFromEnv(executableDir())); err != nil {
-			return err
+		var nerr error
+		backend, nerr = native.New(native.OptionsFromEnv(executableDir()))
+		if nerr != nil {
+			logger.Warn("native backend unavailable; falling back to mock", "err", nerr)
+			backend = asr.NewMock()
+			*backendName = "mock"
 		}
 	default:
 		return fmt.Errorf("unknown --backend %q", *backendName)
@@ -172,7 +176,16 @@ func run(ctx context.Context, args []string, stdin io.Reader, stdout, stderr io.
 	defer func() { _ = authStore.Close() }()
 	hub := events.NewHub()
 	defer hub.Close()
-	mgr := manager.New(manager.Options{Store: store, Backend: backend, Hub: hub, Logger: logger, LogLevel: level})
+	mgr := manager.New(manager.Options{
+		Store: store, Backend: backend, Hub: hub, Logger: logger, LogLevel: level,
+		OnJobTerminal: func(completed bool) {
+			if completed {
+				authStore.AddStat("jobs_completed", 1)
+			} else {
+				authStore.AddStat("jobs_failed", 1)
+			}
+		},
+	})
 	defer func() {
 		cctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()

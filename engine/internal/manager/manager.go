@@ -51,6 +51,8 @@ type Options struct {
 	// JobSegmentSamples bounds one file-job unit (default
 	// MaxJobSegmentSamples; tests shrink it).
 	JobSegmentSamples int
+	// OnJobTerminal is called when a job reaches completed or failed (not cancelled).
+	OnJobTerminal func(completed bool)
 }
 
 // Status is the GET /v1/engine/status payload.

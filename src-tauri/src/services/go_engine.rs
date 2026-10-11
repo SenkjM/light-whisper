@@ -8,7 +8,7 @@
 //! 里的 Python 编排（不进默认安装包）。
 //!
 //! `go` 时：
-//! - 启动时拉起 lw-engine（`--backend` 取 `LW_ENGINE_GO_BACKEND`，默认 `mock`；
+//! - 启动时拉起 lw-engine（`--backend` 取 `LW_ENGINE_GO_BACKEND`，缺省时若原生库齐全则 `native` 否则 `mock`；
 //!   真实推理需 `-tags lwnative` 构建并带原生 DLL，见 `engine/README.md`）；
 //! - 设置读写走 `/v1/config`；`/v1/events` 转发为 Tauri 事件；
 //! - 识别走 `go_asr`（WS 流、HTTP 转录、`/v1/jobs`）。
@@ -118,7 +118,11 @@ pub fn start(app: &tauri::AppHandle) {
 
     let data_dir = paths::get_data_dir().clone();
     let mut spawn = SpawnOptions::new(&binary);
-    spawn.backend = std::env::var("LW_ENGINE_GO_BACKEND").unwrap_or_else(|_| "mock".to_string());
+    let resource_root = resource_dir
+        .clone()
+        .unwrap_or_else(|| binary.parent().unwrap_or(std::path::Path::new(".")).to_path_buf());
+    spawn.backend = resolve_go_backend(&resource_root);
+    spawn.env = native_env_for_resources(&resource_root);
     spawn.stderr_log = Some(data_dir.join("go_engine_stderr.log"));
     spawn.data_dir = Some(data_dir);
     log::info!(
@@ -361,6 +365,76 @@ pub async fn bootstrap_ready(app: &tauri::AppHandle) {
             state.set_funasr_ready(false);
         }
     }
+}
+
+
+/// Prefer `native` when CPU R2T2 + transcribe + onnxruntime (+ VAD) are present;
+/// otherwise `mock`. `LW_ENGINE_GO_BACKEND` always wins when set.
+fn resolve_go_backend(resource_root: &std::path::Path) -> String {
+    if let Ok(v) = std::env::var("LW_ENGINE_GO_BACKEND") {
+        let t = v.trim();
+        if !t.is_empty() {
+            return t.to_string();
+        }
+    }
+    if native_libs_present(resource_root) {
+        "native".into()
+    } else {
+        "mock".into()
+    }
+}
+
+fn native_libs_present(root: &std::path::Path) -> bool {
+    let onnx = root.join("onnxruntime.dll").is_file()
+        || root.join("onnxruntime").join("onnxruntime.dll").is_file();
+    let vad = root.join("fireredvad_vad.onnx").is_file()
+        && root.join("fireredvad_cmvn.json").is_file();
+    let r2t2 = root
+        .join("r2t2-native")
+        .join("cpu")
+        .join("audiocpp.dll")
+        .is_file();
+    let qwen = root
+        .join("transcribe-native")
+        .join("transcribe.dll")
+        .is_file();
+    onnx && vad && r2t2 && qwen
+}
+
+fn native_env_for_resources(root: &std::path::Path) -> std::collections::HashMap<String, String> {
+    let mut env = std::collections::HashMap::new();
+    env.insert(
+        "LW_RESOURCES_DIR".into(),
+        root.to_string_lossy().into_owned(),
+    );
+    let onnx = root.join("onnxruntime.dll");
+    let onnx_nested = root.join("onnxruntime").join("onnxruntime.dll");
+    if onnx.is_file() {
+        env.insert(
+            "LW_ONNXRUNTIME_LIB".into(),
+            onnx.to_string_lossy().into_owned(),
+        );
+    } else if onnx_nested.is_file() {
+        env.insert(
+            "LW_ONNXRUNTIME_LIB".into(),
+            onnx_nested.to_string_lossy().into_owned(),
+        );
+    }
+    let r2t2 = root.join("r2t2-native");
+    if r2t2.is_dir() {
+        env.insert(
+            "LW_R2T2_RUNTIME_DIR".into(),
+            r2t2.to_string_lossy().into_owned(),
+        );
+    }
+    let transcribe = root.join("transcribe-native").join("transcribe.dll");
+    if transcribe.is_file() {
+        env.insert(
+            "LW_TRANSCRIBE_LIBRARY".into(),
+            transcribe.to_string_lossy().into_owned(),
+        );
+    }
+    env
 }
 
 #[cfg(test)]

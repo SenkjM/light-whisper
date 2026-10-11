@@ -3,6 +3,7 @@
 
 //! Spawning `lw-engine` and reading its handshake.
 
+use std::collections::HashMap;
 use std::path::PathBuf;
 use std::process::Stdio;
 use std::time::Duration;
@@ -23,6 +24,8 @@ pub struct SpawnOptions {
     pub extra_args: Vec<String>,
     /// Where to redirect the engine's stderr log; `None` discards it.
     pub stderr_log: Option<PathBuf>,
+    /// Extra environment variables for the child (native lib paths, etc.).
+    pub env: HashMap<String, String>,
     pub handshake_timeout: Duration,
 }
 
@@ -34,6 +37,7 @@ impl SpawnOptions {
             backend: "mock".to_string(),
             extra_args: Vec::new(),
             stderr_log: None,
+            env: HashMap::new(),
             handshake_timeout: Duration::from_secs(15),
         }
     }
@@ -166,6 +170,9 @@ pub async fn spawn_engine(opts: &SpawnOptions) -> Result<EngineProcess, SpawnErr
         .arg("--exit-on-stdin-close");
     if let Some(dir) = &opts.data_dir {
         cmd.arg("--data-dir").arg(dir);
+    }
+    for (k, v) in &opts.env {
+        cmd.env(k, v);
     }
     cmd.args(&opts.extra_args)
         .stdin(Stdio::piped())

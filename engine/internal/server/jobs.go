@@ -36,6 +36,9 @@ func parseBool(s string) bool {
 // body, options in the query like /v1/asr/transcribe plus priority and
 // segments) or JSON naming an absolute path to a 16 kHz mono 16-bit WAV.
 func (s *Server) handleCreateJob(w http.ResponseWriter, r *http.Request) {
+	if s.opts.Auth != nil {
+		s.opts.Auth.AddStat("jobs_submitted", 1)
+	}
 	var spec manager.JobSpec
 	mt, _, _ := mime.ParseMediaType(r.Header.Get("Content-Type"))
 	if mt == "application/json" {

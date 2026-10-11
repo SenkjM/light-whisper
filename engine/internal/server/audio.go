@@ -102,6 +102,9 @@ func readAudioBody(w http.ResponseWriter, r *http.Request, limit int64) ([]int16
 }
 
 func (s *Server) handleTranscribe(w http.ResponseWriter, r *http.Request) {
+	if s.opts.Auth != nil {
+		s.opts.Auth.AddStat("transcribes", 1)
+	}
 	pcm, ok := readAudioBody(w, r, s.opts.MaxAudioBytes)
 	if !ok {
 		return

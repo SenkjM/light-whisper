@@ -111,6 +111,9 @@ func managerErrCode(err error) string {
 }
 
 func (s *Server) handleStream(w http.ResponseWriter, r *http.Request) {
+	if s.opts.Auth != nil {
+		s.opts.Auth.AddStat("asr_streams", 1)
+	}
 	// PLAN §4.4: refuse the connection when the active engine is a cloud
 	// engine or when a session is already active. R2T2 streams natively;
 	// Qwen3 uses the whole-sentence mode. The engine is never switched.

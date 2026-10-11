@@ -309,9 +309,17 @@ func (m *Manager) runJob(j *job) {
 		j.state = JobFailed
 		j.err = err.Error()
 	}
+	terminal := j.state
 	j.pcm = nil
 	m.pruneJobsLocked()
 	m.jobs.mu.Unlock()
+	if cb := m.opts.OnJobTerminal; cb != nil {
+		if terminal == JobCompleted {
+			cb(true)
+		} else if terminal == JobFailed {
+			cb(false)
+		}
+	}
 	m.publishJob(j)
 	m.publishStatus()
 }
