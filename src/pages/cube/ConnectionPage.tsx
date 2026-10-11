@@ -12,6 +12,10 @@ import {
   saveAiPolishApiKey,
   hasAssistantApiKey,
   setAssistantApiKey,
+  hasJevApiKey,
+  setJevApiKey,
+  setOnlineAsrApiKey,
+  hasOnlineAsrApiKey,
   type ManagementConnection,
   type ManagementAuthMe,
   type ManagementStats,
@@ -28,10 +32,15 @@ export default function ConnectionPage() {
   const [polishEp, setPolishEp] = useState("");
   const [assistantEp, setAssistantEp] = useState("");
   const [decisionEp, setDecisionEp] = useState("");
+  const [asrEp, setAsrEp] = useState("");
   const [polishKey, setPolishKey] = useState("");
   const [assistantKey, setAssistantKey] = useState("");
+  const [decisionKey, setDecisionKey] = useState("");
+  const [asrKey, setAsrKey] = useState("");
   const [hasPolish, setHasPolish] = useState(false);
   const [hasAssistant, setHasAssistant] = useState(false);
+  const [hasDecision, setHasDecision] = useState(false);
+  const [hasAsr, setHasAsr] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -47,22 +56,37 @@ export default function ConnectionPage() {
       setPolishEp(prefs.cloudPolishEndpoint ?? "");
       setAssistantEp(prefs.cloudAssistantEndpoint ?? "");
       setDecisionEp(prefs.cloudDecisionEndpoint ?? "");
+      setAsrEp(prefs.cloudAsrEndpoint ?? "");
       setError(null);
 
+      const keyChecks = Promise.all([
+        hasAiPolishApiKey().catch(() => false),
+        hasAssistantApiKey().catch(() => false),
+        hasJevApiKey("liquid").catch(() => false),
+        hasOnlineAsrApiKey().catch(() => false),
+      ]);
+
       if (c.ready) {
-        const [auth, st, polish, asst] = await Promise.all([
+        const [auth, st, keys] = await Promise.all([
           getManagementAuthMe().catch(() => null),
           getManagementStats().catch(() => null),
-          hasAiPolishApiKey().catch(() => false),
-          hasAssistantApiKey().catch(() => false),
+          keyChecks,
         ]);
         setMe(auth);
         setStats(st);
+        const [polish, asst, jev, asr] = keys;
         setHasPolish(!!polish);
         setHasAssistant(!!asst);
+        setHasDecision(!!jev);
+        setHasAsr(!!asr);
       } else {
         setMe(null);
         setStats(null);
+        const [polish, asst, jev, asr] = await keyChecks;
+        setHasPolish(!!polish);
+        setHasAssistant(!!asst);
+        setHasDecision(!!jev);
+        setHasAsr(!!asr);
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
@@ -198,9 +222,23 @@ export default function ConnectionPage() {
         <h3 className="cube-h3">{t("cube.cloudDecision")}</h3>
         <label className="cube-field">
           {t("cube.endpoint")}
-          <input value={decisionEp} onChange={(e) => setDecisionEp(e.target.value)} placeholder="https://… (future)" />
+          <input value={decisionEp} onChange={(e) => setDecisionEp(e.target.value)} placeholder="https://…" />
         </label>
-        <p className="cube-muted">{t("cube.decisionKeyLater")}</p>
+        <label className="cube-field">
+          {t("cube.apiKey")} ({hasDecision ? t("cube.keySet") : t("cube.keyEmpty")})
+          <input type="password" value={decisionKey} onChange={(e) => setDecisionKey(e.target.value)} placeholder="••••" autoComplete="off" />
+        </label>
+
+        <h3 className="cube-h3">{t("cube.cloudAsr")}</h3>
+        <p className="cube-muted">{t("cube.cloudAsrHint")}</p>
+        <label className="cube-field">
+          {t("cube.endpoint")}
+          <input value={asrEp} onChange={(e) => setAsrEp(e.target.value)} placeholder="https://…" />
+        </label>
+        <label className="cube-field">
+          {t("cube.apiKey")} ({hasAsr ? t("cube.keySet") : t("cube.keyEmpty")})
+          <input type="password" value={asrKey} onChange={(e) => setAsrKey(e.target.value)} placeholder="••••" autoComplete="off" />
+        </label>
 
         <button
           type="button"
@@ -212,6 +250,7 @@ export default function ConnectionPage() {
                 cloudPolishEndpoint: polishEp,
                 cloudAssistantEndpoint: assistantEp,
                 cloudDecisionEndpoint: decisionEp,
+                cloudAsrEndpoint: asrEp,
               });
               if (polishKey.trim()) {
                 await saveAiPolishApiKey(polishKey.trim());
@@ -220,6 +259,14 @@ export default function ConnectionPage() {
               if (assistantKey.trim()) {
                 await setAssistantApiKey(assistantKey.trim());
                 setAssistantKey("");
+              }
+              if (decisionKey.trim()) {
+                await setJevApiKey("liquid", decisionKey.trim());
+                setDecisionKey("");
+              }
+              if (asrKey.trim()) {
+                await setOnlineAsrApiKey(asrKey.trim());
+                setAsrKey("");
               }
               await refresh();
             } finally {

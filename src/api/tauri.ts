@@ -737,6 +737,7 @@ export type AppPreferences = {
   cloudPolishEndpoint?: string | null;
   cloudAssistantEndpoint?: string | null;
   cloudDecisionEndpoint?: string | null;
+  cloudAsrEndpoint?: string | null;
 };
 
 export type ManagementConnection = {
@@ -761,6 +762,7 @@ export function setManagementSettings(patch: {
   cloudPolishEndpoint?: string | null;
   cloudAssistantEndpoint?: string | null;
   cloudDecisionEndpoint?: string | null;
+  cloudAsrEndpoint?: string | null;
 }): Promise<AppPreferences> {
   return invokeCommand<AppPreferences>("set_management_settings", patch);
 }

@@ -709,9 +709,12 @@ const en: TranslationSchema = {
     enginePath: "lw-engine path override",
     autofillToken: "Autofill management token",
     cloudApisTitle: "Shell cloud APIs (not the management backend)",
-    cloudApisHint: "Polish / assistant / decision are called by the shell; the backend does not implement them.",
+    cloudApisHint: "Polish / assistant / decision / cloud ASR are called by the shell. The Go management backend only does local ASR / models / tokens / stats.",
     cloudPolish: "Polish",
     cloudAssistant: "Assistant",
+
+    cloudAsr: "Cloud transcription (shell)",
+    cloudAsrHint: "Cloud ASR is called by the shell, never the Go management backend. Empty = regional default endpoint.",
     cloudDecision: "Decision",
     stubLater: "Stub — wired later",
     workbenchTitle: "Workbench",
