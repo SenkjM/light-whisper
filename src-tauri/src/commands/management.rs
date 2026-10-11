@@ -4,6 +4,7 @@
 //! Management-backend connection surface for the 命令方块 shell (PLAN §11).
 
 use serde::Serialize;
+use serde_json::Value;
 
 use crate::services::go_engine;
 use crate::state::app_preferences::{self, AppPreferences};
@@ -20,6 +21,16 @@ pub struct ManagementConnection {
     pub engine_path: Option<String>,
     pub package_flavor: String,
     pub ready: bool,
+}
+
+fn map_client(e: lw_engine_client::ClientError) -> AppError {
+    AppError::Other(e.to_string())
+}
+
+async fn require_client() -> Result<lw_engine_client::EngineClient, AppError> {
+    go_engine::client_ready()
+        .await
+        .ok_or_else(|| AppError::Other("管理后端尚未就绪".into()))
 }
 
 #[tauri::command]
@@ -73,6 +84,9 @@ pub async fn set_management_settings(
     management_engine_path: Option<String>,
     management_autofill_token: Option<bool>,
     package_flavor: Option<String>,
+    cloud_polish_endpoint: Option<String>,
+    cloud_assistant_endpoint: Option<String>,
+    cloud_decision_endpoint: Option<String>,
 ) -> Result<AppPreferences, AppError> {
     app_preferences::update(|p| {
         if let Some(url) = management_url {
@@ -98,6 +112,57 @@ pub async fn set_management_settings(
                 p.package_flavor = f;
             }
         }
+        if let Some(v) = cloud_polish_endpoint {
+            p.cloud_polish_endpoint = empty_to_none(v);
+        }
+        if let Some(v) = cloud_assistant_endpoint {
+            p.cloud_assistant_endpoint = empty_to_none(v);
+        }
+        if let Some(v) = cloud_decision_endpoint {
+            p.cloud_decision_endpoint = empty_to_none(v);
+        }
     })
     .map_err(AppError::Other)
+}
+
+fn empty_to_none(v: String) -> Option<String> {
+    let t = v.trim().to_string();
+    if t.is_empty() {
+        None
+    } else {
+        Some(t)
+    }
+}
+
+#[tauri::command]
+pub async fn get_management_auth_me() -> Result<Value, AppError> {
+    require_client().await?.auth_me().await.map_err(map_client)
+}
+
+#[tauri::command]
+pub async fn get_management_stats() -> Result<Value, AppError> {
+    require_client().await?.stats().await.map_err(map_client)
+}
+
+#[tauri::command]
+pub async fn list_management_tokens() -> Result<Value, AppError> {
+    require_client().await?.list_tokens().await.map_err(map_client)
+}
+
+#[tauri::command]
+pub async fn create_management_token(role: String, label: String) -> Result<Value, AppError> {
+    require_client()
+        .await?
+        .create_token(&role, &label)
+        .await
+        .map_err(map_client)
+}
+
+#[tauri::command]
+pub async fn delete_management_token(id: String) -> Result<(), AppError> {
+    require_client()
+        .await?
+        .delete_token(&id)
+        .await
+        .map_err(map_client)
 }

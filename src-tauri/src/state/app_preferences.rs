@@ -54,6 +54,13 @@ pub struct AppPreferences {
     /// Package flavor hint: "withcore" (default) or "without".
     #[serde(default = "default_withcore")]
     pub package_flavor: String,
+    /// Shell-called cloud API endpoints (not the management backend).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub cloud_polish_endpoint: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub cloud_assistant_endpoint: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub cloud_decision_endpoint: Option<String>,
 }
 
 fn default_schema() -> u32 {

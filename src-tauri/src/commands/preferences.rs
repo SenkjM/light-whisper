@@ -78,6 +78,15 @@ pub async fn patch_app_preferences(
                 p.package_flavor = f;
             }
         }
+        if let Some(v) = obj.get("cloudPolishEndpoint") {
+            p.cloud_polish_endpoint = v.as_str().filter(|s| !s.is_empty()).map(str::to_string);
+        }
+        if let Some(v) = obj.get("cloudAssistantEndpoint") {
+            p.cloud_assistant_endpoint = v.as_str().filter(|s| !s.is_empty()).map(str::to_string);
+        }
+        if let Some(v) = obj.get("cloudDecisionEndpoint") {
+            p.cloud_decision_endpoint = v.as_str().filter(|s| !s.is_empty()).map(str::to_string);
+        }
     })
     .map_err(AppError::Other)
 }

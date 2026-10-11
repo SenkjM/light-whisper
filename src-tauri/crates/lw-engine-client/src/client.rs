@@ -201,6 +201,58 @@ impl EngineClient {
         Self::send(self.req(reqwest::Method::GET, "/v1/engine/status")).await
     }
 
+    pub async fn auth_me(&self) -> Result<Value, ClientError> {
+        Self::send(self.req(reqwest::Method::GET, "/v1/auth/me")).await
+    }
+
+    pub async fn auth_capabilities(&self) -> Result<Value, ClientError> {
+        Self::send(self.req(reqwest::Method::GET, "/v1/auth/capabilities")).await
+    }
+
+    pub async fn list_tokens(&self) -> Result<Value, ClientError> {
+        Self::send(self.req(reqwest::Method::GET, "/v1/auth/tokens")).await
+    }
+
+    pub async fn create_token(&self, role: &str, label: &str) -> Result<Value, ClientError> {
+        let body = serde_json::json!({ "role": role, "label": label });
+        Self::send(
+            self.req(reqwest::Method::POST, "/v1/auth/tokens").json(&body),
+        )
+        .await
+    }
+
+    pub async fn delete_token(&self, id: &str) -> Result<(), ClientError> {
+        let path = format!("/v1/auth/tokens/{id}");
+        let resp = self
+            .req(reqwest::Method::DELETE, &path)
+            .send()
+            .await
+            .map_err(|e| ClientError::Transport(e.to_string()))?;
+        let status = resp.status().as_u16();
+        if status == 204 || (200..300).contains(&status) {
+            return Ok(());
+        }
+        let bytes = resp
+            .bytes()
+            .await
+            .map_err(|e| ClientError::Transport(e.to_string()))?;
+        let body: Option<ErrorBody> = serde_json::from_slice(&bytes).ok();
+        Err(match status {
+            401 => ClientError::Unauthorized,
+            _ => ClientError::Api {
+                status,
+                code: body.as_ref().map(|b| b.error.code.clone()).unwrap_or_default(),
+                message: body
+                    .map(|b| b.error.message)
+                    .unwrap_or_else(|| String::from_utf8_lossy(&bytes).into_owned()),
+            },
+        })
+    }
+
+    pub async fn stats(&self) -> Result<Value, ClientError> {
+        Self::send(self.req(reqwest::Method::GET, "/v1/stats")).await
+    }
+
     pub async fn get_config(&self) -> Result<ConfigSnapshot, ClientError> {
         Self::send(self.req(reqwest::Method::GET, "/v1/config")).await
     }

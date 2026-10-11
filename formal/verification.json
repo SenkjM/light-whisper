@@ -508,6 +508,21 @@
     ],
     "commands::management::set_management_settings": [
       "management"
+    ],
+    "commands::management::get_management_auth_me": [
+      "management"
+    ],
+    "commands::management::get_management_stats": [
+      "management"
+    ],
+    "commands::management::list_management_tokens": [
+      "management"
+    ],
+    "commands::management::create_management_token": [
+      "management"
+    ],
+    "commands::management::delete_management_token": [
+      "management"
     ]
   },
   "events": {
@@ -2000,6 +2015,11 @@
     "commands::profile::has_screen_vision_api_key": "src-tauri/src/commands/profile.rs#fn has_screen_vision_api_key(",
     "commands::preferences::patch_app_preferences": "src-tauri/src/commands/preferences.rs#fn patch_app_preferences(",
     "commands::management::get_management_connection": "src-tauri/src/commands/management.rs#fn get_management_connection",
-    "commands::management::set_management_settings": "src-tauri/src/commands/management.rs#fn set_management_settings"
+    "commands::management::set_management_settings": "src-tauri/src/commands/management.rs#fn set_management_settings",
+    "commands::management::get_management_auth_me": "src-tauri/src/commands/management.rs#fn get_management_auth_me",
+    "commands::management::get_management_stats": "src-tauri/src/commands/management.rs#fn get_management_stats",
+    "commands::management::list_management_tokens": "src-tauri/src/commands/management.rs#fn list_management_tokens",
+    "commands::management::create_management_token": "src-tauri/src/commands/management.rs#fn create_management_token",
+    "commands::management::delete_management_token": "src-tauri/src/commands/management.rs#fn delete_management_token"
   }
 }
