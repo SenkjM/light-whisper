@@ -78,3 +78,8 @@ are modeled inputs; pixel geometry and foreign-app consumption are reviewed/
 tested outside mathematical state claims. Learned output contents are inputs,
 not a proof of model accuracy. These are explicit exclusions, never counted as
 proved. New boundaries or source changes require renewed correspondence review.
+
+## 步骤 6（独立前端）
+
+- `patch_app_preferences` + FE `src/lib/appPreferences.ts`：业务设置源在壳内。
+- `DevEngineConsole` / Vite `/lw-engine` 代理：无 Tauri 引擎调试（非 Tauri 命令，不进清单）。

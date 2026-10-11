@@ -1,7 +1,9 @@
 // SPDX-FileCopyrightText: 2026 SenkjM
 // SPDX-License-Identifier: AGPL-3.0-only
 
-//! Shell app preferences (PLAN 步骤 5): get / migrate from localStorage.
+//! Shell app preferences (PLAN 步骤 5–6): get / migrate / patch.
+//! Source of truth for business UI prefs (hotkey, mode, mic, …). Theme /
+//! language / onboarding stay in frontend localStorage.
 
 use crate::state::app_preferences::{self, AppPreferences};
 use crate::utils::AppError;
@@ -22,6 +24,45 @@ pub async fn migrate_app_preferences(
 
 #[tauri::command]
 pub async fn set_app_preference_hotkey(hotkey: Option<String>) -> Result<AppPreferences, AppError> {
-    app_preferences::update(|p| p.hotkey = hotkey.filter(|s| !s.is_empty()))
-        .map_err(AppError::Other)
+    app_preferences::update(|p| p.hotkey = hotkey.filter(|s| !s.is_empty())).map_err(AppError::Other)
+}
+
+/// Partial update of shell preferences (PLAN 步骤 6). Only fields present in
+/// the patch object are applied; `schema_version` / `migrated_from_local_storage`
+/// are ignored from the client (migration uses migrate_app_preferences).
+#[tauri::command]
+pub async fn patch_app_preferences(
+    patch: serde_json::Value,
+) -> Result<AppPreferences, AppError> {
+    let obj = patch
+        .as_object()
+        .ok_or_else(|| AppError::Other("patch must be a JSON object".into()))?;
+    app_preferences::update(|p| {
+        if let Some(v) = obj.get("hotkey") {
+            p.hotkey = v.as_str().filter(|s| !s.is_empty()).map(str::to_string);
+        }
+        if let Some(v) = obj.get("recordingToggle").and_then(|x| x.as_bool()) {
+            p.recording_toggle = v;
+        }
+        if let Some(v) = obj.get("inputDevice") {
+            p.input_device = if v.is_null() {
+                None
+            } else {
+                v.as_str().map(str::to_string)
+            };
+        }
+        if let Some(v) = obj.get("inputMethod") {
+            p.input_method = v.as_str().map(str::to_string);
+        }
+        if let Some(v) = obj.get("soundEnabled").and_then(|x| x.as_bool()) {
+            p.sound_enabled = v;
+        }
+        if let Some(v) = obj.get("micLevelMonitorEnabled").and_then(|x| x.as_bool()) {
+            p.mic_level_monitor_enabled = v;
+        }
+        if let Some(v) = obj.get("aiPolishEnabled").and_then(|x| x.as_bool()) {
+            p.ai_polish_enabled = v;
+        }
+    })
+    .map_err(AppError::Other)
 }

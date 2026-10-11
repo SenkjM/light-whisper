@@ -135,15 +135,14 @@ fn partial_to_update(p: &StreamPartial, samples: usize, final_: bool) -> NativeS
 
 struct GoSink {
     stream: AsrStream,
-    #[allow(dead_code)]
-    mode: Option<StreamMode>,
+    mode_slot: std::sync::Arc<parking_lot::Mutex<Option<StreamMode>>>,
 }
 
 impl NativeCaptureSink for GoSink {
     async fn feed(&mut self, samples: &[i16]) -> Result<NativeStreamUpdate, AppError> {
         let partial = self.stream.feed(samples).await.map_err(map_client_err)?;
-        if self.mode.is_none() {
-            self.mode = self.stream.mode();
+        if let Some(m) = self.stream.mode() {
+            *self.mode_slot.lock() = Some(m);
         }
         Ok(partial_to_update(
             &partial,
@@ -178,6 +177,7 @@ fn next_caption_update(
     previous: &mut Option<(String, String)>,
     update: &NativeStreamUpdate,
     recording_id: u64,
+    mode: Option<StreamMode>,
 ) -> Option<serde_json::Value> {
     let next = (update.text.clone(), update.tentative_text.clone());
     if previous.as_ref() == Some(&next)
@@ -193,6 +193,7 @@ fn next_caption_update(
         "tentativeText": update.tentative_text,
         "interim": !update.is_final,
         "language": update.language,
+        "captionMode": mode.map(|m| m.as_str()),
     }))
 }
 
@@ -274,12 +275,17 @@ pub fn spawn_go_recording(
             .await
             .map_err(map_client_err)?;
 
-        let sink = GoSink { stream, mode: None };
+        let mode_slot = std::sync::Arc::new(parking_lot::Mutex::new(None::<StreamMode>));
+        let sink = GoSink {
+            stream,
+            mode_slot: mode_slot.clone(),
+        };
         let previous_caption = parking_lot::Mutex::new(None);
         let caption_app = app.clone();
         let result = run_capture(sink, samples, sample_rate, control, move |update| {
+            let mode = *mode_slot.lock();
             if let Some(payload) =
-                next_caption_update(&mut previous_caption.lock(), &update, recording_id)
+                next_caption_update(&mut previous_caption.lock(), &update, recording_id, mode)
             {
                 let _ = caption_app.emit("transcription-result", payload);
             }

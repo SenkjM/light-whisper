@@ -548,6 +548,7 @@ pub async fn set_sound_enabled(
     enabled: bool,
 ) -> Result<(), AppError> {
     state.ui.sound_enabled.store(enabled, Ordering::Release);
+    let _ = crate::state::app_preferences::update(|p| p.sound_enabled = enabled);
     Ok(())
 }
 
@@ -561,7 +562,8 @@ pub async fn set_input_method(
     // 解释为 sendInput。这里在入口卡死，避免 UI 错位/typo 写入静默退化。
     match method.as_str() {
         "sendInput" | "clipboard" => {
-            *state.ui.input_method.lock() = method;
+            *state.ui.input_method.lock() = method.clone();
+            let _ = crate::state::app_preferences::update(|p| p.input_method = Some(method));
             Ok(())
         }
         other => Err(AppError::Other(format!(

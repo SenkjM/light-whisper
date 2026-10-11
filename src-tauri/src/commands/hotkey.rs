@@ -1888,6 +1888,9 @@ pub async fn register_custom_hotkey(
     });
 
     log::info!("自定义快捷键 {} 已注册（{}）", label, backend_label);
+    let _ = crate::state::app_preferences::update(|p| {
+        p.hotkey = Some(label.clone());
+    });
     Ok(format!("快捷键 {} 已注册", label))
 }
 

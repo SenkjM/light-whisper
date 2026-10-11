@@ -499,6 +499,9 @@
     ],
     "commands::profile::has_screen_vision_api_key": [
       "keys"
+    ],
+    "commands::preferences::patch_app_preferences": [
+      "preferences"
     ]
   },
   "events": {
@@ -961,7 +964,9 @@
         "src-tauri/src/commands/jev.rs",
         "src-tauri/src/commands/audio.rs",
         "src-tauri/src/state/app_preferences.rs",
-        "src-tauri/src/commands/preferences.rs"
+        "src-tauri/src/commands/preferences.rs",
+        "src/lib/appPreferences.ts",
+        "src/pages/DevEngineConsole.tsx"
       ],
       "evidence": [
         "src-tauri/src/commands/profile.rs",
@@ -1986,6 +1991,7 @@
     "commands::jev::has_jev_api_key": "src-tauri/src/commands/jev.rs#fn has_jev_api_key(",
     "commands::assistant::has_web_search_api_key": "src-tauri/src/commands/assistant.rs#fn has_web_search_api_key(",
     "commands::selection::has_selection_api_key": "src-tauri/src/commands/selection.rs#fn has_selection_api_key(",
-    "commands::profile::has_screen_vision_api_key": "src-tauri/src/commands/profile.rs#fn has_screen_vision_api_key("
+    "commands::profile::has_screen_vision_api_key": "src-tauri/src/commands/profile.rs#fn has_screen_vision_api_key(",
+    "commands::preferences::patch_app_preferences": "src-tauri/src/commands/preferences.rs#fn patch_app_preferences("
   }
 }

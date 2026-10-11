@@ -275,6 +275,7 @@ pub fn run() {
             commands::preferences::get_app_preferences,
             commands::preferences::migrate_app_preferences,
             commands::preferences::set_app_preference_hotkey,
+            commands::preferences::patch_app_preferences,
             commands::go_jobs::submit_go_transcription_job,
             commands::go_jobs::get_go_transcription_job,
             commands::go_jobs::list_go_transcription_jobs,
