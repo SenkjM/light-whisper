@@ -770,3 +770,11 @@ formal/
 - [x] 红电话占位应用图标；ASR/job 统计计数；`package_flavor.sh` → stage withcore/without
 
 
+
+
+### CUDA vs withcore packaging (decision)
+
+- **CPU withcore** installer (`command-cube-withcore.yml`) remains the default downloadable Windows app: ORT + CPU audiocpp + CPU transcribe + lw-engine (lwnative). Models stay out of the installer.
+- **CUDA native libs** (`command-cube-cuda.yml`) stay a **separate** artifact (`command-cube-cuda-native`): CUDA-built `audiocpp.dll` under `r2t2-native/cuda/` plus optional CUDA `transcribe.dll`, with cudart/cublas **stripped** (`cuda_runtime: on_demand`, PLAN §5). Do not merge full CUDA runtime into the NSIS.
+- Users who want GPU: install withcore, then unpack the CUDA artifact into the app `resources/` (see `scripts/install_cuda_native_libs.sh`). The Go R2T2 backend already prefers `cuda` then `cpu` when the device is not forced to `cpu`. Shell Connection shows whether `cuda/audiocpp.dll` (and CUDA transcribe VARIANT) are present.
+

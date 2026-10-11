@@ -384,6 +384,48 @@ fn resolve_go_backend(resource_root: &std::path::Path) -> String {
     }
 }
 
+/// Whether CUDA R2T2 audiocpp.dll is staged (runtime still on-demand).
+pub fn cuda_r2t2_present() -> bool {
+    resource_roots().iter().any(|root| {
+        root.join("r2t2-native")
+            .join("cuda")
+            .join("audiocpp.dll")
+            .is_file()
+    })
+}
+
+/// Whether transcribe-native VARIANT.txt says cuda.
+pub fn cuda_transcribe_present() -> bool {
+    for root in resource_roots() {
+        let marker = root.join("transcribe-native").join("VARIANT.txt");
+        if let Ok(text) = std::fs::read_to_string(&marker) {
+            if text.trim().eq_ignore_ascii_case("cuda") {
+                return true;
+            }
+        }
+    }
+    false
+}
+
+fn resource_roots() -> Vec<std::path::PathBuf> {
+    let mut roots = Vec::new();
+    if let Ok(p) = std::env::var("LW_RESOURCES_DIR") {
+        roots.push(std::path::PathBuf::from(p));
+    }
+    if let Ok(exe) = std::env::current_exe() {
+        if let Some(parent) = exe.parent() {
+            roots.push(parent.to_path_buf());
+            roots.push(parent.join("resources"));
+        }
+    }
+    // Dev tree
+    let dev = PathBuf::from("src-tauri/resources");
+    if dev.is_dir() {
+        roots.push(dev);
+    }
+    roots
+}
+
 fn native_libs_present(root: &std::path::Path) -> bool {
     let onnx = root.join("onnxruntime.dll").is_file()
         || root.join("onnxruntime").join("onnxruntime.dll").is_file();

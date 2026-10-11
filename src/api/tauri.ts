@@ -748,6 +748,8 @@ export type ManagementConnection = {
   enginePath?: string | null;
   packageFlavor: string;
   ready: boolean;
+  cudaR2t2Present?: boolean;
+  cudaTranscribePresent?: boolean;
 };
 
 export function getManagementConnection(): Promise<ManagementConnection> {

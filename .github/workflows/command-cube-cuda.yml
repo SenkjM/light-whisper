@@ -48,6 +48,8 @@ jobs:
           path: |
             build/r2t2
           key: r2t2-cuda-12.9-${{ hashFiles('scripts/build_r2t2_runtime.py', 'scripts/patches/audio-cpp-r2t2-windows-streaming.patch') }}
+          restore-keys: |
+            r2t2-cuda-12.9-
 
       - name: Install CUDA Toolkit 12.9
         uses: Jimver/cuda-toolkit@b8bf9c6c28f8a92fbb04dcfcaee872e60c57462d # v0.2.36
@@ -56,7 +58,7 @@ jobs:
           cuda: "12.9.0"
           method: network
           # cufft required by audio.cpp ggml CUDA backend (CUDA::cufft).
-          sub-packages: '["nvcc","visual_studio_integration","cudart","cublas_dev","cufft","cufft_dev","thrust","cupti","nvml_dev","nvtx","cuda_profiler_api"]'
+          sub-packages: '["nvcc","visual_studio_integration","cudart","cublas","cublas_dev","cufft","cufft_dev","thrust","cupti","nvml_dev","nvtx","cuda_profiler_api"]'
           use-github-cache: true
 
       - name: Verify nvcc
@@ -66,6 +68,12 @@ jobs:
           if (-not (Test-Path "$env:CUDA_PATH\bin\nvcc.exe")) {
             throw "nvcc missing after toolkit install"
           }
+
+      - name: List CUDA bin redistributables
+        run: |
+          Get-ChildItem "$env:CUDA_PATH\bin" -Filter "*.dll" | Select-Object -ExpandProperty Name
+          Get-ChildItem "$env:CUDA_PATH\bin" -Filter "cublas*" -ErrorAction SilentlyContinue
+          Get-ChildItem "$env:CUDA_PATH\bin" -Filter "cudart*" -ErrorAction SilentlyContinue
 
       - name: Fetch onnxruntime + transcribe CUDA (no models)
         run: python scripts/fetch_native_deps_windows.py --transcribe cuda

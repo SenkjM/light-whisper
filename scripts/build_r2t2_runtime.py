@@ -88,21 +88,37 @@ def _assemble_runtime(source, build, output, backend, cuda_root, env, architectu
         if not candidates:
             raise RuntimeError(f"Visual C++ redistributable missing: {name}")
         shutil.copy2(candidates[0], output / name)
+    cuda_runtime_mode = None
     if backend == "cuda":
+        # Prefer bundling toolkit redistributables when present; CI / PLAN §5
+        # on-demand packs skip them (strip_cuda_runtime_from_r2t2.py also strips).
+        missing = []
         for pattern in ("cublas64_*.dll", "cublasLt64_*.dll", "cudart64_*.dll"):
             matches = list((cuda_root / "bin").glob(pattern))
-            if len(matches) != 1:
-                raise RuntimeError(f"Expected one CUDA library matching {pattern}")
-            shutil.copy2(matches[0], output / matches[0].name)
+            if len(matches) > 1:
+                raise RuntimeError(f"Expected at most one CUDA library matching {pattern}, got {len(matches)}")
+            if len(matches) == 0:
+                # Also search bin/x64 (some toolkit layouts)
+                matches = list((cuda_root / "bin" / "x64").glob(pattern)) if (cuda_root / "bin" / "x64").is_dir() else []
+            if len(matches) == 1:
+                shutil.copy2(matches[0], output / matches[0].name)
+            else:
+                missing.append(pattern)
         license_path = cuda_root / "LICENSE"
-        if not license_path.is_file():
-            raise RuntimeError("CUDA redistribution license is missing")
-        shutil.copy2(license_path, output / "CUDA-LICENSE.txt")
+        if license_path.is_file():
+            shutil.copy2(license_path, output / "CUDA-LICENSE.txt")
+        if missing:
+            print(f"CUDA runtime DLLs not in toolkit bin (will ship on-demand): {', '.join(missing)}")
+            cuda_runtime_mode = "on_demand"
+        else:
+            cuda_runtime_mode = "bundled"
     files = {item.name: {"size": item.stat().st_size, "sha256": digest(item)}
              for item in sorted(output.iterdir()) if item.is_file() and item.name != "runtime-manifest.json"}
     manifest = {"build_id": BUILD_ID, "source": SOURCE_URL, "revision": SOURCE_REVISION,
                 "patch_sha256": digest(PATCH), "backend": backend,
                 "cuda_architectures": architectures if backend == "cuda" else None, "files": files}
+    if cuda_runtime_mode:
+        manifest["cuda_runtime"] = cuda_runtime_mode
     (output / "runtime-manifest.json").write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
 
 

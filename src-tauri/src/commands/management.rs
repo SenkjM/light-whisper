@@ -21,6 +21,11 @@ pub struct ManagementConnection {
     pub engine_path: Option<String>,
     pub package_flavor: String,
     pub ready: bool,
+    /// True when resources/r2t2-native/cuda/audiocpp.dll is next to the engine
+    /// (CUDA runtime still on-demand per PLAN §5).
+    pub cuda_r2t2_present: bool,
+    /// True when transcribe-native was staged as the CUDA variant (VARIANT.txt).
+    pub cuda_transcribe_present: bool,
 }
 
 fn map_client(e: lw_engine_client::ClientError) -> AppError {
@@ -52,6 +57,8 @@ pub async fn get_management_connection() -> Result<ManagementConnection, AppErro
             engine_path: prefs.management_engine_path.clone(),
             package_flavor,
             ready: false,
+            cuda_r2t2_present: go_engine::cuda_r2t2_present(),
+            cuda_transcribe_present: go_engine::cuda_transcribe_present(),
         });
     }
 
@@ -75,6 +82,8 @@ pub async fn get_management_connection() -> Result<ManagementConnection, AppErro
         engine_path: prefs.management_engine_path.clone(),
         package_flavor,
         ready,
+        cuda_r2t2_present: go_engine::cuda_r2t2_present(),
+        cuda_transcribe_present: go_engine::cuda_transcribe_present(),
     })
 }
 
