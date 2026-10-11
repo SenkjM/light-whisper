@@ -55,7 +55,8 @@ jobs:
         with:
           cuda: "12.9.0"
           method: network
-          sub-packages: '["nvcc","visual_studio_integration","cudart","cublas_dev","thrust","cupti","nvml_dev","nvtx"]'
+          # cufft required by audio.cpp ggml CUDA backend (CUDA::cufft).
+          sub-packages: '["nvcc","visual_studio_integration","cudart","cublas_dev","cufft","cufft_dev","thrust","cupti","nvml_dev","nvtx","cuda_profiler_api"]'
           use-github-cache: true
 
       - name: Verify nvcc
