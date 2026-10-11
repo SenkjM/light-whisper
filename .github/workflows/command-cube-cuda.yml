@@ -1,0 +1,115 @@
+# SPDX-FileCopyrightText: 2026 SenkjM
+# SPDX-License-Identifier: AGPL-3.0-only
+#
+# Build CUDA 12.9 R2T2 audiocpp + transcribe CUDA native libs on windows-2022.
+# Default installer stays CPU (withcore). CUDA runtime is NOT bundled (PLAN §5
+# on-demand); this job uploads the CUDA inference DLLs as a separate artifact.
+
+name: Command-Cube CUDA
+
+on:
+  push:
+    branches:
+      - Command-Cube
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  windows-cuda-native:
+    name: Windows CUDA 12.9 native libs
+    runs-on: windows-2022
+    timeout-minutes: 180
+    defaults:
+      run:
+        shell: pwsh
+    env:
+      CI: "true"
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.12"
+
+      - name: Cache R2T2 source / CUDA build
+        uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5
+        with:
+          path: |
+            build/r2t2
+          key: r2t2-cuda-12.9-${{ hashFiles('scripts/build_r2t2_runtime.py', 'scripts/patches/audio-cpp-r2t2-windows-streaming.patch') }}
+
+      - name: Install CUDA Toolkit 12.9
+        uses: Jimver/cuda-toolkit@b8bf9c6c28f8a92fbb04dcfcaee872e60c57462d # v0.2.36
+        id: cuda
+        with:
+          cuda: "12.9.0"
+          method: network
+          sub-packages: '["nvcc","visual_studio_integration","cudart","cublas_dev","thrust","cupti","nvml_dev","nvtx"]'
+          use-github-cache: true
+
+      - name: Verify nvcc
+        run: |
+          Write-Host "CUDA_PATH=$env:CUDA_PATH"
+          nvcc --version
+          if (-not (Test-Path "$env:CUDA_PATH\bin\nvcc.exe")) {
+            throw "nvcc missing after toolkit install"
+          }
+
+      - name: Fetch onnxruntime + transcribe CUDA (no models)
+        run: python scripts/fetch_native_deps_windows.py --transcribe cuda
+
+      - name: Build R2T2 CUDA runtime (audiocpp.dll)
+        run: |
+          python scripts/build_r2t2_runtime.py --backend cuda --cuda-root "$env:CUDA_PATH"
+
+      - name: Strip CUDA runtime DLLs from shippable package (PLAN on-demand)
+        run: python scripts/strip_cuda_runtime_from_r2t2.py
+
+      - name: Verify CUDA artifacts
+        run: |
+          $cpu = "src-tauri/resources/r2t2-native/cuda/audiocpp.dll"
+          $tr = "src-tauri/resources/transcribe-native/transcribe.dll"
+          $ort = "src-tauri/resources/onnxruntime.dll"
+          foreach ($p in @($cpu, $tr, $ort)) {
+            if (-not (Test-Path $p)) { throw "missing $p" }
+            Write-Host "OK $p ($((Get-Item $p).Length) bytes)"
+          }
+          $manifest = Get-Content "src-tauri/resources/r2t2-native/cuda/runtime-manifest.json" -Raw | ConvertFrom-Json
+          if ($manifest.backend -ne "cuda") { throw "manifest backend != cuda" }
+          if ($manifest.cuda_runtime -ne "on_demand") { throw "expected cuda_runtime=on_demand after strip" }
+          # Ensure no cudart shipped
+          $bad = Get-ChildItem "src-tauri/resources/r2t2-native/cuda" -Filter "cudart64_*.dll" -ErrorAction SilentlyContinue
+          if ($bad) { throw "cudart still present after strip: $($bad.Name)" }
+          Write-Host "CUDA native libs verified (runtime on-demand)."
+
+      - name: Upload CUDA native libs
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: command-cube-cuda-native
+          path: |
+            src-tauri/resources/r2t2-native/cuda/
+            src-tauri/resources/transcribe-native/
+            src-tauri/resources/onnxruntime.dll
+            src-tauri/resources/onnxruntime/
+            src-tauri/resources/fireredvad_vad.onnx
+            src-tauri/resources/fireredvad_cmvn.json
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: CUDA note
+        if: always()
+        run: |
+          Write-Host "Default withcore installer remains CPU-only."
+          Write-Host "CUDA runtime (cudart/cublas) is on-demand per PLAN section 5 — not in this artifact."
+          Write-Host "Models still download separately."

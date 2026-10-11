@@ -766,6 +766,7 @@ formal/
 - [x] 关于：命令方块、许可说明、图标占位致谢
 - [x] 壳侧云 API 路由：`cloud_*_endpoint` 覆盖 polish / assistant / decision(Jev) / cloud ASR；密钥走既有 keyring；**Go 后端永不实现云能力**
 - [x] withcore：`fetch_native_deps_windows.py` + `build_r2t2_runtime.py --backend cpu` + `LW_ENGINE_NATIVE=1`；壳自动选 `native`（缺库则 mock）；模型不随包
+- [x] CUDA CI：`command-cube-cuda.yml` 在 windows-2022 用 CUDA Toolkit 12.9 构建 audiocpp CUDA + transcribe CUDA；**运行时 DLL 不随包**（strip → on_demand，见 §5）；默认安装包仍为 CPU withcore
 - [x] 红电话占位应用图标；ASR/job 统计计数；`package_flavor.sh` → stage withcore/without
 
 

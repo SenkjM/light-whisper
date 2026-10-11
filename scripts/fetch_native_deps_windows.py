@@ -1,20 +1,22 @@
 #!/usr/bin/env python3
 # SPDX-FileCopyrightText: 2026 SenkjM
 # SPDX-License-Identifier: AGPL-3.0-only
-"""Fetch Windows CPU native deps into src-tauri/resources/ (models NOT included).
+"""Fetch Windows native deps into src-tauri/resources/ (models NOT included).
 
 Downloads:
-  - onnxruntime 1.24.1 win-x64 -> resources/onnxruntime/onnxruntime.dll (+ companions)
-  - transcribe.cpp 0.1.3 windows cpu-vulkan -> resources/transcribe-native/
+  - onnxruntime 1.24.1 win-x64 -> resources/onnxruntime/ + resources/onnxruntime.dll
+  - transcribe.cpp 0.1.3 windows (cpu-vulkan | cuda) -> resources/transcribe-native/
 
-R2T2 audiocpp is built separately via scripts/build_r2t2_runtime.py --backend cpu
-(on a Windows host with VS C++ tools).
+R2T2 audiocpp is built separately via scripts/build_r2t2_runtime.py.
 
-Usage (Windows CI / local Windows):
+Usage:
   python scripts/fetch_native_deps_windows.py
+  python scripts/fetch_native_deps_windows.py --transcribe cpu
+  python scripts/fetch_native_deps_windows.py --transcribe cuda
 """
 from __future__ import annotations
 
+import argparse
 import shutil
 import sys
 import tempfile
@@ -29,10 +31,16 @@ ONNX_URL = (
     "https://github.com/microsoft/onnxruntime/releases/download/v1.24.1/"
     "onnxruntime-win-x64-1.24.1.zip"
 )
-TRANSCRIBE_URL = (
-    "https://github.com/handy-computer/transcribe.cpp/releases/download/v0.1.3/"
-    "transcribe-native-0.1.3-windows-x86_64-cpu-vulkan.tar.gz"
-)
+TRANSCRIBE_URLS = {
+    "cpu": (
+        "https://github.com/handy-computer/transcribe.cpp/releases/download/v0.1.3/"
+        "transcribe-native-0.1.3-windows-x86_64-cpu-vulkan.tar.gz"
+    ),
+    "cuda": (
+        "https://github.com/handy-computer/transcribe.cpp/releases/download/v0.1.3/"
+        "transcribe-native-0.1.3-windows-x86_64-cuda.tar.gz"
+    ),
+}
 
 
 def download(url: str, dest: Path) -> None:
@@ -46,7 +54,6 @@ def stage_onnxruntime(staging: Path) -> None:
     download(ONNX_URL, zpath)
     with zipfile.ZipFile(zpath) as zf:
         zf.extractall(staging / "onnx")
-    # layout: onnxruntime-win-x64-1.24.1/lib/onnxruntime.dll
     libs = list((staging / "onnx").rglob("onnxruntime.dll"))
     if not libs:
         raise RuntimeError("onnxruntime.dll missing from archive")
@@ -56,23 +63,22 @@ def stage_onnxruntime(staging: Path) -> None:
         shutil.rmtree(out)
     out.mkdir(parents=True)
     for item in lib_dir.iterdir():
-        if item.suffix.lower() in {".dll", ".pdb"} or item.name.endswith(".dll"):
+        if item.suffix.lower() == ".dll" or item.name.endswith(".dll"):
             shutil.copy2(item, out / item.name)
-    # Also place onnxruntime.dll next to resources root for simple LW_ONNXRUNTIME_LIB
     shutil.copy2(out / "onnxruntime.dll", RESOURCES / "onnxruntime.dll")
     print(f"Staged onnxruntime -> {out} and resources/onnxruntime.dll")
 
 
-def stage_transcribe(staging: Path) -> None:
+def stage_transcribe(staging: Path, variant: str) -> None:
     import tarfile
 
-    tpath = staging / "transcribe.tgz"
-    download(TRANSCRIBE_URL, tpath)
-    extract = staging / "transcribe"
+    url = TRANSCRIBE_URLS[variant]
+    tpath = staging / f"transcribe-{variant}.tgz"
+    download(url, tpath)
+    extract = staging / f"transcribe-{variant}"
     extract.mkdir()
     with tarfile.open(tpath, "r:gz") as tf:
         tf.extractall(extract)
-    # find directory containing transcribe.dll
     dlls = list(extract.rglob("transcribe.dll"))
     if not dlls:
         raise RuntimeError("transcribe.dll missing from archive")
@@ -81,21 +87,36 @@ def stage_transcribe(staging: Path) -> None:
     if out.exists():
         shutil.rmtree(out)
     shutil.copytree(src, out)
-    print(f"Staged transcribe-native -> {out}")
+    # Marker for which variant we staged
+    (out / "VARIANT.txt").write_text(variant + "\n", encoding="utf-8")
+    print(f"Staged transcribe-native ({variant}) -> {out}")
 
 
 def main() -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "--transcribe",
+        choices=("cpu", "cuda"),
+        default="cpu",
+        help="transcribe.cpp Windows native variant (default: cpu)",
+    )
+    parser.add_argument(
+        "--skip-onnx",
+        action="store_true",
+        help="skip onnxruntime download (reuse existing)",
+    )
+    args = parser.parse_args()
     if sys.platform != "win32":
         print(
-            "Note: this script stages Windows binaries; running on "
-            f"{sys.platform} is OK for CI asset prep if you only need the files.",
+            f"Note: staging Windows binaries on {sys.platform} is OK for asset prep.",
             file=sys.stderr,
         )
     with tempfile.TemporaryDirectory(prefix="lw-native-deps-") as tmp:
         staging = Path(tmp)
-        stage_onnxruntime(staging)
-        stage_transcribe(staging)
-    print("Models are NOT bundled — run download_models / in-app download separately.")
+        if not args.skip_onnx:
+            stage_onnxruntime(staging)
+        stage_transcribe(staging, args.transcribe)
+    print("Models are NOT bundled -- run download_models / in-app download separately.")
     return 0
 
 
