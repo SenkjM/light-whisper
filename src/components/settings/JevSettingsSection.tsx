@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
 
-import { getJevApiKey, hasJevApiKey, setJevApiKey, setJevProvider, setJevFeatures, validateCorrections } from "@/api/tauri";
+import { hasJevApiKey, setJevApiKey, setJevProvider, setJevFeatures, validateCorrections } from "@/api/tauri";
 import SecretInput from "@/components/SecretInput";
 import { SettingsReveal } from "./SettingsReveal";
 import { useDebouncedCallback } from "@/hooks/useDebouncedCallback";
