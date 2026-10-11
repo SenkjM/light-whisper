@@ -87,6 +87,9 @@ pub async fn patch_app_preferences(
         if let Some(v) = obj.get("cloudDecisionEndpoint") {
             p.cloud_decision_endpoint = v.as_str().filter(|s| !s.is_empty()).map(str::to_string);
         }
+        if let Some(v) = obj.get("cloudAsrEndpoint") {
+            p.cloud_asr_endpoint = v.as_str().filter(|s| !s.is_empty()).map(str::to_string);
+        }
     })
     .map_err(AppError::Other)
 }

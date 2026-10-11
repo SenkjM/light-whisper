@@ -231,6 +231,27 @@ pub fn endpoint_for_config(config: &LlmProviderConfig) -> LlmEndpoint {
     }
 }
 
+/// Override the resolved endpoint API URL with a shell-owned cloud base URL
+/// (PLAN §11 / command-cube: cloud APIs are shell-side, never the Go backend).
+pub fn apply_api_url_override(endpoint: &mut LlmEndpoint, base_override: Option<&str>) {
+    let Some(raw) = base_override.map(str::trim).filter(|value| !value.is_empty()) else {
+        return;
+    };
+    match endpoint.api_format {
+        ApiFormat::Anthropic => {
+            endpoint.api_url = normalize_anthropic_url(raw);
+        }
+        ApiFormat::OpenaiCompat => {
+            let suffix = if endpoint.api_url.contains("/responses") {
+                "responses"
+            } else {
+                "chat/completions"
+            };
+            endpoint.api_url = normalize_api_url(Some(raw), &endpoint.api_url, suffix);
+        }
+    }
+}
+
 pub fn assistant_endpoint_for_config(config: &LlmProviderConfig) -> LlmEndpoint {
     let assistant_provider = config.resolve_assistant_provider();
     let active_provider = config.resolve_active_provider();
@@ -2017,6 +2038,24 @@ mod tests {
     }
 
     #[test]
+
+    #[test]
+    fn apply_api_url_override_replaces_chat_completions_base() {
+        let config = LlmProviderConfig {
+            active: CUSTOM.to_string(),
+            custom_base_url: Some("https://old.example/v1".into()),
+            custom_model: Some("m".into()),
+            ..LlmProviderConfig::default()
+        };
+        let mut endpoint = endpoint_for_config(&config);
+        apply_api_url_override(&mut endpoint, Some("https://shell.example/v1"));
+        assert!(
+            endpoint.api_url.starts_with("https://shell.example/"),
+            "got {}",
+            endpoint.api_url
+        );
+    }
+
     fn unknown_openai_compatible_reports_auto_reasoning_support() {
         let endpoint = endpoint_for_preview(
             "fau",

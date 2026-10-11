@@ -288,7 +288,17 @@ pub fn read_online_asr_region() -> String {
 }
 
 /// 返回当前活跃在线引擎的端点域名（不含路径）。
+/// Shell-owned `cloud_asr_endpoint` in app_preferences overrides region defaults
+/// (command-cube: cloud transcription is shell-side, never the Go backend).
 pub fn read_online_asr_endpoint() -> String {
+    if let Some(url) = crate::state::app_preferences::snapshot()
+        .cloud_asr_endpoint
+        .as_deref()
+        .map(str::trim)
+        .filter(|s| !s.is_empty())
+    {
+        return url.trim_end_matches('/').to_string();
+    }
     match read_engine_config().as_str() {
         "alibaba-asr" => read_alibaba_endpoint(),
         _ => read_glm_endpoint(),

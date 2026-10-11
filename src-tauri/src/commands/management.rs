@@ -87,6 +87,7 @@ pub async fn set_management_settings(
     cloud_polish_endpoint: Option<String>,
     cloud_assistant_endpoint: Option<String>,
     cloud_decision_endpoint: Option<String>,
+    cloud_asr_endpoint: Option<String>,
 ) -> Result<AppPreferences, AppError> {
     app_preferences::update(|p| {
         if let Some(url) = management_url {
@@ -120,6 +121,9 @@ pub async fn set_management_settings(
         }
         if let Some(v) = cloud_decision_endpoint {
             p.cloud_decision_endpoint = empty_to_none(v);
+        }
+        if let Some(v) = cloud_asr_endpoint {
+            p.cloud_asr_endpoint = empty_to_none(v);
         }
     })
     .map_err(AppError::Other)

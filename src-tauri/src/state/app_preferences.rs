@@ -61,6 +61,9 @@ pub struct AppPreferences {
     pub cloud_assistant_endpoint: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub cloud_decision_endpoint: Option<String>,
+    /// Shell-owned cloud ASR base URL (GLM/Alibaba etc.). Never sent to Go backend.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub cloud_asr_endpoint: Option<String>,
 }
 
 fn default_schema() -> u32 {

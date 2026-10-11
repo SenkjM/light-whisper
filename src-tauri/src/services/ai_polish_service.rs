@@ -5,6 +5,7 @@ use tauri::Emitter;
 use serde::Deserialize;
 use serde_json::{json, Map, Value};
 
+use crate::state::app_preferences;
 use crate::services::jev_service::JevProvider;
 use crate::services::llm_client::{LlmImageInput, LlmRequestOptions};
 use crate::services::{
@@ -1010,7 +1011,14 @@ pub async fn polish_text_with_overrides_detailed(
         let jev_api_key =
             jev_service::load_api_key_for_provider(app_handle, jev_provider).unwrap_or_default();
         if let Some(decision) =
-            evaluate_polish_expansion(state, text, &overrides, jev_provider, &jev_api_key, None)
+            evaluate_polish_expansion(
+                state,
+                text,
+                &overrides,
+                jev_provider,
+                &jev_api_key,
+                app_preferences::snapshot().cloud_decision_endpoint.as_deref(),
+            )
                 .await
         {
             expansion_applied = true;
@@ -1028,7 +1036,15 @@ pub async fn polish_text_with_overrides_detailed(
         let jev_api_key =
             jev_service::load_api_key_for_provider(app_handle, jev_provider).unwrap_or_default();
         if let Some(outcome) =
-            evaluate_polish_gate(state, text, &overrides, jev_provider, &jev_api_key, None).await
+            evaluate_polish_gate(
+                state,
+                text,
+                &overrides,
+                jev_provider,
+                &jev_api_key,
+                app_preferences::snapshot().cloud_decision_endpoint,
+            )
+            .await
         {
             return Ok(outcome);
         }
@@ -1038,7 +1054,11 @@ pub async fn polish_text_with_overrides_detailed(
     }
 
     let config = state.llm_provider_config();
-    let endpoint = llm_provider::endpoint_for_config(&config);
+    let mut endpoint = llm_provider::endpoint_for_config(&config);
+    llm_provider::apply_api_url_override(
+        &mut endpoint,
+        app_preferences::snapshot().cloud_polish_endpoint.as_deref(),
+    );
     let active_provider = endpoint.provider.clone();
     let manual_api_key = llm_provider::load_api_key_for_provider(app_handle, &active_provider);
     let auth_start = std::time::Instant::now();
@@ -1242,7 +1262,11 @@ pub async fn edit_text(
     session_id: u64,
 ) -> Result<EditOutcome, String> {
     let config = state.llm_provider_config();
-    let endpoint = llm_provider::endpoint_for_config(&config);
+    let mut endpoint = llm_provider::endpoint_for_config(&config);
+    llm_provider::apply_api_url_override(
+        &mut endpoint,
+        app_preferences::snapshot().cloud_polish_endpoint.as_deref(),
+    );
     let manual_key = llm_provider::load_api_key_for_provider(app_handle, &endpoint.provider);
     let api_key = codex_oauth_service::resolve_api_key_for_provider_with_auth_mode(
         app_handle,

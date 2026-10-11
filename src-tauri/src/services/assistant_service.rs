@@ -6,6 +6,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::json;
 use tauri::Emitter;
 
+use crate::state::app_preferences;
 use crate::services::jev_service::JevProvider;
 use crate::services::llm_client::{LlmImageInput, LlmRequestOptions, LlmUserInput};
 use crate::services::{
@@ -919,7 +920,11 @@ async fn generate_content_inner(
 ) -> Result<AssistantOutcome, AppError> {
     let request_started = Instant::now();
     let config = state.llm_provider_config();
-    let endpoint = llm_provider::assistant_endpoint_for_config(&config);
+    let mut endpoint = llm_provider::assistant_endpoint_for_config(&config);
+    llm_provider::apply_api_url_override(
+        &mut endpoint,
+        app_preferences::snapshot().cloud_assistant_endpoint.as_deref(),
+    );
     let assistant_provider = endpoint.provider.clone();
     let assistant_manual_api_key =
         llm_provider::load_api_key_for_provider(app_handle, &assistant_provider);
