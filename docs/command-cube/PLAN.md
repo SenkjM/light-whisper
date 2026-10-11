@@ -759,4 +759,9 @@ formal/
 - [x] 前端：`CubeShell` 默认壳；旧主页 `?view=legacy`
 - [x] 文案 + Lucide 红电话占位（`src/assets/command-cube-phone.svg`）
 - [x] `scripts/package_flavor.sh` 打桩
+- [x] 工作台：嵌入既有听写（MainPage）+ 前端历史（HistoryPage）；`embedded` 去 TitleBar；legacy 保留
+- [x] 后端管理：Token 列表/创建/删除（非 root）、`/v1/stats`、capabilities、角色；root 仅脱敏
+- [x] 壳设置：主题/语言/热键/麦克风/录音切换/提示音；云 API 端点+密钥在「连接」
+- [x] 连接：状态 + auth/me + stats + autofill + URL/path + 壳侧云端点（polish/assistant/decision）
+- [x] 关于：命令方块、许可说明、图标占位致谢
 
