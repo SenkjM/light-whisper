@@ -33,6 +33,7 @@ import (
 	"time"
 
 	"github.com/SenkjM/light-whisper/engine/internal/asr"
+	"github.com/SenkjM/light-whisper/engine/internal/auth"
 	"github.com/SenkjM/light-whisper/engine/internal/config"
 	"github.com/SenkjM/light-whisper/engine/internal/events"
 	"github.com/SenkjM/light-whisper/engine/internal/manager"
@@ -163,10 +164,12 @@ func run(ctx context.Context, args []string, stdin io.Reader, stdout, stderr io.
 		return fmt.Errorf("unknown --backend %q", *backendName)
 	}
 
-	token, err := newToken()
+	authDB := filepath.Join(*dataDir, "management.sqlite")
+	authStore, token, err := auth.Open(authDB)
 	if err != nil {
-		return err
+		return fmt.Errorf("auth store: %w", err)
 	}
+	defer func() { _ = authStore.Close() }()
 	hub := events.NewHub()
 	defer hub.Close()
 	mgr := manager.New(manager.Options{Store: store, Backend: backend, Hub: hub, Logger: logger, LogLevel: level})
@@ -182,7 +185,7 @@ func run(ctx context.Context, args []string, stdin io.Reader, stdout, stderr io.
 	}
 	srv := &http.Server{
 		Handler: server.New(server.Options{
-			Token: token, Store: store, Manager: mgr, Hub: hub, Logger: logger, AllowedOrigins: origins,
+			Token: token, Auth: authStore, Store: store, Manager: mgr, Hub: hub, Logger: logger, AllowedOrigins: origins,
 		}),
 		ReadHeaderTimeout: 10 * time.Second,
 	}

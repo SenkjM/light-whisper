@@ -12,6 +12,7 @@
 package server
 
 import (
+	"context"
 	"crypto/subtle"
 	"encoding/json"
 	"errors"
@@ -20,6 +21,7 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/SenkjM/light-whisper/engine/internal/auth"
 	"github.com/SenkjM/light-whisper/engine/internal/config"
 	"github.com/SenkjM/light-whisper/engine/internal/events"
 	"github.com/SenkjM/light-whisper/engine/internal/manager"
@@ -28,7 +30,8 @@ import (
 
 // Options configure the HTTP handler.
 type Options struct {
-	Token          string
+	Token          string // legacy; when Auth != nil, root is Auth.RootToken()
+	Auth           *auth.Store
 	Store          *config.Store
 	Manager        *manager.Manager
 	Hub            *events.Hub
@@ -80,6 +83,12 @@ func (s *Server) routes() {
 	s.mux.HandleFunc("GET /v1/jobs", s.handleListJobs)
 	s.mux.HandleFunc("GET /v1/jobs/{id}", s.handleGetJob)
 	s.mux.HandleFunc("DELETE /v1/jobs/{id}", s.handleDeleteJob)
+	s.mux.HandleFunc("GET /v1/auth/me", s.handleAuthMe)
+	s.mux.HandleFunc("GET /v1/auth/capabilities", s.handleAuthCapabilities)
+	s.mux.HandleFunc("GET /v1/auth/tokens", s.handleListTokens)
+	s.mux.HandleFunc("POST /v1/auth/tokens", s.handleCreateToken)
+	s.mux.HandleFunc("DELETE /v1/auth/tokens/{id}", s.handleDeleteToken)
+	s.mux.HandleFunc("GET /v1/stats", s.handleStats)
 }
 
 // ServeHTTP applies the security checks, then routes.
@@ -92,22 +101,102 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusForbidden, "origin_not_allowed", "cross-origin requests are not allowed")
 		return
 	}
-	if !s.authorized(r) {
+	role, id, ok := s.authenticate(r)
+	if !ok {
 		w.Header().Set("WWW-Authenticate", `Bearer realm="light-whisper-engine"`)
 		writeError(w, http.StatusUnauthorized, "unauthorized", "missing or invalid bearer token")
+		return
+	}
+	if s.opts.Auth != nil {
+		s.opts.Auth.AddStat("http_requests", 1)
+	}
+	ctx := context.WithValue(r.Context(), ctxRole{}, role)
+	ctx = context.WithValue(ctx, ctxID{}, id)
+	r = r.WithContext(ctx)
+	if !s.gateCapabilities(w, r, role) {
 		return
 	}
 	s.mux.ServeHTTP(w, r)
 }
 
-func (s *Server) authorized(r *http.Request) bool {
+type ctxRole struct{}
+type ctxID struct{}
+
+func (s *Server) authenticate(r *http.Request) (auth.Role, string, bool) {
 	h := r.Header.Get("Authorization")
 	const prefix = "Bearer "
-	if len(h) <= len(prefix) || !strings.EqualFold(h[:len(prefix)], prefix) || s.opts.Token == "" {
-		return false
+	if len(h) <= len(prefix) || !strings.EqualFold(h[:len(prefix)], prefix) {
+		return "", "", false
 	}
 	got := strings.TrimSpace(h[len(prefix):])
-	return subtle.ConstantTimeCompare([]byte(got), []byte(s.opts.Token)) == 1
+	if s.opts.Auth != nil {
+		role, id, err := s.opts.Auth.Authenticate(got)
+		if err != nil {
+			return "", "", false
+		}
+		return role, id, true
+	}
+	if s.opts.Token == "" {
+		return "", "", false
+	}
+	if subtle.ConstantTimeCompare([]byte(got), []byte(s.opts.Token)) != 1 {
+		return "", "", false
+	}
+	return auth.RoleRoot, "root", true
+}
+
+func (s *Server) roleFrom(r *http.Request) (auth.Role, string) {
+	role, _ := r.Context().Value(ctxRole{}).(auth.Role)
+	id, _ := r.Context().Value(ctxID{}).(string)
+	if role == "" {
+		role = auth.RoleUser
+	}
+	return role, id
+}
+
+func (s *Server) requireCap(w http.ResponseWriter, r *http.Request, cap auth.Capability) bool {
+	role, _ := s.roleFrom(r)
+	if auth.Has(role, cap) {
+		return true
+	}
+	writeError(w, http.StatusForbidden, "forbidden", "missing capability: "+string(cap))
+	return false
+}
+
+// authorized kept for older tests that call it indirectly via authenticate.
+func (s *Server) authorized(r *http.Request) bool {
+	_, _, ok := s.authenticate(r)
+	return ok
+}
+
+
+func (s *Server) gateCapabilities(w http.ResponseWriter, r *http.Request, role auth.Role) bool {
+	path := r.URL.Path
+	method := r.Method
+	need := auth.Capability("")
+	switch {
+	case method == http.MethodPatch && path == "/v1/config":
+		need = auth.CapConfigWrite
+	case method == http.MethodPost && (path == "/v1/engine/reload" || path == "/v1/engine/load" || path == "/v1/engine/unload"):
+		need = auth.CapEngineControl
+	case method == http.MethodPost && path == "/v1/asr/transcribe":
+		need = auth.CapInvokeASR
+	case method == http.MethodGet && path == "/v1/asr/stream":
+		need = auth.CapInvokeASR
+	case method == http.MethodPost && path == "/v1/jobs":
+		need = auth.CapInvokeJobs
+	case method == http.MethodGet && (path == "/v1/jobs" || strings.HasPrefix(path, "/v1/jobs/")):
+		need = auth.CapInvokeJobs
+	case method == http.MethodDelete && strings.HasPrefix(path, "/v1/jobs/"):
+		need = auth.CapInvokeJobs
+	default:
+		return true
+	}
+	if auth.Has(role, need) {
+		return true
+	}
+	writeError(w, http.StatusForbidden, "forbidden", "missing capability: "+string(need))
+	return false
 }
 
 func (s *Server) originAllowed(origin string) bool {
