@@ -12,10 +12,11 @@ export default function AboutPage() {
         <h1>{t("cube.aboutTitle")}</h1>
       </header>
       <section className="cube-card cube-about">
-        <Phone size={48} color="#e11d48" aria-hidden />
+        <Phone size={56} color="#e11d48" strokeWidth={2} aria-hidden />
         <h2>{t("cube.productName")}</h2>
         <p className="cube-muted">command-cube</p>
-        <p>{t("cube.aboutIconNote")}</p>
+        <p>{t("cube.aboutBlurb")}</p>
+        <p className="cube-muted">{t("cube.aboutIconNote")}</p>
         <p className="cube-muted">{t("cube.aboutLicense")}</p>
       </section>
     </div>

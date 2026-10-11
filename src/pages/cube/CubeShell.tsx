@@ -5,7 +5,7 @@
  * 命令方块 main shell: left main tabs + content (PLAN §11.2).
  */
 
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   Cable,
@@ -16,7 +16,7 @@ import {
   Phone,
 } from "lucide-react";
 import ConnectionPage from "./ConnectionPage";
-import WorkbenchPage from "./WorkbenchPage";
+import WorkbenchPage, { type WorkbenchSub } from "./WorkbenchPage";
 import BackendAdminPage from "./BackendAdminPage";
 import ShellSettingsPage from "./ShellSettingsPage";
 import AboutPage from "./AboutPage";
@@ -33,7 +33,10 @@ const TABS: { id: CubeTab; icon: typeof Cable; labelKey: string }[] = [
 
 export default function CubeShell({ animClass = "" }: { animClass?: string }) {
   const { t } = useTranslation();
-  const [tab, setTab] = useState<CubeTab>("connection");
+  const [tab, setTab] = useState<CubeTab>("workbench");
+  const [workbenchSub, setWorkbenchSub] = useState<WorkbenchSub>("dictation");
+
+  const openShell = useCallback(() => setTab("shell"), []);
 
   return (
     <div className={`cube-shell ${animClass}`.trim()}>
@@ -61,7 +64,13 @@ export default function CubeShell({ animClass = "" }: { animClass?: string }) {
       </aside>
       <main className="cube-main">
         {tab === "connection" && <ConnectionPage />}
-        {tab === "workbench" && <WorkbenchPage />}
+        {tab === "workbench" && (
+          <WorkbenchPage
+            sub={workbenchSub}
+            onSubChange={setWorkbenchSub}
+            onOpenShell={openShell}
+          />
+        )}
         {tab === "backend" && <BackendAdminPage />}
         {tab === "shell" && <ShellSettingsPage />}
         {tab === "about" && <AboutPage />}

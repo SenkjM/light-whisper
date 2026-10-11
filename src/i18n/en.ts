@@ -2,6 +2,7 @@ import type { TranslationSchema } from "./zh";
 
 const en: TranslationSchema = {
   common: {
+    delete: "Delete",
     yes: "Yes",
     no: "No",
     refresh: "Refresh",
@@ -726,6 +727,33 @@ const en: TranslationSchema = {
     shellSettingsHint: "Theme, hotkeys, input and other shell prefs.",
     aboutTitle: "About",
     aboutIconNote: "Icon is a red-phone placeholder (Lucide-style / ISC). Final artwork TBD.",
+
+    role: "Role",
+    capabilities: "Capabilities",
+    statsUnavailable: "Stats unavailable",
+    endpoint: "Endpoint URL",
+    apiKey: "API key",
+    keySet: "saved",
+    keyEmpty: "not set",
+    decisionKeyLater: "Decision API key will use the keyring later; only the endpoint is stored here.",
+    needAdmin: "admin / root required to list tokens.",
+    tokenLabel: "Label",
+    tokenPrefix: "Prefix",
+    rootMasked: "(root masked — only Connection shows it)",
+    confirmDeleteToken: "Delete this token?",
+    tokenDeleted: "Deleted",
+    createToken: "Create token",
+    tokenCreatedOnce: "Created (plaintext shown once)",
+    tokenPlainOnce: "Plaintext token (save it now)",
+    aboutBlurb: "Local speech management shell: dictation and history live in Workbench; ASR / tokens / stats belong to the management backend; polish and other cloud calls are made by the shell.",
+    shellSettingsCloudNote: "Configure polish / assistant / decision endpoints and keys on the Connection page (shell cloud APIs).",
+    pressKeys: "Press a shortcut…",
+    changeHotkey: "Change hotkey",
+    inputDevice: "Input device",
+    defaultDevice: "System default",
+    recordingToggle: "Click to toggle recording (otherwise hold-to-talk)",
+    soundEnabled: "Sound cues",
+
     aboutLicense: "New code AGPL-3.0-only; inherited code keeps upstream licenses.",
   },
 } as const;

@@ -61,9 +61,11 @@ function recordDate(value: number, language: string): string {
 export default function HistoryPage({
   onNavigate,
   animClass = "",
+  embedded = false,
 }: {
   onNavigate: (view: View) => void;
   animClass?: string;
+  embedded?: boolean;
 }) {
   const { t, i18n } = useTranslation();
   const [items, setItems] = useState<PersistentHistoryRecord[]>([]);
@@ -227,7 +229,8 @@ export default function HistoryPage({
   };
 
   return (
-    <div className="page-root">
+    <div className={`page-root${embedded ? " is-embedded" : ""}`}>
+      {!embedded && (
       <TitleBar
         title={t("historyPage.title")}
         leftAction={(
@@ -246,6 +249,7 @@ export default function HistoryPage({
           </>
         )}
       />
+      )}
 
       <main className={`page-content history-page ${animClass}`.trim()}>
         <section className="history-command-bar" aria-label={t("historyPage.title")}>

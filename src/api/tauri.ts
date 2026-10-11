@@ -734,6 +734,9 @@ export type AppPreferences = {
   managementEnginePath?: string | null;
   managementAutofillToken?: boolean;
   packageFlavor?: string;
+  cloudPolishEndpoint?: string | null;
+  cloudAssistantEndpoint?: string | null;
+  cloudDecisionEndpoint?: string | null;
 };
 
 export type ManagementConnection = {
@@ -755,8 +758,60 @@ export function setManagementSettings(patch: {
   managementEnginePath?: string | null;
   managementAutofillToken?: boolean;
   packageFlavor?: string;
+  cloudPolishEndpoint?: string | null;
+  cloudAssistantEndpoint?: string | null;
+  cloudDecisionEndpoint?: string | null;
 }): Promise<AppPreferences> {
   return invokeCommand<AppPreferences>("set_management_settings", patch);
+}
+
+export type ManagementAuthMe = {
+  id: string;
+  role: string;
+  capabilities: string[];
+};
+
+export type ManagementStats = {
+  asr_streams: number;
+  transcribes: number;
+  jobs_submitted: number;
+  jobs_completed: number;
+  jobs_failed: number;
+  http_requests: number;
+  unauthorized: number;
+};
+
+export type ManagementTokenMeta = {
+  id: string;
+  role: string;
+  label: string;
+  created_at: string;
+  last_used?: string | null;
+  masked: boolean;
+  prefix?: string;
+};
+
+export function getManagementAuthMe(): Promise<ManagementAuthMe> {
+  return invokeCommand<ManagementAuthMe>("get_management_auth_me");
+}
+
+export function getManagementStats(): Promise<ManagementStats> {
+  return invokeCommand<ManagementStats>("get_management_stats");
+}
+
+export function listManagementTokens(): Promise<{ tokens: ManagementTokenMeta[] }> {
+  return invokeCommand<{ tokens: ManagementTokenMeta[] }>("list_management_tokens");
+}
+
+export function createManagementToken(
+  role: string,
+  label: string,
+): Promise<{ id: string; role: string; label: string; token: string }> {
+  return invokeCommand("create_management_token", { role, label });
+}
+
+export function deleteManagementToken(id: string): Promise<void> {
+  return invokeCommand<void>("delete_management_token", { id });
 }
 
 export function getAppPreferences(): Promise<AppPreferences> {

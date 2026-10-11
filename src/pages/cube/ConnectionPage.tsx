@@ -5,25 +5,65 @@ import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   getManagementConnection,
+  getManagementAuthMe,
+  getManagementStats,
   setManagementSettings,
+  hasAiPolishApiKey,
+  saveAiPolishApiKey,
+  hasAssistantApiKey,
+  setAssistantApiKey,
   type ManagementConnection,
+  type ManagementAuthMe,
+  type ManagementStats,
 } from "@/api/tauri";
+import { loadAppPreferences } from "@/lib/appPreferences";
 
 export default function ConnectionPage() {
   const { t } = useTranslation();
   const [conn, setConn] = useState<ManagementConnection | null>(null);
+  const [me, setMe] = useState<ManagementAuthMe | null>(null);
+  const [stats, setStats] = useState<ManagementStats | null>(null);
   const [urlDraft, setUrlDraft] = useState("");
   const [pathDraft, setPathDraft] = useState("");
+  const [polishEp, setPolishEp] = useState("");
+  const [assistantEp, setAssistantEp] = useState("");
+  const [decisionEp, setDecisionEp] = useState("");
+  const [polishKey, setPolishKey] = useState("");
+  const [assistantKey, setAssistantKey] = useState("");
+  const [hasPolish, setHasPolish] = useState(false);
+  const [hasAssistant, setHasAssistant] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
   const refresh = useCallback(async () => {
     try {
-      const c = await getManagementConnection();
+      const [c, prefs] = await Promise.all([
+        getManagementConnection(),
+        loadAppPreferences(),
+      ]);
       setConn(c);
       setUrlDraft(c.baseUrl ?? "");
       setPathDraft(c.enginePath ?? "");
+      setPolishEp(prefs.cloudPolishEndpoint ?? "");
+      setAssistantEp(prefs.cloudAssistantEndpoint ?? "");
+      setDecisionEp(prefs.cloudDecisionEndpoint ?? "");
       setError(null);
+
+      if (c.ready) {
+        const [auth, st, polish, asst] = await Promise.all([
+          getManagementAuthMe().catch(() => null),
+          getManagementStats().catch(() => null),
+          hasAiPolishApiKey().catch(() => false),
+          hasAssistantApiKey().catch(() => false),
+        ]);
+        setMe(auth);
+        setStats(st);
+        setHasPolish(!!polish);
+        setHasAssistant(!!asst);
+      } else {
+        setMe(null);
+        setStats(null);
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     }
@@ -31,7 +71,7 @@ export default function ConnectionPage() {
 
   useEffect(() => {
     void refresh();
-    const id = window.setInterval(() => void refresh(), 4000);
+    const id = window.setInterval(() => void refresh(), 5000);
     return () => window.clearInterval(id);
   }, [refresh]);
 
@@ -48,6 +88,7 @@ export default function ConnectionPage() {
         <dl className="cube-dl">
           <div><dt>{t("cube.backend")}</dt><dd>{conn?.backend ?? "—"}</dd></div>
           <div><dt>{t("cube.ready")}</dt><dd>{conn?.ready ? t("common.yes") : t("common.no")}</dd></div>
+          <div><dt>{t("cube.role")}</dt><dd>{me?.role ?? "—"}</dd></div>
           <div><dt>{t("cube.baseUrl")}</dt><dd className="mono">{conn?.baseUrl ?? "—"}</dd></div>
           <div><dt>{t("cube.packageFlavor")}</dt><dd>{conn?.packageFlavor ?? "—"}</dd></div>
           <div>
@@ -59,28 +100,40 @@ export default function ConnectionPage() {
             </dd>
           </div>
         </dl>
+        {me?.capabilities && (
+          <p className="cube-muted" style={{ fontSize: 12 }}>
+            {t("cube.capabilities")}: {me.capabilities.join(", ")}
+          </p>
+        )}
         <button type="button" onClick={() => void refresh()} disabled={busy}>
           {t("common.refresh")}
         </button>
       </section>
 
       <section className="cube-card">
+        <h2>{t("cube.stats")}</h2>
+        {stats ? (
+          <dl className="cube-dl">
+            <div><dt>HTTP</dt><dd>{stats.http_requests}</dd></div>
+            <div><dt>ASR streams</dt><dd>{stats.asr_streams}</dd></div>
+            <div><dt>Transcribes</dt><dd>{stats.transcribes}</dd></div>
+            <div><dt>Jobs ok/fail</dt><dd>{stats.jobs_completed}/{stats.jobs_failed}</dd></div>
+            <div><dt>Unauthorized</dt><dd>{stats.unauthorized}</dd></div>
+          </dl>
+        ) : (
+          <p className="cube-muted">{conn?.ready ? t("cube.statsUnavailable") : t("cube.tokenWaiting")}</p>
+        )}
+      </section>
+
+      <section className="cube-card">
         <h2>{t("cube.backendSettings")}</h2>
         <label className="cube-field">
           {t("cube.managementUrl")}
-          <input
-            value={urlDraft}
-            onChange={(e) => setUrlDraft(e.target.value)}
-            placeholder="http://127.0.0.1:… (empty = child process)"
-          />
+          <input value={urlDraft} onChange={(e) => setUrlDraft(e.target.value)} placeholder="http://127.0.0.1:…" />
         </label>
         <label className="cube-field">
           {t("cube.enginePath")}
-          <input
-            value={pathDraft}
-            onChange={(e) => setPathDraft(e.target.value)}
-            placeholder="lw-engine path override"
-          />
+          <input value={pathDraft} onChange={(e) => setPathDraft(e.target.value)} placeholder="lw-engine path override" />
         </label>
         <label className="cube-check">
           <input
@@ -121,11 +174,61 @@ export default function ConnectionPage() {
       <section className="cube-card">
         <h2>{t("cube.cloudApisTitle")}</h2>
         <p className="cube-muted">{t("cube.cloudApisHint")}</p>
-        <ul className="cube-stub-list">
-          <li>{t("cube.cloudPolish")} — {t("cube.stubLater")}</li>
-          <li>{t("cube.cloudAssistant")} — {t("cube.stubLater")}</li>
-          <li>{t("cube.cloudDecision")} — {t("cube.stubLater")}</li>
-        </ul>
+
+        <h3 className="cube-h3">{t("cube.cloudPolish")}</h3>
+        <label className="cube-field">
+          {t("cube.endpoint")}
+          <input value={polishEp} onChange={(e) => setPolishEp(e.target.value)} placeholder="https://…" />
+        </label>
+        <label className="cube-field">
+          {t("cube.apiKey")} ({hasPolish ? t("cube.keySet") : t("cube.keyEmpty")})
+          <input type="password" value={polishKey} onChange={(e) => setPolishKey(e.target.value)} placeholder="••••" autoComplete="off" />
+        </label>
+
+        <h3 className="cube-h3">{t("cube.cloudAssistant")}</h3>
+        <label className="cube-field">
+          {t("cube.endpoint")}
+          <input value={assistantEp} onChange={(e) => setAssistantEp(e.target.value)} placeholder="https://…" />
+        </label>
+        <label className="cube-field">
+          {t("cube.apiKey")} ({hasAssistant ? t("cube.keySet") : t("cube.keyEmpty")})
+          <input type="password" value={assistantKey} onChange={(e) => setAssistantKey(e.target.value)} placeholder="••••" autoComplete="off" />
+        </label>
+
+        <h3 className="cube-h3">{t("cube.cloudDecision")}</h3>
+        <label className="cube-field">
+          {t("cube.endpoint")}
+          <input value={decisionEp} onChange={(e) => setDecisionEp(e.target.value)} placeholder="https://… (future)" />
+        </label>
+        <p className="cube-muted">{t("cube.decisionKeyLater")}</p>
+
+        <button
+          type="button"
+          disabled={busy}
+          onClick={async () => {
+            setBusy(true);
+            try {
+              await setManagementSettings({
+                cloudPolishEndpoint: polishEp,
+                cloudAssistantEndpoint: assistantEp,
+                cloudDecisionEndpoint: decisionEp,
+              });
+              if (polishKey.trim()) {
+                await saveAiPolishApiKey(polishKey.trim());
+                setPolishKey("");
+              }
+              if (assistantKey.trim()) {
+                await setAssistantApiKey(assistantKey.trim());
+                setAssistantKey("");
+              }
+              await refresh();
+            } finally {
+              setBusy(false);
+            }
+          }}
+        >
+          {t("common.save")}
+        </button>
       </section>
     </div>
   );

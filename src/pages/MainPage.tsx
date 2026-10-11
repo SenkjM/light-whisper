@@ -16,9 +16,11 @@ import { readLocalStorage, writeLocalStorage } from "@/lib/storage";
 import { loadAppPreferences } from "@/lib/appPreferences";
 import { prefersReducedMotion } from "@/lib/motion";
 
-export default function MainPage({ onNavigate, animClass = "" }: {
+export default function MainPage({ onNavigate, animClass = "", embedded = false }: {
   onNavigate: (v: "main" | "settings" | "history" | "dev-engine") => void;
   animClass?: string;
+  /** Hide TitleBar when hosted inside CubeShell workbench. */
+  embedded?: boolean;
 }) {
   const { t } = useTranslation();
   const {
@@ -137,7 +139,8 @@ export default function MainPage({ onNavigate, animClass = "" }: {
   }, [isReady, isStarting, isRecording, stopRecording, startRecording]);
 
   return (
-    <div className="page-root main-page">
+    <div className={`page-root main-page${embedded ? " is-embedded" : ""}`}>
+      {!embedded && (
       <TitleBar
         title={t("app.title")}
         leftAction={
@@ -161,6 +164,8 @@ export default function MainPage({ onNavigate, animClass = "" }: {
           </>
         }
       />
+      )}
+
 
       <div className={pageContentClass} style={{ display: "flex", flexDirection: "column", flex: 1, minHeight: 0, overflow: "hidden" }}>
         {/* Recording zone */}
