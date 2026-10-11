@@ -135,7 +135,10 @@ jobs:
             Write-Host "Found MSI: $($msi.Name)"
           }
           # Prefer the main app binary next to release/
-          $main = Get-ChildItem -Path "src-tauri/target/release" -Filter "轻语 Whisper.exe" -File -ErrorAction SilentlyContinue
+          $main = Get-ChildItem -Path "src-tauri/target/release" -Filter "命令方块.exe" -File -ErrorAction SilentlyContinue
+          if (-not $main) {
+            $main = Get-ChildItem -Path "src-tauri/target/release" -Filter "轻语 Whisper.exe" -File -ErrorAction SilentlyContinue
+          }
           if (-not $main) {
             $main = Get-ChildItem -Path "src-tauri/target/release" -Filter "light-whisper.exe" -File -ErrorAction SilentlyContinue
           }

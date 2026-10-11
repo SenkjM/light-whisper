@@ -727,7 +727,7 @@ formal/
 
 **管理后端（Go）拥有**：ASR / 模型 / 设备 / GPU 空闲卸载 / 统计 / Token 与权限。
 
-**管理后端不拥有**：润色、历史正文、云 LLM 调用。
+**管理后端不拥有**：润色、历史正文、云 LLM、**云端转写**、决策门控。上述一律由 **Rust/FE 壳**调用；Go 只做本地 ASR / 模型 / 设备 / Token / 统计。
 
 **自动配置策略 B**：前端发命令 → 后端执行 → 事件回报状态（不做「壳代写配置文件」的 A 方案）。
 
@@ -764,4 +764,6 @@ formal/
 - [x] 壳设置：主题/语言/热键/麦克风/录音切换/提示音；云 API 端点+密钥在「连接」
 - [x] 连接：状态 + auth/me + stats + autofill + URL/path + 壳侧云端点（polish/assistant/decision）
 - [x] 关于：命令方块、许可说明、图标占位致谢
+- [x] 壳侧云 API 路由：`cloud_*_endpoint` 覆盖 polish / assistant / decision(Jev) / cloud ASR；密钥走既有 keyring；**Go 后端永不实现云能力**
+
 
