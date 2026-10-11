@@ -64,7 +64,7 @@ Qwen3 整句模式的切句（`engine/internal/qwen3/sentence.go`）：每帧对
 | offset: uint64 little-endian (8 字节) | PCM s16le, 16 kHz, 单声道 (偶数字节) |
 ```
 
-`offset` 是本帧第一个采样在会话内的序号，必须等于已接收的采样总数（与 `R2T2StreamSession` 的 offset 校验一致）；不匹配时该帧被丢弃并返回 `offset_mismatch`（带 `expected_offset`），会话继续。建议每帧 160 ms（2560 个采样）。
+`offset` 是本帧第一个采样在会话内的序号，必须等于已接收的采样总数（与 `R2T2StreamSession` 的 offset 校验一致）；不匹配时该帧被丢弃并返回 `offset_mismatch`（带 `expected_offset`），会话继续。建议每帧 160 ms（2560 个采样）。壳在收到 `started` 之前缓冲采集到的 PCM，收到后按 offset 顺序 flush（上限 30 s；超出或等待超过 15 s 则会话启动失败，见 API README「步骤 5」）。
 
 服务端逐帧同步处理（先 VAD、再推理），处理期间不读取下一帧——背压由 TCP 自然形成，即 PLAN §4.4 中的「有界队列」。
 

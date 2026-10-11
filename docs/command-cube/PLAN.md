@@ -1,7 +1,7 @@
 # Command-Cube 规划：前后端分离（Go 引擎后端 + Rust 薄壳 + 独立前端）
 
 > 分支：`Command-Cube`  
-> 状态：规划文档；实施进度见 §7 各步骤的「进度」（步骤 1 已完成；步骤 2 FireRedVAD 的 Go 移植已完成并与 Python 对齐；步骤 3 R2T2 会话与分段已移植，在 Linux CPU 上与 Python 逐调用、逐字一致，Windows / CUDA 与延迟基线未实测；步骤 4 Qwen3（transcribe.cpp）整段识别与 VAD 整句实时、三级优先级调度与抢占、文件 job 已实现，Qwen3 在 Linux CPU 上与 Python 逐调用一致，Windows / CUDA / Vulkan 未实测）  
+> 状态：规划文档；实施进度见 §7 各步骤的「进度」（步骤 1 已完成；步骤 2 FireRedVAD 的 Go 移植已完成并与 Python 对齐；步骤 3 R2T2 会话与分段已移植，在 Linux CPU 上与 Python 逐调用、逐字一致，Windows / CUDA 与延迟基线未实测；步骤 4 Qwen3 / 调度 / job 已实现；步骤 5 Rust 在 `LW_ENGINE_BACKEND=go` 下经 HTTP/WS 做识别（含 pre-started 缓冲、Job Object），python 默认路径不变；打包移除 Python / 密钥只写 / localStorage 迁入等仍待后续）  
 > 基于：对 `main` @ `151a61c` 的只读调研  
 > **本文主线**：用独立 Go 后端服务取代 Python 编排层；Rust（Tauri）只做系统集成与应用层；前端独立。
 
@@ -294,6 +294,7 @@ POST  /v1/engine/reload          执行待生效的 reload 项；有实时会话
   - 模式由当前引擎决定，**不静默更换引擎**：R2T2 走原生流式（逐字 `committed` / `tentative`）；Qwen3 走 VAD 整句模式（每切出一句识别一次，`committed` 追加整句，`tentative` 为空，见 §3.0.2）；云端引擎返回 409。Qwen3 整句模式已在步骤 4 实现，`started` 消息的 `mode` 字段（`streaming` / `sentence`）告诉客户端当前模式；步骤 4 之前对非 R2T2 的引擎返回 409 `wrong_engine`。
   - 同一时间只允许一个实时会话（与现状一致）。
   - 音频用二进制帧，不用 base64。
+  - **Pre-`started` 缓冲（步骤 5 已定）**：壳在收到 `started` 之前缓冲采集到的 PCM，收到后按 offset 顺序 flush，不丢样；缓冲上限 30 s @ 16 kHz（超出 → `pre_start_buffer_overflow`）；等待 `started` 超过 15 s → `start_timeout`；二者均导致会话启动失败（见 `lw-engine-client` `stream` 与 API README「步骤 5」）。
   - **会话内严格串行**：后端按到达顺序逐块处理，每块先 VAD 再原生推理，结束段（补 320ms + `stream_finish`）在该块内同步完成；与现有 Python 语义一致。WS 只是传输通道，帧在后端有界队列中等待，不与推理重叠。
 
 ### 4.5 语音转录（整段）与文件转录 — HTTP
@@ -462,8 +463,8 @@ flowchart TD
 - **进度（已完成）**：
   - Go 侧：`engine/`（见 `engine/README.md`）。
   - Rust 侧：`src-tauri/crates/lw-engine-client`（定位 / 拉起 / 握手 / `api_version` 校验 / HTTP + WS 客户端 / 有界指数退避重启：1 s 起翻倍、上限 30 s、连续失败 5 次放弃、稳定运行 60 s 后清零；`api_version` 不兼容直接判定失败，不重启）与 `src-tauri/src/services/go_engine.rs`（Tauri 接入）。
-  - 开关：环境变量 `LW_ENGINE_BACKEND=go|python`，默认 `python`，行为与原来一致。为 `go` 时，`engine` / `models_dir` / `gpu_idle_seconds` 的读写走 `/v1/config`（412 自动重读重试，reload 键写入后调用 `/v1/engine/reload`），`/v1/events` 转发为 Tauri 事件 `go-engine-status` / `go-engine-config-changed`，进程状态为 `go-engine-process`；识别仍由 Python 引擎完成（Go 推理为 mock，两者共享 engine.json）。
-  - 未做（留给步骤 5）：Windows Job Object（目前靠 `--exit-on-stdin-close` 与 `kill_on_drop` 兜底）；把 `lw-engine.exe` 写进 `tauri.conf.json` 的打包资源（现需手动放到 `src-tauri/resources/` 或用 `LW_ENGINE_PATH` 指定）。
+  - 开关：环境变量 `LW_ENGINE_BACKEND=go|python`，默认 `python`，行为与原来一致。为 `go` 时，`engine` / `models_dir` / `gpu_idle_seconds` 的读写走 `/v1/config`（412 自动重读重试，reload 键写入后调用 `/v1/engine/reload`），`/v1/events` 转发为 Tauri 事件 `go-engine-status` / `go-engine-config-changed` / `go-engine-job-progress`，进程状态为 `go-engine-process`；**识别在步骤 5 已切到 Go API**（python 模式仍走 Python）。
+  - Windows Job Object：步骤 5 已在 `lw-engine-client` 实现（`KILL_ON_JOB_CLOSE`）；把 `lw-engine.exe` 写进 `tauri.conf.json` 的打包资源仍待做（现需手动放到 `src-tauri/resources/` 或用 `LW_ENGINE_PATH` 指定）。
 
 ### 步骤 2：FireRedVAD（Go + onnxruntime）
 
@@ -508,12 +509,26 @@ flowchart TD
   - 原生调用中途能否中止（§8 已核实）：audio.cpp 无中止接口，R2T2 在下一次分块推送前停下并 reset（实时最多等一个块）；transcribe.cpp 有 abort 回调，已注册，但 0.1.3 的 Qwen3 识别中途实测不轮询（Python `Session.cancel` 同样无效），所以一次调用总会算完，结果保留，随后让出——实时最多等一个单元（job ≤ 20 s 音频；整段识别 = 整个片段）。VAD 与模型加载也先完成。
   - 对齐（`engine/internal/qwen3/testdata/gen_reference.py` 驱动真实 `Qwen3ASRServer`，记录每次 VAD 与 `session.run` 的输入哈希和输出；transcribe.cpp 0.1.3 manylinux 预编译库（Python 包自带的同一个库）、Q8_0 模型、CPU）：12 条轨迹（合成中英文、合成信号、静音、截断、补静音，以及不入库的英文 11 s / 中文 17 s 真人录音），VAD 区间、送入 transcribe.cpp 的裁剪音频（逐位）、文本、语言与最终结果均与 Python **完全一致**；`lw-engine --backend native` 的 `POST /v1/asr/transcribe` 结果也一致。另将 `test_qwen3_asr_server.py` 移植为 Go 单测。
   - 压测与延迟：`lw-engine --backend native`（Qwen3，CPU）：92 s 文件 job（5 个单元，单独运行 16.1 s）执行到一个单元中途时开始实时会话——`started` 1.98 s 后返回（等正在进行的那次 transcribe.cpp 调用算完，即「最多等一个单元」），此后首字幕相对音频起点 8.54 s（空载 8.30 s），其余各句与空载相差 < 0.3 s；会话期间 job 停住（`realtime_hold`），结束后从下一单元继续，最终文本与不被打断时逐字相同。整句字幕在结句帧后约 0.6 s（整句识别耗时）到达；结句需要句尾静音 ≥ 500 ms。
-  - 未覆盖：Windows 上的 transcribe.dll 加载、CUDA / Vulkan 后端与 NVIDIA 检测；整句模式参数在真人 / 长时间口述上的调优（合成夹具上一句孤立识别时会丢掉整段的上下文，如 `speech_mixed` 首句整段识别为「今天天气很好」、单句识别为「件件件气很好」）；GPU 上的空闲卸载与重新加载（CPU 不卸载，逻辑只有单测）；R2T2 文件 job 的真实推理被抢占（只有 mock 测试，R2T2 打断路径有单测）；Rust 侧未改（不需要：壳还没有发 `priority` / job 的调用方，步骤 5 接入）。
+  - 未覆盖：Windows 上的 transcribe.dll 加载、CUDA / Vulkan 后端与 NVIDIA 检测；整句模式参数在真人 / 长时间口述上的调优（合成夹具上一句孤立识别时会丢掉整段的上下文，如 `speech_mixed` 首句整段识别为「今天天气很好」、单句识别为「件件件气很好」）；GPU 上的空闲卸载与重新加载（CPU 不卸载，逻辑只有单测）；R2T2 文件 job 的真实推理被抢占（只有 mock 测试，R2T2 打断路径有单测）；Rust 侧在步骤 5 已接入 priority / job / 实时流。
 
 ### 步骤 5：Rust 切换，移除 Python / PyInstaller
 
 - Rust 用 HTTP/WS 客户端取代 stdio JSON；cpal 音频经 WS 推流；删除 `interim.rs`；密钥 API 改为只写；localStorage 设置迁入壳内；打包改为 Go 后端 + 原生 DLL。
 - **完成标准**：安装包不再包含 Python 和 `engine.tar.xz`；现有听写、热键、注入、润色、历史回归通过；`formal/` 已更新或在 `COVERAGE.md` 标注；崩溃重启与版本不匹配有测试覆盖。
+- **进度（识别切换已实现，开关 `LW_ENGINE_BACKEND=go`；python 默认不变；完整去 Python 打包未做）**：
+  - **客户端**（`src-tauri/crates/lw-engine-client`）：
+    - `stream.rs`：`WS /v1/asr/stream`；`started.mode` → `StreamMode::{Streaming,Sentence}`。
+    - **Pre-`started` 音频缓冲（已定）**：`start` 发出后、收到 `started` 前，`feed` 的 PCM **全部缓冲**，`started` 到达后按采样 offset 顺序 flush 为 160 ms（2560 样本）二进制帧，不丢样。上限 [`PRE_START_BUFFER_MAX_SAMPLES`] = 30 s @ 16 kHz（≈ 960 KiB）；超出 → 错误码 `pre_start_buffer_overflow`，会话失败并取消。等待 `started` 超时 [`START_TIMEOUT`] = 15 s → `start_timeout`。二者均映射为 UI 启动失败（`AppError::Asr`）。
+    - `client`：`transcribe_pcm` / `transcribe_wav`（`priority` 查询参数）、`/v1/jobs` 提交 / 查询 / 列表 / 取消；错误码助手（`realtime_session_active` / `no_local_engine` / `invalid_priority` / `not_found`）。
+    - **Windows Job Object**：`process.rs` 在 spawn 后把子进程加入带 `JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE` 的 Job；壳异常退出时回收 `lw-engine`（`--exit-on-stdin-close` / `kill_on_drop` 仍保留）。
+  - **壳接入**（仅 `LW_ENGINE_BACKEND=go`）：
+    - 启动：跳过 Python，`bootstrap_ready` 等 Go 引擎 `model_loaded`，发 `funasr-status`；`engine_status` 事件同步 `funasr_ready`。
+    - 实时听写：本地引擎一律 `go_asr::spawn_go_recording` → WS 流；字幕仍发 `transcription-result`（`stableText` / `tentativeText`），R2T2 逐字、Qwen3 整句（tentative 空）对现有 overlay 兼容。
+    - 整段 / 历史重识别：`POST /v1/asr/transcribe`（缺省优先级 = 引擎 `default_priority_voice`）。
+    - 文件 job：Tauri 命令 `submit_go_transcription_job` / `get_go_transcription_job` / `list_go_transcription_jobs` / `cancel_go_transcription_job`；进度事件 `go-engine-job-progress`。
+    - 错误：409 / `invalid_priority` / 引擎不可用 / 缓冲溢出与启动超时 → 现有 `AppError::Asr` 文案路径。
+  - **未做（本步骤后续 / 步骤 5 完成标准剩余项）**：删除 `interim.rs`（python 路径仍用）；密钥 API 改为只写；localStorage → 壳内设置；安装包去掉 Python / `engine.tar.xz`、把 `lw-engine` 写入 `tauri.conf.json` 打包资源；`formal/` 回归；端到端真人听写。
+  - 测试：`lw-engine-client` 集成测试覆盖缓冲 flush、transcribe+priority、job 进度/取消、409/invalid_priority；`cargo check` / clippy `-D warnings`（client）在 Windows `x86_64-pc-windows-gnu` + toolchain 1.93.0；`go test -race ./...` 通过。
 
 ### 步骤 6：独立前端
 

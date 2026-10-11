@@ -38,7 +38,7 @@ Rust 壳拉起 `lw-engine`（默认 `--listen 127.0.0.1:0`），读取 **stdout 
 
 - **查找顺序**：`LW_ENGINE_PATH` → `<resource_dir>/resources/lw-engine[.exe]`（安装包）→ 开发构建下的 `engine/lw-engine[.exe]`。
 - **打包**：`tauri.conf.json` 暂未加入 `lw-engine.exe`（文件缺失会让打包失败）。需要时手动执行 `cd engine && go build -o ../src-tauri/resources/lw-engine.exe ./cmd/lw-engine`，再把 `resources/lw-engine.exe` 加进 `bundle.resources`。步骤 5 会改成正式构建步骤。
-- **拉起**：`--listen 127.0.0.1:0 --backend <mock> --exit-on-stdin-close --data-dir <应用数据目录>`；stdin 保持打开（父进程消失 → 引擎退出）；stderr 写 `<数据目录>/go_engine_stderr.log`；Windows 用 `CREATE_NO_WINDOW`。握手超时 15 s，`api_version` ≠ 1 视为不兼容；随后再用 `GET /health` 核对一次 token 与版本。
+- **拉起**：`--listen 127.0.0.1:0 --backend <mock|native> --exit-on-stdin-close --data-dir <应用数据目录>`；stdin 保持打开（父进程消失 → 引擎退出）；stderr 写 `<数据目录>/go_engine_stderr.log`；Windows 用 `CREATE_NO_WINDOW`，并把子进程加入带 `KILL_ON_JOB_CLOSE` 的 Job Object（步骤 5）。握手超时 15 s，`api_version` ≠ 1 视为不兼容；随后再用 `GET /health` 核对一次 token 与版本。
 - **崩溃重启**（PLAN §6 #3）：退避 1 s、2 s、4 s … 上限 30 s；连续失败 5 次后停止并报告 `failed`；稳定运行 60 s 后计数清零；版本不兼容直接 `failed`，不重启。应用退出（托盘「退出」）时结束子进程。
 - **设置**：`go` 模式下 `get/set_engine`、`get/set_models_dir`、`get/set_gpu_idle_seconds` 经 `GET/PATCH /v1/config`。412 时重读 revision 并重试（最多 3 次，补丁是绝对值，可安全重放）；写入 reload 键后调用 `POST /v1/engine/reload`，实时会话中返回 409 时保留 `pending_reload`。引擎处于 `failed` / 未启动时回退为直接写 engine.json（此时没有进程持有该文件）。识别仍由 Python 引擎完成。
 - **Tauri 事件**：`go-engine-process`（进程状态：`starting` / `running` / `restarting` / `failed` / `stopped`，含 pid、端口、重启次数、`last_error`）；`go-engine-status`、`go-engine-config-changed`（`/v1/events` 原样转发 `{seq,type,time,data}`）。断线后重连，首条 `engine_status` 快照用于重新同步。
@@ -100,3 +100,17 @@ Rust 壳拉起 `lw-engine`（默认 `--listen 127.0.0.1:0`），读取 **stdout 
 | Qwen3 整句实时 | 同一 WS 端点，`started.mode = "sentence"`：VAD 切句、逐句识别，`partial` 只在新句识别完成时发送，`committed` 按句追加、`tentative` 为空 | `ws-protocol.md` |
 
 协议新增（均为新增字段 / 端点 / 错误码，`api_version` 仍为 1）：`started.mode`；`SchedulerStats` 的 `high_queued` / `normal_queued` / `realtime_hold` / `preemptions` / `yields`（移除了两级时代的 `batch_queued`，`running_kind` 改为 Priority 取值）；`EngineStatus.jobs`；`/v1/jobs` 全部；错误码 `invalid_priority`（400）、`not_found`（404）；设置键 `default_priority_voice` / `default_priority_file`。
+## 步骤 5：Rust 经 Go API 识别（`LW_ENGINE_BACKEND=go`）
+
+默认仍是 `python`（行为不变）。`LW_ENGINE_BACKEND=go` 时：
+
+| 能力 | 实现 |
+|------|------|
+| 实时听写 | `WS /v1/asr/stream`（`lw-engine-client::AsrStream`）；`started.mode` = `streaming`（R2T2）或 `sentence`（Qwen3）；字幕事件仍为 `transcription-result` |
+| Pre-`started` 缓冲 | 收到 `started` 前缓冲 PCM，之后按 offset flush；上限 **30 s @ 16 kHz**（`pre_start_buffer_overflow`）；等 `started` **15 s**（`start_timeout`）→ 会话启动失败 |
+| 整段语音转录 | `POST /v1/asr/transcribe`，`priority` 缺省 = 设置 `default_priority_voice` |
+| 文件 job | Tauri：`submit_go_transcription_job` / `get_go_transcription_job` / `list_go_transcription_jobs` / `cancel_go_transcription_job`；事件 `go-engine-job-progress` |
+| 子进程 | Windows Job Object `KILL_ON_JOB_CLOSE` + stdin/`kill_on_drop` |
+
+错误映射：`realtime_session_active` / `no_local_engine` / `invalid_priority` / 引擎不可用 / 缓冲溢出与启动超时 → `AppError::Asr`（现有 UI 错误路径）。
+
