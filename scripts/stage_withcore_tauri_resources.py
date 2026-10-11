@@ -71,7 +71,7 @@ def main() -> int:
         return 2
     conf["bundle"]["resources"] = resources
     CONF.write_text(json.dumps(conf, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
-    print(f"tauri.conf.json resources → {flavor} ({len(resources)} entries)")
+    print(f"tauri.conf.json resources -> {flavor} ({len(resources)} entries)")
     return 0
 
 

@@ -4,8 +4,8 @@
 """Fetch Windows CPU native deps into src-tauri/resources/ (models NOT included).
 
 Downloads:
-  - onnxruntime 1.24.1 win-x64 → resources/onnxruntime/onnxruntime.dll (+ companions)
-  - transcribe.cpp 0.1.3 windows cpu-vulkan → resources/transcribe-native/
+  - onnxruntime 1.24.1 win-x64 -> resources/onnxruntime/onnxruntime.dll (+ companions)
+  - transcribe.cpp 0.1.3 windows cpu-vulkan -> resources/transcribe-native/
 
 R2T2 audiocpp is built separately via scripts/build_r2t2_runtime.py --backend cpu
 (on a Windows host with VS C++ tools).
@@ -60,7 +60,7 @@ def stage_onnxruntime(staging: Path) -> None:
             shutil.copy2(item, out / item.name)
     # Also place onnxruntime.dll next to resources root for simple LW_ONNXRUNTIME_LIB
     shutil.copy2(out / "onnxruntime.dll", RESOURCES / "onnxruntime.dll")
-    print(f"Staged onnxruntime → {out} and resources/onnxruntime.dll")
+    print(f"Staged onnxruntime -> {out} and resources/onnxruntime.dll")
 
 
 def stage_transcribe(staging: Path) -> None:
@@ -81,7 +81,7 @@ def stage_transcribe(staging: Path) -> None:
     if out.exists():
         shutil.rmtree(out)
     shutil.copytree(src, out)
-    print(f"Staged transcribe-native → {out}")
+    print(f"Staged transcribe-native -> {out}")
 
 
 def main() -> int:
