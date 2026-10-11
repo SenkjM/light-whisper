@@ -24,6 +24,7 @@ API 契约：[`docs/command-cube/api/`](../docs/command-cube/api/README.md)。
 | 模型下载、CUDA 运行时下载 | ⏳ 契约占位 |
 | Rust 客户端：拉起、握手、版本校验、崩溃重启、config 读写、事件转发（`src-tauri/crates/lw-engine-client`，开关 `LW_ENGINE_BACKEND=go`） | ✅ |
 | Rust 经 Go API 识别（步骤 5，`LW_ENGINE_BACKEND=go`）：WS 流 + pre-started 缓冲、transcribe、jobs、Job Object；删 interim；密钥只写；app_preferences | ✅；默认 python 包仍含 engine.tar.xz；Go 包见 `scripts/build_lw_engine_for_bundle.sh` |
+| 独立前端（步骤 6）：壳 prefs 为业务设置源、streaming/sentence UI、`pnpm dev`+Go 调试台 | ✅ 见 `scripts/dev_go_engine.sh` 与 `?view=dev-engine` |
 
 ## 目录
 

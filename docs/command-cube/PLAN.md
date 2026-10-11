@@ -1,7 +1,7 @@
 # Command-Cube 规划：前后端分离（Go 引擎后端 + Rust 薄壳 + 独立前端）
 
 > 分支：`Command-Cube`  
-> 状态：规划文档；实施进度见 §7 各步骤的「进度」（步骤 1 已完成；步骤 2 FireRedVAD 的 Go 移植已完成并与 Python 对齐；步骤 3 R2T2 会话与分段已移植，在 Linux CPU 上与 Python 逐调用、逐字一致，Windows / CUDA 与延迟基线未实测；步骤 4 Qwen3 / 调度 / job 已实现；步骤 5 识别切换 + 删除 interim + 密钥只写 getter + 壳内 app_preferences + formal 清单已完成；默认 python 打包仍含 engine.tar.xz，Go 打包用 `scripts/build_lw_engine_for_bundle.sh`；端到端真人听写与完全去掉 Python 安装包仍待后续 / 步骤 6）  
+> 状态：规划文档；实施进度见 §7 各步骤的「进度」（步骤 1 已完成；步骤 2 FireRedVAD 的 Go 移植已完成并与 Python 对齐；步骤 3 R2T2 会话与分段已移植，在 Linux CPU 上与 Python 逐调用、逐字一致，Windows / CUDA 与延迟基线未实测；步骤 4 Qwen3 / 调度 / job 已实现；步骤 5 完成；步骤 6：业务设置以壳 `app_preferences` 为准、字幕 streaming/sentence 分离、`pnpm dev`+Go 调试台已接通；默认 python 打包不变；Windows E2E / 纯 Go 安装包 / 步骤 7 工具仍待）  
 > 基于：对 `main` @ `151a61c` 的只读调研  
 > **本文主线**：用独立 Go 后端服务取代 Python 编排层；Rust（Tauri）只做系统集成与应用层；前端独立。
 
@@ -533,13 +533,18 @@ flowchart TD
     - **壳内偏好**：`<data_dir>/app_preferences.json`（热键/录音模式/麦克风/输入方式/提示音/电平监测/润色开关）；启动加载；`set_*` 持久化；`migrate_app_preferences` 一次性从 localStorage 迁入。主题 / UI 语言 / 引导仍前端 localStorage（步骤 6）。
     - **打包**：`scripts/build_lw_engine_for_bundle.sh` 产出 `resources/lw-engine[.exe]`；**不**从默认 python 包移除 `engine.tar.xz`（避免打断 `LW_ENGINE_BACKEND=python`）。Go 包需手动把二进制写入 `tauri.conf.json` `bundle.resources`。
     - **formal/**：`verification.json` 登记 `go_jobs::*`、`has_*`、`preferences::*`、`go-engine-job-progress`；`COVERAGE.md` 更新步骤 5。
-  - **仍未做 / 推迟**：端到端真人听写；安装包默认改为纯 Go、去掉 Python/`engine.tar.xz`；前端彻底停用业务 localStorage（步骤 6）；Go 调度 / WS 的 TLA+ 模型（§6 #6 → 步骤 7 前）。
+  - **仍未做 / 推迟**：端到端真人听写；安装包默认改为纯 Go、去掉 Python/`engine.tar.xz`；Go 调度 / WS 的 TLA+ 模型（§6 #6 → 步骤 7 前）。业务 localStorage 已在步骤 6 迁出。
   - 测试：同上 client 集成测试；本轮 `cargo check`；`scripts/check_formal.py` 清单校对。
 
 ### 步骤 6：独立前端
 
 - 前端可单独 `pnpm dev`；业务设置经 Rust（开发模式可直连后端）；两种模式 UI 分离。
 - **完成标准**：前端不再依赖 localStorage 中的业务设置；不打开 Tauri 窗口也能用后端完成引擎设置与文件转录调试。
+- **进度**：
+  - **业务设置**：热键 / 录音模式 / 麦克风 / 输入方式 / 提示音 / 电平监测 / 润色开关以 `app_preferences.json` 为源；`loadAppPreferences` 一次性迁出 localStorage；主题 / UI 语言 / 引导仍 localStorage（§3.2）。LLM provider drafts 仍前端草稿（非壳业务设置）。
+  - **两种模式 UI**：`transcription-result.mode` = `streaming`|`sentence`（Go 路径）；字幕 overlay 对 sentence 关闭逐字平滑；设置页能力文案区分流式 / 整句。
+  - **无 Tauri 调试**：`./scripts/dev_go_engine.sh` + `pnpm dev` → `http://localhost:1422/?view=dev-engine`（Vite 代理 `/lw-engine`，引擎设置 PATCH + 文件 job）。
+  - **未做**：纯 Go 默认安装包；Windows 真人 E2E；步骤 7 工具链。
 
 ### 步骤 7：后续工具（低优先级，非拆分门槛）
 

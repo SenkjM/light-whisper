@@ -114,3 +114,13 @@ Rust 壳拉起 `lw-engine`（默认 `--listen 127.0.0.1:0`），读取 **stdout 
 
 错误映射：`realtime_session_active` / `no_local_engine` / `invalid_priority` / 引擎不可用 / 缓冲溢出与启动超时 → `AppError::Asr`（现有 UI 错误路径）。
 
+
+## 步骤 6：无 Tauri 的引擎调试
+
+```bash
+./scripts/dev_go_engine.sh          # 127.0.0.1:8741 + .lw-engine-dev.token
+pnpm dev                            # Vite :1422，代理 /lw-engine
+# 打开 http://localhost:1422/?view=dev-engine 并粘贴 token
+```
+
+业务设置在 Tauri 壳内走 `app_preferences.json`；主题 / 语言 / 引导仍用 localStorage。
