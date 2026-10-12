@@ -3175,6 +3175,7 @@ dependencies = [
  "cpal",
  "dirs 6.0.0",
  "eventsource-stream",
+ "futures-util",
  "hound",
  "image",
  "keyring",

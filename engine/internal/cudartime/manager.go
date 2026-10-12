@@ -134,9 +134,9 @@ func (m *Manager) Status(devicePref string, usingCUDA bool, cudaDLLPresent bool)
 	driverOK := false
 	driverMsg := ""
 	if !nvidia {
-		driverMsg = "no NVIDIA GPU detected"
+		driverMsg = "no NVIDIA GPU/driver detected (checked display adapter / nvapi / device node; CUDA Toolkit not required)"
 	} else if driver == "" {
-		driverMsg = "NVIDIA GPU present but driver version unknown; install/update nvidia-smi"
+		driverMsg = "NVIDIA GPU/driver detected; install nvidia-smi (driver extras) for an exact version check"
 		driverOK = true // don't hard-block when smi missing but nvcuda loads
 	} else if DriverMeetsMinimum(driver, minDrv) {
 		driverOK = true

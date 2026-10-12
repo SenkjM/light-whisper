@@ -13,22 +13,27 @@ import (
 
 var driverLine = regexp.MustCompile(`(?i)Driver Version\s*:\s*([0-9.]+)`)
 
-// DetectNVIDIA reports whether an NVIDIA GPU appears to be present and the
-// driver version from nvidia-smi when available.
+// DetectNVIDIA reports whether an NVIDIA GPU / driver is present without
+// requiring the CUDA Toolkit. Order (PLAN §5):
+//  1. Driver-level signals (nvapi / display adapter / device node) — no toolkit
+//  2. nvidia-smi for driver version when on PATH
+//  3. nvcuda.dll only as a secondary hint (CUDA driver user-mode, still not Toolkit)
 func DetectNVIDIA() (present bool, driver string) {
-	out, err := exec.Command("nvidia-smi").CombinedOutput()
-	if err == nil {
+	present = driverLevelNVIDIA()
+	if out, err := exec.Command("nvidia-smi").CombinedOutput(); err == nil {
 		text := string(out)
+		present = true
 		if m := driverLine.FindStringSubmatch(text); len(m) == 2 {
-			return true, m[1]
+			driver = m[1]
 		}
-		// nvidia-smi ran; treat as present even if version parse failed.
-		return true, ""
 	}
-	if runtime.GOOS == "windows" {
-		return windowsHasNVCUDA(), ""
+	if !present && runtime.GOOS == "windows" {
+		present = windowsHasNVCUDA()
 	}
-	return false, ""
+	if present && driver == "" {
+		driver = readDriverVersionFallback()
+	}
+	return present, driver
 }
 
 // DriverMeetsMinimum compares dotted versions (e.g. 576.02 vs 575.51.03).

@@ -5,14 +5,30 @@
 
 package qwen3
 
-import "syscall"
+import (
+	"os"
+	"path/filepath"
+	"syscall"
+)
 
-// HasNVIDIAGPU reports whether the NVIDIA CUDA driver (nvcuda.dll) loads.
+// HasNVIDIAGPU reports whether an NVIDIA display driver is present.
+// Prefers nvapi (no CUDA Toolkit required); falls back to nvcuda.dll.
 func HasNVIDIAGPU() bool {
-	d, err := syscall.LoadDLL("nvcuda.dll")
-	if err != nil {
-		return false
+	for _, name := range []string{"nvapi64.dll", "nvapi.dll", "nvcuda.dll"} {
+		d, err := syscall.LoadDLL(name)
+		if err == nil {
+			_ = d.Release()
+			return true
+		}
 	}
-	_ = d.Release()
-	return true
+	sys := os.Getenv("SystemRoot")
+	if sys == "" {
+		sys = `C:\Windows`
+	}
+	for _, name := range []string{"nvapi64.dll", "nvldumdx.dll"} {
+		if st, err := os.Stat(filepath.Join(sys, "System32", name)); err == nil && !st.IsDir() {
+			return true
+		}
+	}
+	return false
 }

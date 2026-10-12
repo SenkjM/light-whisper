@@ -48,6 +48,7 @@ pinyin = { version = "0.11", default-features = false, features = ["plain"] }
 cpal = "0.15"
 
 # HTTP 请求（AI 润色服务）
+futures-util = { version = "0.3", default-features = false, features = ["std", "sink"] }
 reqwest = { version = "0.12", features = ["json", "multipart", "rustls-tls", "stream"], default-features = false }
 eventsource-stream = "0.2"
 tokio-stream = "0.1"

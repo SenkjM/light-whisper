@@ -4,29 +4,35 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Monitor, Moon, Sun } from "lucide-react";
+import { toast } from "sonner";
 import { useTheme } from "@/hooks/useTheme";
 import { useHotkeyCapture } from "@/hooks/useHotkeyCapture";
+import { useMicrophoneSettings } from "@/hooks/useMicrophoneSettings";
 import { useRecordingContext } from "@/contexts/RecordingContext";
 import {
-  listInputDevices,
-  setInputDevice,
+  getUserProfile,
+  setAssistantHotkey,
   setSoundEnabled,
 } from "@/api/tauri";
-import type { InputDeviceListPayload } from "@/types";
 import { loadAppPreferences, updateAppPreferences } from "@/lib/appPreferences";
 import { LANGUAGE_STORAGE_KEY } from "@/lib/constants";
 import { writeLocalStorage } from "@/lib/storage";
 import { formatHotkeyForDisplay } from "@/lib/hotkey";
+import Kbd from "@/components/Kbd";
 
 export default function ShellSettingsPage() {
   const { t, i18n } = useTranslation();
   const { theme, setTheme } = useTheme();
-  const { setHotkey, hotkeyDisplay } = useRecordingContext();
-  const [devices, setDevices] = useState<InputDeviceListPayload | null>(null);
-  const [inputDevice, setInputDeviceState] = useState<string>("");
+  const { setHotkey, hotkeyDisplay, isRecording } = useRecordingContext();
   const [recordingToggle, setRecordingToggle] = useState(false);
   const [soundEnabled, setSound] = useState(true);
-  const [micMonitor, setMicMonitor] = useState(false);
+  const [assistantHotkeyDisplay, setAssistantHotkeyDisplay] = useState("");
+
+  const mic = useMicrophoneSettings({
+    active: true,
+    closePicker: () => {},
+    isRecording,
+  });
 
   const capture = useHotkeyCapture({
     save: async (shortcut) => {
@@ -36,17 +42,27 @@ export default function ShellSettingsPage() {
     label: t("settings.hotkeyLabel"),
   });
 
+  const assistantCapture = useHotkeyCapture({
+    save: async (shortcut) => {
+      await setAssistantHotkey(shortcut);
+      setAssistantHotkeyDisplay(formatHotkeyForDisplay(shortcut));
+      toast.success(t("toast.hotkeySaved", { label: t("settings.assistantHotkeyLabel") }));
+    },
+    label: t("settings.assistantHotkeyLabel"),
+  });
+
   useEffect(() => {
     void (async () => {
       const prefs = await loadAppPreferences();
       setRecordingToggle(!!prefs.recordingToggle);
       setSound(prefs.soundEnabled !== false);
-      setMicMonitor(!!prefs.micLevelMonitorEnabled);
-      setInputDeviceState(prefs.inputDevice ?? "");
       try {
-        setDevices(await listInputDevices());
+        const profile = await getUserProfile();
+        setAssistantHotkeyDisplay(
+          profile.assistant_hotkey ? formatHotkeyForDisplay(profile.assistant_hotkey) : "",
+        );
       } catch {
-        /* ignore in browser-only */
+        /* ignore */
       }
     })();
   }, []);
@@ -79,7 +95,8 @@ export default function ShellSettingsPage() {
         </div>
         <label className="cube-field">
           {t("settings.language")}
-          <select className="cube-select"
+          <select
+            className="cube-select"
             value={i18n.language.startsWith("zh") ? "zh" : "en"}
             onChange={(e) => {
               void i18n.changeLanguage(e.target.value);
@@ -96,40 +113,107 @@ export default function ShellSettingsPage() {
         <h2>{t("settings.hotkeySection")}</h2>
         <p className="cube-muted">
           {t("settings.hotkeyLabel")}:{" "}
-          <strong>{formatHotkeyForDisplay(hotkeyDisplay) || "—"}</strong>
+          {hotkeyDisplay ? <Kbd combo={formatHotkeyForDisplay(hotkeyDisplay)} /> : <strong>—</strong>}
         </p>
-        <button type="button" onClick={() => capture.startCapture()} disabled={capture.saving}>
-          {capture.capturing ? t("cube.pressKeys") : t("cube.changeHotkey")}
-        </button>
-        {capture.capturing && (
-          <button type="button" onClick={() => capture.cancelCapture()}>
-            {t("common.cancel")}
+        <div className="cube-engine-group" style={{ marginBottom: 12 }}>
+          <button type="button" className="cube-engine-btn" onClick={() => capture.startCapture()} disabled={capture.saving}>
+            {capture.capturing ? t("cube.pressKeys") : t("cube.changeHotkey")}
           </button>
-        )}
+          {capture.capturing && (
+            <button type="button" className="cube-engine-btn" onClick={() => capture.cancelCapture()}>
+              {t("common.cancel")}
+            </button>
+          )}
+        </div>
+
+        <p className="cube-muted">
+          {t("settings.assistantHotkeyLabel")}:{" "}
+          {assistantHotkeyDisplay ? <Kbd combo={assistantHotkeyDisplay} /> : <strong>—</strong>}
+        </p>
+        <div className="cube-engine-group">
+          <button
+            type="button"
+            className="cube-engine-btn"
+            onClick={() => assistantCapture.startCapture()}
+            disabled={assistantCapture.saving}
+          >
+            {assistantCapture.capturing ? t("settings.pressAssistantHotkey") : t("cube.changeAssistantHotkey")}
+          </button>
+          {assistantCapture.capturing && (
+            <button type="button" className="cube-engine-btn" onClick={() => assistantCapture.cancelCapture()}>
+              {t("common.cancel")}
+            </button>
+          )}
+          {assistantHotkeyDisplay && !assistantCapture.capturing && (
+            <button
+              type="button"
+              className="cube-engine-btn"
+              onClick={() => {
+                void (async () => {
+                  try {
+                    await setAssistantHotkey(null);
+                    setAssistantHotkeyDisplay("");
+                    toast.success(t("toast.hotkeyCleared", { label: t("settings.assistantHotkeyLabel") }));
+                  } catch (e) {
+                    toast.error(e instanceof Error ? e.message : String(e));
+                  }
+                })();
+              }}
+            >
+              {t("common.clear")}
+            </button>
+          )}
+        </div>
       </section>
 
       <section className="cube-card">
         <h2>{t("settings.microphone")}</h2>
         <label className="cube-field">
           {t("cube.inputDevice")}
-          <select className="cube-select"
-            value={inputDevice}
-            onChange={async (e) => {
-              const v = e.target.value;
-              setInputDeviceState(v);
-              await setInputDevice(v || null);
-              await updateAppPreferences({ inputDevice: v || null });
-            }}
+          <select
+            className="cube-select"
+            value={mic.selectedInputDeviceName}
+            disabled={mic.deviceListLoading}
+            onChange={(e) => void mic.handleInputDeviceChange(e.target.value)}
           >
             <option value="">{t("cube.defaultDevice")}</option>
-            {(devices?.devices ?? []).map((d) => (
+            {mic.inputDevices.map((d) => (
               <option key={d.name} value={d.name}>
                 {d.name}
               </option>
             ))}
           </select>
         </label>
+
         <label className="cube-check">
+          <input
+            type="checkbox"
+            checked={mic.micLevelMonitorEnabled}
+            onChange={(e) => mic.handleMicLevelMonitorToggle(e.target.checked)}
+          />
+          {t("settings.micLevelMonitor")}
+        </label>
+
+        <div className="mic-level-shell" aria-label={t("settings.micLevelPreview")} style={{ margin: "10px 0 14px" }}>
+          <div
+            className="mic-level-fill"
+            style={{ ["--mic-level" as string]: `${Math.round(mic.micLevel * 100)}%` } as React.CSSProperties}
+          />
+        </div>
+        <p className="cube-muted" style={{ marginTop: 0 }}>
+          {!mic.micLevelMonitorEnabled
+            ? t("settings.micMonitorOff")
+            : isRecording
+              ? t("settings.micMonitorPausedRecording")
+              : mic.micMonitorReady
+                ? t("settings.micMonitorLive")
+                : t("settings.micMonitorStarting")}
+        </p>
+        <button type="button" className="cube-engine-btn" onClick={() => void mic.handleTestMicrophone()}>
+          {t("settings.testMicrophone")}
+        </button>
+
+        <label className="cube-check" style={{ marginTop: 14 }}>
           <input
             type="checkbox"
             checked={recordingToggle}
@@ -151,17 +235,6 @@ export default function ShellSettingsPage() {
             }}
           />
           {t("cube.soundEnabled")}
-        </label>
-        <label className="cube-check">
-          <input
-            type="checkbox"
-            checked={micMonitor}
-            onChange={async (e) => {
-              setMicMonitor(e.target.checked);
-              await updateAppPreferences({ micLevelMonitorEnabled: e.target.checked });
-            }}
-          />
-          {t("settings.micLevelMonitor")}
         </label>
       </section>
 

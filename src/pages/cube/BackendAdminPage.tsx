@@ -1,3 +1,4 @@
+import { confirmAction } from "@/lib/confirm";
 // SPDX-FileCopyrightText: 2026 SenkjM
 // SPDX-License-Identifier: AGPL-3.0-only
 
@@ -126,7 +127,7 @@ export default function BackendAdminPage() {
                         type="button"
                         disabled={busy}
                         onClick={async () => {
-                          if (!window.confirm(t("cube.confirmDeleteToken"))) return;
+                          if (!(await confirmAction(t("cube.confirmDeleteToken"), { confirmLabel: t("common.delete"), cancelLabel: t("common.cancel") }))) return;
                           setBusy(true);
                           try {
                             await deleteManagementToken(tok.id);

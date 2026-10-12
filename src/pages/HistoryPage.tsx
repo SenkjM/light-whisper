@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
+import { confirmAction } from "@/lib/confirm";
 
 import {
   copyToClipboard,
@@ -194,7 +195,7 @@ export default function HistoryPage({
 
   const remove = async (record: PersistentHistoryRecord) => {
     if (workingId != null) return;
-    if (!window.confirm(t("historyPage.deleteConfirm"))) return;
+    if (!(await confirmAction(t("historyPage.deleteConfirm"), { confirmLabel: t("common.delete"), cancelLabel: t("common.cancel") }))) return;
     setWorkingId(record.id);
     deletionInProgress.current = true;
     try {
