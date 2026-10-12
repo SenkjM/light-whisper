@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
 import { useCallback, useEffect, useState } from "react";
+import { listen } from "@tauri-apps/api/event";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import {
@@ -40,13 +41,14 @@ function CubeProgressBar({
   label: string;
   complete?: boolean;
 }) {
-  const determinate = percent != null && percent > 1;
+  // percent null → indeterminate pulse; any number (incl. 0) → determinate fill.
+  const determinate = percent != null && Number.isFinite(percent);
   const width = determinate ? Math.max(0, Math.min(100, percent)) : 0;
   return (
     <div className="cube-progress" role="status">
       <div className="cube-progress-meta">
         <span>{label}</span>
-        {determinate ? <span>{Math.round(width)}%</span> : null}
+        {determinate ? <span>{Math.round(width)}%</span> : <span>…</span>}
       </div>
       <div
         role="progressbar"
@@ -60,7 +62,7 @@ function CubeProgressBar({
           <div
             className="cube-progress-fill"
             style={{
-              width: `${width}%`,
+              width: `${Math.max(width, width > 0 ? width : 2)}%`,
               background: complete ? "var(--color-success, #2e8b57)" : "var(--color-accent, #e11d48)",
             }}
           />
@@ -102,7 +104,6 @@ export default function WorkbenchPage({
   const [engineBusy, setEngineBusy] = useState(false);
   const [cudaStatus, setCudaStatus] = useState<CudaRuntimeStatus | null>(null);
   const [cudaBusy, setCudaBusy] = useState(false);
-  const [cudaMismatchOpen, setCudaMismatchOpen] = useState(false);
   const [device, setDeviceState] = useState("auto");
   const [deviceBusy, setDeviceBusy] = useState(false);
   const [cudaLibsPresent, setCudaLibsPresent] = useState<boolean | null>(null);
@@ -149,8 +150,19 @@ export default function WorkbenchPage({
       void refreshCuda();
       void refreshModels();
       void refreshConnectionMeta();
-    }, 2000);
-    return () => window.clearInterval(id);
+    }, 1500);
+    let disposed = false;
+    let unlisten: (() => void) | undefined;
+    void listen("go-engine-download-progress", () => {
+      if (!disposed) void refreshCuda();
+    }).then((fn) => {
+      unlisten = fn;
+    });
+    return () => {
+      disposed = true;
+      window.clearInterval(id);
+      unlisten?.();
+    };
   }, [refreshCuda, refreshModels, refreshConnectionMeta]);
 
   useEffect(() => {
@@ -229,28 +241,22 @@ export default function WorkbenchPage({
     (!isReady && !isDownloading && stage !== "ready" && stage !== "loading" && stage !== "checking");
 
   const enableGpu = useCallback(
-    async (acknowledgeMismatch: boolean, preferSystem: boolean) => {
+    async (_acknowledgeMismatch: boolean, preferSystem: boolean) => {
       setCudaBusy(true);
       try {
+        // Version mismatch is remind-only — always acknowledge so enable never blocks.
         await enableCudaRuntime({
           preferSystem,
-          acknowledgeVersionMismatch: acknowledgeMismatch,
+          acknowledgeVersionMismatch: true,
           reload: true,
         });
-        setCudaMismatchOpen(false);
         toast.success(t("cube.cudaEnable"));
         await refreshCuda();
         retryModel();
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
-        const code = typeof err === "object" && err && "code" in err ? String((err as { code?: string }).code) : "";
-        if (code === "version_mismatch" || msg.includes("version_mismatch") || msg.includes("version mismatch")) {
-          setCudaMismatchOpen(true);
-          await refreshCuda();
-        } else {
-          toast.error(msg || t("toast.switchEngineFailed"));
-          await refreshCuda();
-        }
+        toast.error(msg || t("toast.switchEngineFailed"));
+        await refreshCuda();
       } finally {
         setCudaBusy(false);
       }
@@ -288,19 +294,34 @@ export default function WorkbenchPage({
     (cudaStatus as { driver_message?: string } | null)?.driver_message;
   const versionWarning =
     cudaStatus?.versionWarning ??
-    (cudaStatus as { version_warning?: string } | null)?.version_warning;
+    (cudaStatus as { version_warning?: string } | null)?.version_warning
+    ?? (cudaStatus?.versionMismatch ? t("cube.cudaMismatchRemind") : undefined);
 
   const cudaDownloadActive = !!cudaStatus?.download?.active;
   const cudaProgressRaw = cudaStatus?.download?.progress;
-  // Engine reports 0–1; tolerate accidental 0–100.
-  const cudaProgressPercent =
+  const cudaBytesDone = cudaStatus?.download?.bytesDone;
+  const cudaBytesTotal = cudaStatus?.download?.bytesTotal;
+  // Engine reports 0–1; tolerate accidental 0–100; fall back to bytes ratio.
+  let cudaProgressPercent: number | null =
     cudaProgressRaw == null
       ? null
       : cudaProgressRaw <= 1
         ? cudaProgressRaw * 100
         : cudaProgressRaw;
+  if (
+    cudaProgressPercent == null &&
+    typeof cudaBytesDone === "number" &&
+    typeof cudaBytesTotal === "number" &&
+    cudaBytesTotal > 0
+  ) {
+    cudaProgressPercent = (cudaBytesDone / cudaBytesTotal) * 100;
+  }
   const modelProgressPercent =
-    isDownloading && downloadProgress > 1 ? downloadProgress : isDownloading ? null : null;
+    isDownloading
+      ? downloadProgress > 0
+        ? downloadProgress
+        : null // indeterminate pulse until first byte event
+      : null;
 
   const isMockBackend = (inferenceBackend ?? "").toLowerCase() === "mock";
 
@@ -579,30 +600,24 @@ export default function WorkbenchPage({
               </button>
             )}
           </div>
-          {cudaMismatchOpen && versionWarning && (
-            <div className="cube-card" role="alertdialog" aria-label={t("cube.cudaMismatchTitle")}>
+          {versionWarning ? (
+            <div className="cube-card cube-warn-banner" role="status" aria-label={t("cube.cudaMismatchTitle")}>
               <h2>{t("cube.cudaMismatchTitle")}</h2>
+              <p className="cube-muted">{t("cube.cudaMismatchRemind")}</p>
               <p className="cube-muted">{versionWarning}</p>
               <div className="cube-engine-group">
                 <button
                   type="button"
-                  className="cube-install-btn"
-                  onClick={() => void enableGpu(true, true)}
-                >
-                  {t("cube.cudaMismatchConfirm")}
-                </button>
-                <button
-                  type="button"
                   className="cube-engine-btn"
+                  disabled={cudaBusy || cudaDownloadActive}
                   onClick={() => {
-                    setCudaMismatchOpen(false);
                     void (async () => {
                       setCudaBusy(true);
                       try {
                         if (!downloadedAvailable) {
                           await startCudaRuntimeDownload();
                         } else {
-                          await enableGpu(false, false);
+                          await enableGpu(true, false);
                         }
                       } finally {
                         setCudaBusy(false);
@@ -615,7 +630,7 @@ export default function WorkbenchPage({
                 </button>
               </div>
             </div>
-          )}
+          ) : null}
         </section>
       ) : cudaStatus && !nvidiaDetected ? (
         <p className="cube-muted">{t("cube.cudaNoGpu")}</p>

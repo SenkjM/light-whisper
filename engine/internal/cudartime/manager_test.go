@@ -52,32 +52,20 @@ func TestEnableVersionMismatch(t *testing.T) {
 	if sys == nil {
 		t.Fatal("expected system runtime in test dir")
 	}
-	// Without acknowledge: mismatch (version "12" from dll name, not 12.9)
-	_, err := m.Enable(true, false)
-	if err != ErrVersionMismatch && (sys.Version == "12" || !MatchesProject(sys.Version)) {
-		// If CUDA_PATH contains v12.9 we might match — ensure mismatch path works
-		if MatchesProject(sys.Version) {
-			t.Skip("test env tagged as 12.9")
-		}
-		if err != ErrVersionMismatch {
-			// Enable may fail earlier with ErrNoNVIDIA on Linux CI without GPU
-			if err == ErrNoNVIDIA || err == ErrDriverTooOld {
-				t.Skip(err)
-			}
-			t.Fatalf("want ErrVersionMismatch, got %v (sys=%+v)", err, sys)
-		}
+	// Version mismatch is warn-only: Enable must succeed without acknowledge.
+	st, err := m.Enable(true, false)
+	if err == ErrNoNVIDIA || err == ErrDriverTooOld {
+		t.Skip(err)
 	}
-	if err == ErrVersionMismatch {
-		_, err = m.Enable(true, true)
-		if err == ErrNoNVIDIA || err == ErrDriverTooOld {
-			t.Skip(err)
-		}
-		if err != nil {
-			t.Fatal(err)
-		}
-		if m.ActiveDir() == "" {
-			t.Fatal("active dir empty after ack")
-		}
+	if err != nil {
+		t.Fatalf("Enable should not block on version mismatch, got %v (sys=%+v)", err, sys)
+	}
+	if m.ActiveDir() == "" {
+		t.Fatal("active dir empty after enable")
+	}
+	if !MatchesProject(sys.Version) && !st.VersionMismatch && st.VersionWarning == "" {
+		// Status should still surface the reminder when versions differ.
+		t.Logf("note: VersionMismatch/Warning not set (sys=%+v status=%+v)", sys, st)
 	}
 }
 

@@ -20,8 +20,8 @@ import (
 	"github.com/SenkjM/light-whisper/engine/internal/events"
 )
 
-// ErrVersionMismatch is returned when the caller must acknowledge a system
-// runtime that is not the project default 12.9 before using it.
+// ErrVersionMismatch is retained for API compatibility. Enable no longer
+// returns it — system CUDA version differences are warn-only (never block).
 var ErrVersionMismatch = errors.New("cuda_runtime_version_mismatch")
 
 // ErrDriverTooOld is returned when the NVIDIA driver is below the CUDA 12.9 floor.
@@ -405,9 +405,11 @@ func copyFile(src, dst string) error {
 }
 
 // Enable selects a runtime source and records it as active.
-// preferSystem tries system first; acknowledgeMismatch is required when
-// system version != project default 12.9.
+// preferSystem tries system first. System CUDA != project default 12.9 is
+// warn-only: Status.VersionWarning is set, but enable/select is never blocked
+// (acknowledgeMismatch kept for API compatibility and ignored).
 func (m *Manager) Enable(preferSystem, acknowledgeMismatch bool) (Status, error) {
+	_ = acknowledgeMismatch // retained for wire compat; mismatch is remind-only
 	nvidia, driver := DetectNVIDIA()
 	if !nvidia {
 		return Status{}, ErrNoNVIDIA
@@ -419,11 +421,6 @@ func (m *Manager) Enable(preferSystem, acknowledgeMismatch bool) (Status, error)
 
 	sys := ProbeSystem()
 	if preferSystem && sys != nil && sys.Major == ProjectMajor {
-		mismatch := !MatchesProject(sys.Version)
-		if mismatch && !acknowledgeMismatch {
-			st := m.Status("", false, false)
-			return st, ErrVersionMismatch
-		}
 		a := activeFile{Source: SourceSystem, Path: sys.Path, Version: sys.Version}
 		if err := m.saveActive(a); err != nil {
 			return Status{}, err

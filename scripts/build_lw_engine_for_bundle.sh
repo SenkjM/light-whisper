@@ -31,12 +31,18 @@ else
   export CGO_ENABLED=0
 fi
 
+# Windows GUI subsystem: no black console when double-clicked. Shell spawn also
+# uses CREATE_NO_WINDOW; both together kill console flashes from lw-engine itself.
+windows_ldflags=(-ldflags "-H=windowsgui")
+
 build_host() {
   local name="lw-engine"
+  local extra=()
   if [[ "$(uname -s)" == MINGW* || "$(uname -s)" == MSYS* || "$(uname -s)" == CYGWIN* || "$(uname -s)" == Windows_NT ]]; then
     name="lw-engine.exe"
+    extra=("${windows_ldflags[@]}")
   fi
-  go build "${build_flags[@]}" -o "$OUT_DIR/$name" ./cmd/lw-engine
+  go build "${build_flags[@]}" "${extra[@]}" -o "$OUT_DIR/$name" ./cmd/lw-engine
   echo "Built $OUT_DIR/$name"
 }
 
@@ -50,8 +56,8 @@ build_windows() {
   else
     export GOOS=windows GOARCH=amd64
   fi
-  go build "${build_flags[@]}" -o "$OUT_DIR/lw-engine.exe" ./cmd/lw-engine
-  echo "Built $OUT_DIR/lw-engine.exe"
+  go build "${build_flags[@]}" "${windows_ldflags[@]}" -o "$OUT_DIR/lw-engine.exe" ./cmd/lw-engine
+  echo "Built $OUT_DIR/lw-engine.exe (windows subsystem)"
 }
 
 case "$TARGET" in
@@ -63,9 +69,9 @@ case "$TARGET" in
       # Cross mock only from non-Windows
       NATIVE_SAVE="$NATIVE"
       LW_ENGINE_NATIVE=0 NATIVE=0
-      GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -o "$OUT_DIR/lw-engine.exe" ./cmd/lw-engine
+      GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build "${windows_ldflags[@]}" -o "$OUT_DIR/lw-engine.exe" ./cmd/lw-engine
       NATIVE="$NATIVE_SAVE"
-      echo "Built $OUT_DIR/lw-engine.exe (cross mock)"
+      echo "Built $OUT_DIR/lw-engine.exe (cross mock, windows subsystem)"
     fi
     ;;
   *)

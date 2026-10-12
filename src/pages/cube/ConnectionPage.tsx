@@ -118,7 +118,14 @@ export default function ConnectionPage() {
           <div><dt>{t("cube.baseUrl")}</dt><dd className="mono">{conn?.baseUrl ?? "—"}</dd></div>
           <div><dt>{t("cube.packageFlavor")}</dt><dd>{conn?.packageFlavor ?? "—"}</dd></div>
           <div><dt>{t("cube.cudaR2t2")}</dt><dd>{conn?.cudaR2t2Present ? t("common.yes") : t("common.no")}</dd></div>
-          <div><dt>{t("cube.cudaTranscribe")}</dt><dd>{conn?.cudaTranscribePresent ? t("common.yes") : t("common.no")}</dd></div>
+          <div>
+            <dt>{t("cube.cudaTranscribe")}</dt>
+            <dd>
+              {conn?.cudaTranscribePresent
+                ? t("common.yes")
+                : t("cube.cudaTranscribeExpectedNo")}
+            </dd>
+          </div>
           <div>
             <dt>{t("cube.rootToken")}</dt>
             <dd className="mono">
@@ -134,6 +141,9 @@ export default function ConnectionPage() {
           </p>
         )}
         <p className="cube-muted" style={{ fontSize: 12 }}>{t("cube.cudaRuntimeNote")}</p>
+        {!conn?.cudaTranscribePresent ? (
+          <p className="cube-muted" style={{ fontSize: 12 }}>{t("cube.cudaTranscribeHint")}</p>
+        ) : null}
         {(conn?.inferenceBackend ?? "").toLowerCase() === "mock" ? (
           <p className="cube-error" role="alert">{t("cube.inferenceMockWarning")}</p>
         ) : null}

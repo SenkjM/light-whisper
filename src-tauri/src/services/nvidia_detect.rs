@@ -10,6 +10,17 @@
 use std::path::PathBuf;
 use std::process::Command;
 
+/// Hide console window on Windows (nvidia-smi / powershell flash black consoles).
+fn with_no_window(cmd: &mut Command) -> &mut Command {
+    #[cfg(windows)]
+    {
+        use std::os::windows::process::CommandExt;
+        const CREATE_NO_WINDOW: u32 = 0x0800_0000;
+        cmd.creation_flags(CREATE_NO_WINDOW);
+    }
+    cmd
+}
+
 /// Whether an NVIDIA GPU / display driver is present on this machine.
 pub fn nvidia_present() -> bool {
     #[cfg(windows)]
@@ -38,7 +49,7 @@ pub fn driver_version() -> String {
 }
 
 fn nvidia_smi_driver_version() -> Option<String> {
-    let out = Command::new("nvidia-smi").output().ok()?;
+    let out = with_no_window(&mut Command::new("nvidia-smi")).output().ok()?;
     if !out.status.success() {
         return None;
     }
@@ -65,7 +76,11 @@ fn unix_nvidia_present() -> bool {
     if PathBuf::from("/dev/nvidia0").exists() || PathBuf::from("/dev/nvidiactl").exists() {
         return true;
     }
-    if Command::new("nvidia-smi").output().ok().is_some_and(|o| o.status.success()) {
+    if with_no_window(&mut Command::new("nvidia-smi"))
+        .output()
+        .ok()
+        .is_some_and(|o| o.status.success())
+    {
         return true;
     }
     false
@@ -76,7 +91,11 @@ fn windows_nvidia_present() -> bool {
     if windows_has_nvapi() || windows_has_nvcuda() {
         return true;
     }
-    if Command::new("nvidia-smi").output().ok().is_some_and(|o| o.status.success()) {
+    if with_no_window(&mut Command::new("nvidia-smi"))
+        .output()
+        .ok()
+        .is_some_and(|o| o.status.success())
+    {
         return true;
     }
     windows_display_adapter_nvidia()
@@ -122,7 +141,7 @@ fn windows_has_nvcuda() -> bool {
 #[cfg(windows)]
 fn windows_display_adapter_nvidia() -> bool {
     // Fallback: PowerShell Win32_VideoController (no Toolkit required).
-    let out = Command::new("powershell")
+    let out = with_no_window(&mut Command::new("powershell"))
         .args([
             "-NoProfile",
             "-Command",
@@ -140,7 +159,7 @@ fn windows_display_adapter_nvidia() -> bool {
 #[cfg(windows)]
 fn windows_registry_driver_version() -> String {
     // Best-effort via PowerShell — avoids adding a winreg dependency.
-    let out = Command::new("powershell")
+    let out = with_no_window(&mut Command::new("powershell"))
         .args([
             "-NoProfile",
             "-Command",

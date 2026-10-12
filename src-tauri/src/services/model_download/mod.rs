@@ -81,10 +81,15 @@ fn snapshot_file(root: &Path, pin: &ModelPin) -> PathBuf {
 }
 
 fn emit(app: &tauri::AppHandle, stage: &str, model: &str, progress: f64, overall: f64, message: Option<&str>, error: Option<&str>) {
+    // Frontend useModelStatus listens for `status` (+ progress 0–100).
+    // Emit both `status` and legacy `stage`; put overall % in `progress` so the
+    // Workbench bar advances across multi-file downloads.
     let mut payload = serde_json::json!({
+        "status": stage,
         "stage": stage,
         "model": model,
-        "progress": progress,
+        "progress": overall,
+        "model_progress": progress,
         "overall_progress": overall,
     });
     if let Some(m) = message {

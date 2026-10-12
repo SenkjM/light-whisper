@@ -348,9 +348,11 @@ export function useModelStatus(): UseModelStatusReturn {
     let unlisten: (() => void) | undefined;
 
     type DownloadStatusPayload = {
-      status: string;
+      status?: string;
+      stage?: string;
       message?: string;
       progress?: number;
+      overall_progress?: number;
       error?: string;
     };
 
@@ -360,7 +362,13 @@ export function useModelStatus(): UseModelStatusReturn {
           "model-download-status",
           (event) => {
             if (disposed || !mountedRef.current) return;
-            const { status, progress, message, error: payloadError } = event.payload;
+            const payload = event.payload;
+            const status = payload.status ?? payload.stage ?? "";
+            const progress =
+              typeof payload.overall_progress === "number"
+                ? payload.overall_progress
+                : payload.progress;
+            const { message, error: payloadError } = payload;
 
             switch (status) {
               case "downloading":

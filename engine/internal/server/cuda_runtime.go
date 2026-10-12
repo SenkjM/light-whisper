@@ -124,6 +124,8 @@ func (s *Server) handleCudaRuntimeEnable(w http.ResponseWriter, r *http.Request)
 	}
 
 	st, err := s.opts.CudaRuntime.Enable(preferSystem, body.AcknowledgeVersionMismatch)
+	// Enable no longer returns ErrVersionMismatch (warn-only). Keep handler for
+	// older engine builds / wire compatibility.
 	if errors.Is(err, cudartime.ErrVersionMismatch) {
 		writeJSON(w, http.StatusConflict, map[string]any{
 			"error": map[string]any{

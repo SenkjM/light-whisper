@@ -26,6 +26,7 @@
 ## CUDA 路径（有 NVIDIA 时）
 
 - [ ] withcore 安装后 Connection 已显示「CUDA R2T2 库=是」（无需按 [CUDA_NATIVE_INSTALL.md](./CUDA_NATIVE_INSTALL.md) 合并，除非换 CUDA transcribe）
+- [ ] withcore 安装后「CUDA transcribe 库」可为「否（预期：…cpu-vulkan…）」——不是故障；勿当成破损
 - [ ] 工作台：检测到 GPU → 下载/启用 CUDA 运行时（cudart/cublas）；版本不符有确认
 - [ ] 启用后听写走 GPU（状态显示 cuda）；禁用回 CPU
 - [ ] 设备偏好：auto / cpu / cuda / vulkan（vulkan 仅对 Qwen3 有意义）

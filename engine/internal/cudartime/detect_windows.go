@@ -101,8 +101,10 @@ func isDigits(s string) bool {
 
 func wmiHasNVIDIA() bool {
 	// Optional fallback; ignore failures (no PowerShell / locked down).
-	out, err := exec.Command("powershell", "-NoProfile", "-Command",
-		`Get-CimInstance Win32_VideoController | Select-Object -ExpandProperty Name`).CombinedOutput()
+	cmd := exec.Command("powershell", "-NoProfile", "-Command",
+		`Get-CimInstance Win32_VideoController | Select-Object -ExpandProperty Name`)
+	hideConsole(cmd)
+	out, err := cmd.CombinedOutput()
 	if err != nil {
 		return false
 	}

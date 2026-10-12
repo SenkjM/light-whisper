@@ -9,9 +9,22 @@ import (
 	"runtime"
 	"strconv"
 	"strings"
+	"sync"
+	"time"
 )
 
 var driverLine = regexp.MustCompile(`(?i)Driver Version\s*:\s*([0-9.]+)`)
+
+// Cache NVIDIA detection — Status() is polled every ~2s from the Workbench and
+// previously re-spawned nvidia-smi/powershell each time (black console flashes).
+const detectCacheTTL = 30 * time.Second
+
+var (
+	detectMu        sync.Mutex
+	detectCachedAt  time.Time
+	detectPresent   bool
+	detectDriver    string
+)
 
 // DetectNVIDIA reports whether an NVIDIA GPU / driver is present without
 // requiring the CUDA Toolkit. Order (PLAN §5):
@@ -19,8 +32,21 @@ var driverLine = regexp.MustCompile(`(?i)Driver Version\s*:\s*([0-9.]+)`)
 //  2. nvidia-smi for driver version when on PATH
 //  3. nvcuda.dll only as a secondary hint (CUDA driver user-mode, still not Toolkit)
 func DetectNVIDIA() (present bool, driver string) {
+	detectMu.Lock()
+	defer detectMu.Unlock()
+	if !detectCachedAt.IsZero() && time.Since(detectCachedAt) < detectCacheTTL {
+		return detectPresent, detectDriver
+	}
+	present, driver = detectNVIDIAUncached()
+	detectPresent, detectDriver, detectCachedAt = present, driver, time.Now()
+	return present, driver
+}
+
+func detectNVIDIAUncached() (present bool, driver string) {
 	present = driverLevelNVIDIA()
-	if out, err := exec.Command("nvidia-smi").CombinedOutput(); err == nil {
+	cmd := exec.Command("nvidia-smi")
+	hideConsole(cmd)
+	if out, err := cmd.CombinedOutput(); err == nil {
 		text := string(out)
 		present = true
 		if m := driverLine.FindStringSubmatch(text); len(m) == 2 {

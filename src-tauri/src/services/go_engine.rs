@@ -39,7 +39,8 @@ pub const GO_ENGINE_CONFIG_EVENT: &str = "go-engine-config-changed";
 /// 引擎 `job_progress` 事件，载荷为 `{seq,type,time,data}`（data = Job，无 text/segments）。
 pub const GO_ENGINE_JOB_EVENT: &str = "go-engine-job-progress";
 
-const READY_TIMEOUT: Duration = Duration::from_secs(10);
+/// Native DLL load + antivirus scan on first withcore start can exceed 10s.
+const READY_TIMEOUT: Duration = Duration::from_secs(60);
 const CONFLICT_RETRIES: u32 = 3;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize)]
@@ -170,6 +171,9 @@ pub fn start(app: &tauri::AppHandle) {
             }
             "job_progress" => {
                 let _ = handle.emit(GO_ENGINE_JOB_EVENT, &ev);
+            }
+            "download_progress" => {
+                let _ = handle.emit("go-engine-download-progress", &ev);
             }
             other => log::debug!("Go 引擎事件 {other} 未转发"),
         },
@@ -365,26 +369,79 @@ pub fn map_recognition_error(e: ClientError) -> AppError {
 
 /// Mark the shell "ASR ready" from the current Go engine status (startup path).
 pub async fn bootstrap_ready(app: &tauri::AppHandle) {
-    let Some(client) = client_ready().await else {
-        let state = app.state::<crate::state::AppState>();
-        state.set_funasr_ready(false);
+    // First wait (READY_TIMEOUT). If still starting, soft-load + one more wait
+    // so a slow native DLL load is not reported as a hard failure.
+    if let Some(client) = client_ready().await {
+        match client.status().await {
+            Ok(data) => sync_ready_from_status(app, &data),
+            Err(e) => {
+                log::warn!("读取 Go 引擎状态失败: {e}");
+                let state = app.state::<crate::state::AppState>();
+                state.set_funasr_ready(false);
+            }
+        }
+        return;
+    }
+
+    let still_starting = SUPERVISOR.get().is_some_and(|sup| {
+        matches!(
+            sup.status().state,
+            SupervisorState::Starting | SupervisorState::Restarting
+        )
+    });
+
+    let state = app.state::<crate::state::AppState>();
+    state.set_funasr_ready(false);
+
+    if still_starting {
         let _ = app.emit(
             "funasr-status",
             serde_json::json!({
-                "status": "error",
-                "message": "Go 引擎未能在时限内就绪",
+                "status": "loading",
+                "message": "Go 引擎仍在启动，请稍候…",
             }),
         );
-        return;
-    };
-    match client.status().await {
-        Ok(data) => sync_ready_from_status(app, &data),
-        Err(e) => {
-            log::warn!("读取 Go 引擎状态失败: {e}");
-            let state = app.state::<crate::state::AppState>();
+        let handle = app.clone();
+        tauri::async_runtime::spawn(async move {
+            if let Some(client) = client_ready().await {
+                match client.status().await {
+                    Ok(data) => sync_ready_from_status(&handle, &data),
+                    Err(e) => log::warn!("读取 Go 引擎状态失败: {e}"),
+                }
+                return;
+            }
+            let state = handle.state::<crate::state::AppState>();
             state.set_funasr_ready(false);
-        }
+            let detail = SUPERVISOR
+                .get()
+                .and_then(|s| s.status().last_error)
+                .unwrap_or_else(|| "handshake timed out".into());
+            let _ = handle.emit(
+                "funasr-status",
+                serde_json::json!({
+                    "status": "error",
+                    "message": format!(
+                        "Go 引擎启动超时（可稍后在连接页刷新）。若持续失败请查看 go_engine_stderr.log。详情：{detail}"
+                    ),
+                }),
+            );
+        });
+        return;
     }
+
+    let detail = SUPERVISOR
+        .get()
+        .and_then(|s| s.status().last_error)
+        .unwrap_or_else(|| "not ready".into());
+    let _ = app.emit(
+        "funasr-status",
+        serde_json::json!({
+            "status": "error",
+            "message": format!(
+                "Go 引擎启动超时（可稍后在连接页刷新）。若持续失败请查看 go_engine_stderr.log。详情：{detail}"
+            ),
+        }),
+    );
 }
 
 
