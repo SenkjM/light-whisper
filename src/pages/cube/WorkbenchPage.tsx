@@ -323,13 +323,15 @@ export default function WorkbenchPage({
           {!driverOk && driverMessage ? (
             <p className="cube-error">{driverMessage || t("cube.cudaDriverOld")}</p>
           ) : null}
-          {cudaStatus.download?.active ? (
+          {cudaStatus?.download?.active ? (
             <p className="cube-install-status" role="status">
               {t("cube.cudaDownloading")}{" "}
-              {cudaStatus.download.progress != null
-                ? `(${Math.round(cudaStatus.download.progress * 100)}%)`
+              {cudaStatus?.download?.progress != null
+                ? `(${Math.round((cudaStatus?.download?.progress ?? 0) * 100)}%)`
                 : ""}
-              {cudaStatus.download.message ? ` — ${cudaStatus.download.message}` : ""}
+              {cudaStatus?.download?.message
+                ? ` — ${cudaStatus?.download?.message}`
+                : ""}
             </p>
           ) : null}
           <div className="cube-engine-group">
