@@ -7,6 +7,10 @@
 //! or `resources/lw-engine` (Unix). `LW_ENGINE_BACKEND=python` at build time
 //! still requires a non-empty `resources/engine.tar.xz` for local debug /
 //! legacy packaging.
+//!
+//! Thin-shell (`without`) packages intentionally omit the engine binary; set
+//! `VERIFY_WITHOUT=1` or `LW_PACKAGE_FLAVOR=without` so release builds may
+//! fingerprint `resources/lw-engine.placeholder` instead.
 
 use std::env;
 use std::fs;
@@ -26,6 +30,20 @@ fn is_non_empty_file(path: &Path) -> bool {
 pub fn wants_python_archive() -> bool {
     env::var("LW_ENGINE_BACKEND")
         .map(|v| v.trim().eq_ignore_ascii_case("python"))
+        .unwrap_or(false)
+}
+
+/// True when packaging the thin shell that omits lw-engine from the bundle
+/// (PLAN §11.5 / `command-cube-without.yml`).
+pub fn wants_without_package() -> bool {
+    if env::var("VERIFY_WITHOUT")
+        .map(|v| v.trim() == "1")
+        .unwrap_or(false)
+    {
+        return true;
+    }
+    env::var("LW_PACKAGE_FLAVOR")
+        .map(|v| v.trim().eq_ignore_ascii_case("without"))
         .unwrap_or(false)
 }
 
@@ -93,9 +111,9 @@ pub fn select_go_engine_binary(
     }
 
     if allow_placeholder {
-        // Debug builds may compile without a prebuilt binary; fingerprint an
-        // empty placeholder so rustc-env is always set (same idea as the old
-        // Python archive placeholder).
+        // Debug builds and without (thin-shell) release packages may omit a
+        // prebuilt binary; fingerprint an empty placeholder so rustc-env is
+        // always set (same idea as the old Python archive placeholder).
         let placeholder = manifest_dir.join("resources/lw-engine.placeholder");
         if !placeholder.exists() {
             if let Some(parent) = placeholder.parent() {
@@ -114,7 +132,7 @@ pub fn select_go_engine_binary(
     }
 
     Err(
-        "正式构建需要非空的 resources/lw-engine.exe（Windows）或 resources/lw-engine（Unix）。请先运行 `./scripts/build_lw_engine_for_bundle.sh windows`（或 host）。若仍要打 Python 包，构建时设置 LW_ENGINE_BACKEND=python 并准备 engine.tar.xz。"
+        "正式构建需要非空的 resources/lw-engine.exe（Windows）或 resources/lw-engine（Unix）。请先运行 `./scripts/build_lw_engine_for_bundle.sh windows`（或 host）。薄壳 without 包请设置 VERIFY_WITHOUT=1（或 LW_PACKAGE_FLAVOR=without）。若仍要打 Python 包，构建时设置 LW_ENGINE_BACKEND=python 并准备 engine.tar.xz。"
             .into(),
     )
 }

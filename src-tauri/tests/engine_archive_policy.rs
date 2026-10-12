@@ -146,3 +146,17 @@ fn default_fingerprint_source_is_go_engine() {
         exe
     );
 }
+
+#[test]
+fn without_release_may_fingerprint_a_placeholder() {
+    // command-cube-without.yml sets VERIFY_WITHOUT=1 so build.rs passes
+    // allow_placeholder=true even for PROFILE=release.
+    let test_dir = TestDir::new("without-placeholder");
+    let selected = build_support::select_go_engine_binary(test_dir.path(), true)
+        .expect("without packaging may fingerprint a placeholder");
+    assert_eq!(
+        selected,
+        test_dir.path().join("resources/lw-engine.placeholder")
+    );
+    assert!(selected.is_file());
+}

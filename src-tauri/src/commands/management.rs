@@ -7,6 +7,7 @@ use serde::Serialize;
 use serde_json::Value;
 
 use crate::services::go_engine;
+use crate::services::nvidia_detect;
 use crate::state::app_preferences::{self, AppPreferences};
 use crate::utils::AppError;
 
@@ -181,16 +182,179 @@ pub async fn delete_management_token(id: String) -> Result<(), AppError> {
 }
 
 
+/// Go engine emits snake_case; the cube UI expects camelCase IPC.
+fn cuda_status_to_camel(raw: Value) -> Value {
+    let Some(obj) = raw.as_object() else {
+        return raw;
+    };
+    let mut out = serde_json::Map::new();
+    let map = |k: &str| -> String {
+        match k {
+            "project_cuda_version" => "projectCudaVersion".into(),
+            "required_major" => "requiredMajor".into(),
+            "nvidia_detected" => "nvidiaDetected".into(),
+            "driver_version" => "driverVersion".into(),
+            "driver_ok" => "driverOk".into(),
+            "driver_message" => "driverMessage".into(),
+            "system_available" => "systemAvailable".into(),
+            "system_version" => "systemVersion".into(),
+            "system_path" => "systemPath".into(),
+            "system_matches_project" => "systemMatchesProject".into(),
+            "system_major_ok" => "systemMajorOk".into(),
+            "version_mismatch" => "versionMismatch".into(),
+            "version_warning" => "versionWarning".into(),
+            "downloaded_available" => "downloadedAvailable".into(),
+            "downloaded_version" => "downloadedVersion".into(),
+            "downloaded_path" => "downloadedPath".into(),
+            "downloaded_verified" => "downloadedVerified".into(),
+            "active_source" => "activeSource".into(),
+            "active_path" => "activePath".into(),
+            "active_version" => "activeVersion".into(),
+            "device_preference" => "devicePreference".into(),
+            "using_cuda_backend" => "usingCudaBackend".into(),
+            "cuda_r2t2_dll_present" => "cudaR2t2DllPresent".into(),
+            "bytes_done" => "bytesDone".into(),
+            "bytes_total" => "bytesTotal".into(),
+            other => other.to_string(),
+        }
+    };
+    for (k, v) in obj {
+        let key = map(k);
+        let val = if k == "download" {
+            match v {
+                Value::Object(d) => {
+                    let mut dd = serde_json::Map::new();
+                    for (dk, dv) in d {
+                        dd.insert(map(dk), dv.clone());
+                    }
+                    Value::Object(dd)
+                }
+                other => other.clone(),
+            }
+        } else {
+            v.clone()
+        };
+        out.insert(key, val);
+    }
+    Value::Object(out)
+}
+
+fn shell_cuda_status_fallback() -> Value {
+    let nvidia = nvidia_detect::nvidia_present();
+    let driver = nvidia_detect::driver_version();
+    let dll = go_engine::cuda_r2t2_present();
+    let (driver_ok, driver_message) = if !nvidia {
+        (
+            false,
+            "no NVIDIA GPU/driver detected (checked display adapter / nvapi / device node; CUDA Toolkit not required)",
+        )
+    } else if driver.is_empty() {
+        (
+            true,
+            "NVIDIA GPU/driver detected; install nvidia-smi (driver extras) for an exact version check",
+        )
+    } else {
+        (true, "")
+    };
+    serde_json::json!({
+        "projectCudaVersion": "12.9",
+        "requiredMajor": 12,
+        "nvidiaDetected": nvidia,
+        "driverVersion": driver,
+        "driverOk": driver_ok,
+        "driverMessage": driver_message,
+        "systemAvailable": false,
+        "systemMatchesProject": false,
+        "systemMajorOk": false,
+        "versionMismatch": false,
+        "downloadedAvailable": false,
+        "downloadedVerified": false,
+        "activeSource": "none",
+        "devicePreference": "",
+        "usingCudaBackend": false,
+        "cudaR2t2DllPresent": dll,
+    })
+}
+
+/// Ensure shell-local NVIDIA detection wins over a false negative from the
+/// engine (or missing field). Missing CUDA libs stay a separate warning.
+fn overlay_shell_nvidia(mut status: Value) -> Value {
+    let shell_nvidia = nvidia_detect::nvidia_present();
+    if !shell_nvidia {
+        return status;
+    }
+    let Some(obj) = status.as_object_mut() else {
+        return status;
+    };
+    let engine_says_no = obj
+        .get("nvidiaDetected")
+        .and_then(|v| v.as_bool())
+        .unwrap_or(false)
+        == false;
+    if engine_says_no {
+        obj.insert("nvidiaDetected".into(), Value::Bool(true));
+        if obj
+            .get("driverVersion")
+            .and_then(|v| v.as_str())
+            .unwrap_or("")
+            .is_empty()
+        {
+            let ver = nvidia_detect::driver_version();
+            if !ver.is_empty() {
+                obj.insert("driverVersion".into(), Value::String(ver));
+            }
+        }
+        // Do not hard-block GPU UI when shell sees a GPU; libs are separate.
+        if obj.get("driverOk").and_then(|v| v.as_bool()) != Some(true) {
+            obj.insert("driverOk".into(), Value::Bool(true));
+        }
+        let msg = obj
+            .get("driverMessage")
+            .and_then(|v| v.as_str())
+            .unwrap_or("")
+            .to_string();
+        if msg.is_empty()
+            || msg.contains("not detected")
+            || msg.contains("no NVIDIA")
+        {
+            obj.insert(
+                "driverMessage".into(),
+                Value::String(
+                    "NVIDIA GPU/driver detected by shell (CUDA Toolkit not required)".into(),
+                ),
+            );
+        }
+    }
+    // Keep dll presence honest from local resources when engine omitted it.
+    if !obj.contains_key("cudaR2t2DllPresent") {
+        obj.insert(
+            "cudaR2t2DllPresent".into(),
+            Value::Bool(go_engine::cuda_r2t2_present()),
+        );
+    }
+    status
+}
+
 #[tauri::command]
 pub async fn get_cuda_runtime_status() -> Result<Value, AppError> {
-    let c = require_client().await?;
-    c.cuda_runtime_status().await.map_err(map_client)
+    match require_client().await {
+        Ok(c) => {
+            let raw = c.cuda_runtime_status().await.map_err(map_client)?;
+            Ok(overlay_shell_nvidia(cuda_status_to_camel(raw)))
+        }
+        Err(_) => {
+            // without / not-yet-ready: still expose shell GPU detect so Workbench
+            // can show download/enable UI and warn about missing native libs.
+            Ok(overlay_shell_nvidia(shell_cuda_status_fallback()))
+        }
+    }
 }
 
 #[tauri::command]
 pub async fn start_cuda_runtime_download() -> Result<Value, AppError> {
     let c = require_client().await?;
-    c.cuda_runtime_download().await.map_err(map_client)
+    let raw = c.cuda_runtime_download().await.map_err(map_client)?;
+    Ok(overlay_shell_nvidia(cuda_status_to_camel(raw)))
 }
 
 #[tauri::command]
@@ -206,17 +370,20 @@ pub async fn enable_cuda_runtime(
     reload: Option<bool>,
 ) -> Result<Value, AppError> {
     let c = require_client().await?;
-    c.cuda_runtime_enable(
-        prefer_system,
-        acknowledge_version_mismatch,
-        reload.unwrap_or(true),
-    )
-    .await
-    .map_err(map_client)
+    let raw = c
+        .cuda_runtime_enable(
+            prefer_system,
+            acknowledge_version_mismatch,
+            reload.unwrap_or(true),
+        )
+        .await
+        .map_err(map_client)?;
+    Ok(overlay_shell_nvidia(cuda_status_to_camel(raw)))
 }
 
 #[tauri::command]
 pub async fn disable_cuda_runtime() -> Result<Value, AppError> {
     let c = require_client().await?;
-    c.cuda_runtime_disable().await.map_err(map_client)
+    let raw = c.cuda_runtime_disable().await.map_err(map_client)?;
+    Ok(overlay_shell_nvidia(cuda_status_to_camel(raw)))
 }

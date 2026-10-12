@@ -9,6 +9,7 @@ pub mod funasr_service;
 pub mod glm_asr_service;
 pub mod go_asr;
 pub mod go_engine;
+pub mod nvidia_detect;
 pub mod grok_build_oauth_service;
 pub mod history_service;
 pub mod jev_review;

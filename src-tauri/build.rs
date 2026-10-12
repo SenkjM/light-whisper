@@ -10,7 +10,8 @@ use std::path::{Path, PathBuf};
 mod build_support;
 
 use build_support::{
-    select_packaging_fingerprint_source, ENGINE_ARCHIVE_CANDIDATES, GO_ENGINE_CANDIDATES,
+    select_packaging_fingerprint_source, wants_without_package, ENGINE_ARCHIVE_CANDIDATES,
+    GO_ENGINE_CANDIDATES,
 };
 
 fn emit_rerun_hints() {
@@ -22,6 +23,8 @@ fn emit_rerun_hints() {
     }
     println!("cargo:rerun-if-changed=resources/lw-engine.placeholder");
     println!("cargo:rerun-if-env-changed=LW_ENGINE_BACKEND");
+    println!("cargo:rerun-if-env-changed=VERIFY_WITHOUT");
+    println!("cargo:rerun-if-env-changed=LW_PACKAGE_FLAVOR");
     println!("cargo:rerun-if-changed=windows-app-manifest.xml");
 }
 
@@ -58,7 +61,10 @@ fn main() {
         // The application binary already receives its manifest from tauri_build.
         println!("cargo:rustc-link-arg-bin=light-whisper=/MANIFEST:NO");
     }
-    let allow_placeholder = env::var("PROFILE").map_or(true, |profile| profile != "release");
+    // Release withcore/default still requires a real lw-engine binary.
+    // without (thin shell) intentionally omits it — allow the placeholder.
+    let allow_placeholder = env::var("PROFILE").map_or(true, |profile| profile != "release")
+        || wants_without_package();
     let fingerprint_source = select_packaging_fingerprint_source(&manifest_dir, allow_placeholder)
         .unwrap_or_else(|message| panic!("{message}"));
     println!(

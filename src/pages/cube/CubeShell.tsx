@@ -86,7 +86,27 @@ export default function CubeShell({ animClass = "" }: { animClass?: string }) {
               aria-label={maximized ? t("common.restoreWindow") : t("common.maximize")}
               className="icon-btn"
               data-no-drag
-              onClick={() => void getCurrentWindow().toggleMaximize()}
+              onClick={() => {
+                void (async () => {
+                  const win = getCurrentWindow();
+                  try {
+                    await win.toggleMaximize();
+                    setMaximized(await win.isMaximized());
+                  } catch {
+                    try {
+                      if (await win.isMaximized()) {
+                        await win.unmaximize();
+                        setMaximized(false);
+                      } else {
+                        await win.maximize();
+                        setMaximized(true);
+                      }
+                    } catch {
+                      /* permissions or platform */
+                    }
+                  }
+                })();
+              }}
             >
               {maximized ? (
                 <Copy size={11} strokeWidth={1.5} />

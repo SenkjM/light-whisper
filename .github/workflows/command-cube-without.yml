@@ -31,8 +31,11 @@ jobs:
       CI: "true"
       CARGO_TERM_COLOR: always
       VERIFY_WITHOUT: "1"
+      LW_PACKAGE_FLAVOR: without
       # Shell may still prefer go when user points at an external engine;
       # bundled resources intentionally omit the binary.
+      # build.rs honors VERIFY_WITHOUT / LW_PACKAGE_FLAVOR so release may
+      # fingerprint lw-engine.placeholder (engine is not bundled).
       LW_ENGINE_GO_BACKEND: mock
 
     steps:

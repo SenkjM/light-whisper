@@ -185,6 +185,32 @@ export default function WorkbenchPage({
       ? t("cube.oneClickInstall")
       : t("cube.reinstallModels");
 
+
+  const nvidiaDetected = !!(
+    cudaStatus?.nvidiaDetected ??
+    (cudaStatus as { nvidia_detected?: boolean } | null)?.nvidia_detected
+  );
+  const cudaDllPresent =
+    cudaStatus?.cudaR2t2DllPresent ??
+    (cudaStatus as { cuda_r2t2_dll_present?: boolean } | null)?.cuda_r2t2_dll_present;
+  const driverOk =
+    cudaStatus?.driverOk ??
+    (cudaStatus as { driver_ok?: boolean } | null)?.driver_ok;
+  const downloadedAvailable =
+    cudaStatus?.downloadedAvailable ??
+    (cudaStatus as { downloaded_available?: boolean } | null)?.downloaded_available;
+  const usingCuda =
+    !!(
+      cudaStatus?.usingCudaBackend ??
+      (cudaStatus as { using_cuda_backend?: boolean } | null)?.using_cuda_backend
+    ) || !!(cudaStatus?.activeSource && cudaStatus.activeSource !== "none");
+  const driverMessage =
+    cudaStatus?.driverMessage ??
+    (cudaStatus as { driver_message?: string } | null)?.driver_message;
+  const versionWarning =
+    cudaStatus?.versionWarning ??
+    (cudaStatus as { version_warning?: string } | null)?.version_warning;
+
   return (
     <div className="cube-page cube-workbench">
       <header className="cube-page-header cube-workbench-header">
@@ -278,24 +304,24 @@ export default function WorkbenchPage({
         <p className="cube-muted cube-install-status">{t("cube.deviceHint")}</p>
       </section>
 
-      {cudaStatus?.nvidiaDetected &&
-      (cudaStatus.cudaR2t2DllPresent === false ||
-        (cudaStatus.cudaR2t2DllPresent == null && cudaLibsPresent === false)) ? (
+      {nvidiaDetected &&
+      (cudaDllPresent === false ||
+        (cudaDllPresent == null && cudaLibsPresent === false)) ? (
         <p className="cube-error" role="status">{t("cube.cudaLibsMissing")}</p>
       ) : null}
 
-      {cudaStatus?.nvidiaDetected ? (
+      {nvidiaDetected ? (
         <section className="cube-workbench-controls" aria-label={t("cube.cudaSection")}>
           <div className="cube-engine-group">
             <span>{t("cube.cudaSection")}</span>
             <span className="cube-muted">
-              {cudaStatus.usingCudaBackend || (cudaStatus.activeSource && cudaStatus.activeSource !== "none")
-                ? t("cube.cudaStatusActive", { source: cudaStatus.activeSource || "—" })
+              {usingCuda
+                ? t("cube.cudaStatusActive", { source: cudaStatus?.activeSource || "—" })
                 : t("cube.cudaStatusIdle")}
             </span>
           </div>
-          {!cudaStatus.driverOk && cudaStatus.driverMessage ? (
-            <p className="cube-error">{cudaStatus.driverMessage || t("cube.cudaDriverOld")}</p>
+          {!driverOk && driverMessage ? (
+            <p className="cube-error">{driverMessage || t("cube.cudaDriverOld")}</p>
           ) : null}
           {cudaStatus.download?.active ? (
             <p className="cube-install-status" role="status">
@@ -310,16 +336,16 @@ export default function WorkbenchPage({
             <button
               type="button"
               className="cube-install-btn"
-              disabled={cudaBusy || !!cudaStatus.download?.active || !cudaStatus.driverOk}
+              disabled={cudaBusy || !!cudaStatus?.download?.active || !driverOk}
               onClick={() => void enableGpu(false, true)}
             >
               {t("cube.cudaEnable")}
             </button>
-            {!cudaStatus.downloadedAvailable && (
+            {!downloadedAvailable && (
               <button
                 type="button"
                 className="cube-engine-btn"
-                disabled={cudaBusy || !!cudaStatus.download?.active}
+                disabled={cudaBusy || !!cudaStatus?.download?.active}
                 onClick={() => {
                   void (async () => {
                     setCudaBusy(true);
@@ -337,7 +363,7 @@ export default function WorkbenchPage({
                 {t("cube.cudaDownload")}
               </button>
             )}
-            {cudaStatus.download?.active && (
+            {cudaStatus?.download?.active && (
               <button
                 type="button"
                 className="cube-engine-btn"
@@ -348,7 +374,7 @@ export default function WorkbenchPage({
                 {t("cube.cudaCancelDownload")}
               </button>
             )}
-            {(cudaStatus.usingCudaBackend || (cudaStatus.activeSource && cudaStatus.activeSource !== "none")) && (
+            {usingCuda && (
               <button
                 type="button"
                 className="cube-engine-btn"
@@ -372,10 +398,10 @@ export default function WorkbenchPage({
               </button>
             )}
           </div>
-          {cudaMismatchOpen && cudaStatus.versionWarning && (
+          {cudaMismatchOpen && versionWarning && (
             <div className="cube-card" role="alertdialog" aria-label={t("cube.cudaMismatchTitle")}>
               <h2>{t("cube.cudaMismatchTitle")}</h2>
-              <p className="cube-muted">{cudaStatus.versionWarning}</p>
+              <p className="cube-muted">{versionWarning}</p>
               <div className="cube-engine-group">
                 <button
                   type="button"
@@ -392,7 +418,7 @@ export default function WorkbenchPage({
                     void (async () => {
                       setCudaBusy(true);
                       try {
-                        if (!cudaStatus.downloadedAvailable) {
+                        if (!downloadedAvailable) {
                           await startCudaRuntimeDownload();
                         } else {
                           await enableGpu(false, false);
@@ -410,7 +436,7 @@ export default function WorkbenchPage({
             </div>
           )}
         </section>
-      ) : cudaStatus && !cudaStatus.nvidiaDetected ? (
+      ) : cudaStatus && !nvidiaDetected ? (
         <p className="cube-muted">{t("cube.cudaNoGpu")}</p>
       ) : null}
 
