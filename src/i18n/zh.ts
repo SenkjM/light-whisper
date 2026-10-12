@@ -761,7 +761,7 @@ const zh = {
     shellSettingsTitle: "壳设置",
     shellSettingsHint: "主题、热键、输入等壳侧偏好。",
     aboutTitle: "关于",
-    aboutIconNote: "当前图标为开源红色电话占位（Lucide 风格 / ISC），正式视觉后续重设计。",
+    aboutIconNote: "应用图标为原创座机电话（☎️ 桌面电话造型，ISC）。见 src-tauri/icons/ICON_PLACEHOLDER.txt。",
 
     role: "角色",
     capabilities: "能力",

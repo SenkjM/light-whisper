@@ -1,2 +1,5 @@
-Placeholder red-phone icons (MIT/ISC-style geometric mark).
-User will redesign. Generated for command-cube tray/app branding.
+命令方块 landline desk-phone icons (ISC).
+Original artwork by SenkjM for command-cube — classic ☎️ desk phone
+(handset on cradle + keypad body), not a Lucide copy.
+SPDX-License-Identifier: ISC
+Also see src/assets/command-cube-phone.svg and About page attribution.

@@ -762,7 +762,7 @@ const en: TranslationSchema = {
     shellSettingsTitle: "Shell settings",
     shellSettingsHint: "Theme, hotkeys, input and other shell prefs.",
     aboutTitle: "About",
-    aboutIconNote: "Icon is a red-phone placeholder (Lucide-style / ISC). Final artwork TBD.",
+    aboutIconNote: "App icon is an original landline / desk-phone mark (ISC). See src-tauri/icons/ICON_PLACEHOLDER.txt.",
 
     role: "Role",
     capabilities: "Capabilities",
