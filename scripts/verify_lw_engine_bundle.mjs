@@ -86,13 +86,9 @@ export async function verifyLwEngineBundle() {
     await mustExist("src-tauri/resources/transcribe-native/transcribe.dll");
     await mustExist("src-tauri/resources/r2t2-native/cpu/audiocpp.dll");
     console.log("withcore native DLLs present (CPU R2T2 + transcribe + onnxruntime)");
-    // Optional: CUDA audiocpp staged beside CPU (clear install / merge path)
-    try {
-      await mustExist("src-tauri/resources/r2t2-native/cuda/audiocpp.dll");
-      console.log("withcore also includes CUDA R2T2 (r2t2-native/cuda/audiocpp.dll)");
-    } catch {
-      console.log("CUDA R2T2 not in tree — install via scripts/install_cuda_native_libs.(sh|ps1) or CUDA artifact");
-    }
+    // CUDA R2T2 is required in withcore CI (VERIFY_WITHCORE=1); bundled stripped.
+    await mustExist("src-tauri/resources/r2t2-native/cuda/audiocpp.dll");
+    console.log("withcore includes CUDA R2T2 (r2t2-native/cuda/audiocpp.dll; cudart on-demand)");
   }
 
   const size = (await stat(join(RESOURCES, "lw-engine.exe"))).size;

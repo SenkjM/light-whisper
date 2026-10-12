@@ -1,9 +1,10 @@
 # SPDX-FileCopyrightText: 2026 SenkjM
 # SPDX-License-Identifier: AGPL-3.0-only
 #
-# withcore Windows package: lwnative lw-engine + CPU audiocpp + transcribe
-# (cpu-vulkan) + onnxruntime + FireRedVAD assets. Models are NOT bundled.
-# CUDA R2T2 is optional and skipped unless CUDA toolkit is present.
+# withcore Windows package: lwnative lw-engine + CPU audiocpp + CUDA audiocpp
+# (stripped, PLAN §5 on-demand cudart/cublas) + transcribe (cpu-vulkan) +
+# onnxruntime + FireRedVAD assets. Models are NOT bundled.
+# Separate command-cube-cuda-native merge is optional/redundant for R2T2 GPU.
 
 name: Command-Cube withcore
 
@@ -22,9 +23,9 @@ concurrency:
 
 jobs:
   windows-withcore:
-    name: Windows withcore (CPU native)
+    name: Windows withcore (CPU + CUDA R2T2 native)
     runs-on: windows-2022
-    timeout-minutes: 150
+    timeout-minutes: 180
     defaults:
       run:
         shell: pwsh
@@ -41,7 +42,6 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-          # audio.cpp clone needs git history only for build script's own clone
 
       - name: Set up Go
         uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5 # v5.5.0
@@ -86,12 +86,16 @@ jobs:
           restore-keys: |
             command-cube-withcore-${{ runner.os }}-1.93.0-
 
-      - name: Cache R2T2 source / build
+      - name: Cache R2T2 source / CPU + CUDA build
         uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5
         with:
           path: |
             build/r2t2
-          key: r2t2-cpu-${{ hashFiles('scripts/build_r2t2_runtime.py', 'scripts/patches/audio-cpp-r2t2-windows-streaming.patch') }}
+          key: r2t2-cpu-cuda-12.9-${{ hashFiles('scripts/build_r2t2_runtime.py', 'scripts/patches/audio-cpp-r2t2-windows-streaming.patch') }}
+          restore-keys: |
+            r2t2-cpu-cuda-12.9-
+            r2t2-cuda-12.9-
+            r2t2-cpu-
 
       - name: Install NSIS + MinGW (CGO) + CMake
         run: |
@@ -99,11 +103,36 @@ jobs:
           gcc --version
           cmake --version
 
-      - name: Fetch onnxruntime + transcribe CPU (no models)
+      - name: Install CUDA Toolkit 12.9
+        uses: Jimver/cuda-toolkit@b8bf9c6c28f8a92fbb04dcfcaee872e60c57462d # v0.2.36
+        id: cuda
+        with:
+          cuda: "12.9.0"
+          method: network
+          # cufft required by audio.cpp ggml CUDA backend (CUDA::cufft).
+          sub-packages: '["nvcc","visual_studio_integration","cudart","cublas","cublas_dev","cufft","cufft_dev","thrust","cupti","nvml_dev","nvtx","cuda_profiler_api"]'
+          use-github-cache: true
+
+      - name: Verify nvcc
+        run: |
+          Write-Host "CUDA_PATH=$env:CUDA_PATH"
+          nvcc --version
+          if (-not (Test-Path "$env:CUDA_PATH\bin\nvcc.exe")) {
+            throw "nvcc missing after toolkit install"
+          }
+
+      - name: Fetch onnxruntime + transcribe cpu-vulkan (no models)
         run: python scripts/fetch_native_deps_windows.py
 
       - name: Build R2T2 CPU runtime (audiocpp.dll)
         run: python scripts/build_r2t2_runtime.py --backend cpu
+
+      - name: Build R2T2 CUDA runtime (audiocpp.dll)
+        run: |
+          python scripts/build_r2t2_runtime.py --backend cuda --cuda-root "$env:CUDA_PATH"
+
+      - name: Strip CUDA runtime DLLs from shippable package (PLAN on-demand)
+        run: python scripts/strip_cuda_runtime_from_r2t2.py
 
       - name: Build lwnative lw-engine.exe
         shell: bash
@@ -120,8 +149,21 @@ jobs:
       - name: Verify withcore bundle
         run: node scripts/verify_lw_engine_bundle.mjs
 
-      - name: Verify Windows native layout
-        run: python scripts/verify_windows_native_layout.py
+      - name: Verify Windows native layout (require CUDA R2T2)
+        run: python scripts/verify_windows_native_layout.py --require-cuda
+
+      - name: Report native size impact
+        run: |
+          $cpu = Get-Item "src-tauri/resources/r2t2-native/cpu/audiocpp.dll"
+          $cuda = Get-Item "src-tauri/resources/r2t2-native/cuda/audiocpp.dll"
+          $cudaDir = Get-ChildItem "src-tauri/resources/r2t2-native/cuda" -File | Measure-Object -Property Length -Sum
+          Write-Host ("CPU audiocpp.dll: {0:N1} MB" -f ($cpu.Length / 1MB))
+          Write-Host ("CUDA audiocpp.dll: {0:N1} MB (bundled; cudart/cublas stripped)" -f ($cuda.Length / 1MB))
+          Write-Host ("r2t2-native/cuda/ total: {0:N1} MB" -f ($cudaDir.Sum / 1MB))
+          $bad = Get-ChildItem "src-tauri/resources/r2t2-native/cuda" -Filter "cudart64_*.dll" -ErrorAction SilentlyContinue
+          if ($bad) { throw "cudart still present after strip: $($bad.Name)" }
+          $manifest = Get-Content "src-tauri/resources/r2t2-native/cuda/runtime-manifest.json" -Raw | ConvertFrom-Json
+          if ($manifest.cuda_runtime -ne "on_demand") { throw "expected cuda_runtime=on_demand" }
 
       - name: Upload native runtime bits
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
@@ -133,6 +175,7 @@ jobs:
             src-tauri/resources/onnxruntime/
             src-tauri/resources/transcribe-native/
             src-tauri/resources/r2t2-native/cpu/
+            src-tauri/resources/r2t2-native/cuda/
             src-tauri/resources/fireredvad_vad.onnx
             src-tauri/resources/fireredvad_cmvn.json
           if-no-files-found: error
@@ -179,10 +222,11 @@ jobs:
           if-no-files-found: error
           retention-days: 14
 
-      - name: Note CUDA status
+      - name: Note packaging
         if: always()
         run: |
-          Write-Host "CUDA R2T2 not built in this job (CPU-only withcore)."
-          Write-Host "Merge CUDA DLLs: scripts/install_cuda_native_libs.ps1 + artifact command-cube-cuda-native"
-          Write-Host "Docs: docs/command-cube/CUDA_NATIVE_INSTALL.md and TEST_CHECKLIST.md"
-          Write-Host "Models (Qwen3 / R2T2 GGUF): in-app one-click (native HF) — no Python required in Go mode."
+          Write-Host "withcore now bundles CPU + CUDA R2T2 (r2t2-native/cuda/audiocpp.dll)."
+          Write-Host "cudart/cublas remain on-demand (PLAN section 5) — not in the NSIS."
+          Write-Host "Separate command-cube-cuda-native merge is optional/redundant for R2T2 GPU."
+          Write-Host "Qwen3 stays cpu-vulkan in withcore; CUDA transcribe swap still via optional CUDA artifact."
+          Write-Host "Models (Qwen3 / R2T2 GGUF): in-app one-click — no Python required in Go mode."

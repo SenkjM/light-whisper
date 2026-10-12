@@ -4,7 +4,7 @@
 """Verify Windows withcore native layout under src-tauri/resources (or DEST).
 
 Closes the 'Windows native path' gap for packaging: expected DLL names and
-optional CUDA drop-in. Does not load DLLs (no Windows required).
+CUDA R2T2 (required with --require-cuda / withcore CI). Does not load DLLs.
 """
 from __future__ import annotations
 
@@ -44,7 +44,7 @@ def main() -> int:
         return 1
     print("OK Windows native layout at", res)
     print("  CPU R2T2:", res / "r2t2-native" / "cpu" / "audiocpp.dll")
-    print("  CUDA R2T2:", "present" if cuda.is_file() else "absent (install via install_cuda_native_libs)")
+    print("  CUDA R2T2:", "present" if cuda.is_file() else "absent (withcore CI requires it; optional merge via install_cuda_native_libs)")
     print("  transcribe:", res / "transcribe-native" / "transcribe.dll")
     return 0
 

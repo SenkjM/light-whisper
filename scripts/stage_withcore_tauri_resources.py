@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: AGPL-3.0-only
 """Patch tauri.conf.json bundle.resources for withcore (native DLLs) or without.
 
-withcore: include lw-engine + VAD + r2t2-native/cpu + transcribe-native + onnxruntime
+withcore: include lw-engine + VAD + r2t2-native/cpu + r2t2-native/cuda + transcribe-native + onnxruntime
 without: shell-only (no lw-engine / native libs) — connect via management URL
 
 Usage:
@@ -60,9 +60,11 @@ def main() -> int:
         add_tree(resources, "resources/onnxruntime", "resources/onnxruntime")
         add_tree(resources, "resources/transcribe-native", "resources/transcribe-native")
         add_tree(resources, "resources/r2t2-native/cpu", "resources/r2t2-native/cpu")
-        # cuda optional
+        # CUDA R2T2 (withcore CI builds + strips cudart; required in CI)
         if (RES / "r2t2-native" / "cuda").is_dir():
             add_tree(resources, "resources/r2t2-native/cuda", "resources/r2t2-native/cuda")
+        else:
+            print("warn: r2t2-native/cuda missing — withcore CI requires it", file=sys.stderr)
     elif flavor == "without":
         # VAD assets not needed without engine; keep licenses + notices only
         pass

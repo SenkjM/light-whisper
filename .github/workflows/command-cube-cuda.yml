@@ -1,9 +1,12 @@
 # SPDX-FileCopyrightText: 2026 SenkjM
 # SPDX-License-Identifier: AGPL-3.0-only
 #
-# Build CUDA 12.9 R2T2 audiocpp + transcribe CUDA native libs on windows-2022.
-# Default installer stays CPU (withcore). CUDA runtime is NOT bundled (PLAN §5
-# on-demand); this job uploads the CUDA inference DLLs as a separate artifact.
+# Optional standalone CUDA native libs artifact.
+# withcore already bundles CUDA R2T2 (stripped); this job remains for:
+#   - CUDA transcribe VARIANT swap (overwrites withcore cpu-vulkan)
+#   - rebuilding / redistributing libs without a full NSIS
+# Merge into an older withcore install is optional/redundant when using a
+# current withcore app that already includes r2t2-native/cuda/.
 
 name: Command-Cube CUDA
 
@@ -22,7 +25,7 @@ concurrency:
 
 jobs:
   windows-cuda-native:
-    name: Windows CUDA 12.9 native libs
+    name: Windows CUDA 12.9 native libs (optional)
     runs-on: windows-2022
     timeout-minutes: 180
     defaults:
@@ -50,6 +53,7 @@ jobs:
           key: r2t2-cuda-12.9-${{ hashFiles('scripts/build_r2t2_runtime.py', 'scripts/patches/audio-cpp-r2t2-windows-streaming.patch') }}
           restore-keys: |
             r2t2-cuda-12.9-
+            r2t2-cpu-cuda-12.9-
 
       - name: Install CUDA Toolkit 12.9
         uses: Jimver/cuda-toolkit@b8bf9c6c28f8a92fbb04dcfcaee872e60c57462d # v0.2.36
@@ -105,15 +109,22 @@ jobs:
       - name: Write INSTALL.txt
         run: |
           @"
-          command-cube-cuda-native
-          ========================
-          Merge into withcore app resources:
+          command-cube-cuda-native (optional)
+          ==================================
+          Current withcore installers already bundle CUDA R2T2
+          (r2t2-native/cuda/audiocpp.dll). Merging this artifact is
+          optional/redundant for R2T2 GPU.
+
+          Still useful to:
+            - swap withcore cpu-vulkan transcribe for the CUDA VARIANT
+            - refresh libs on an older withcore install without reinstall
+
+          Merge:
 
             .\scripts\install_cuda_native_libs.ps1 -Src <extracted> -Dest <app>\resources
 
           Or: ./scripts/install_cuda_native_libs.sh <extracted> [resources]
 
-          Connection page → CUDA R2T2 should become Yes.
           Workbench → enable CUDA runtime (cudart/cublas on-demand).
           Docs: docs/command-cube/CUDA_NATIVE_INSTALL.md
           "@ | Set-Content -Path "src-tauri/resources/r2t2-native/cuda/INSTALL.txt" -Encoding utf8
@@ -135,7 +146,7 @@ jobs:
       - name: CUDA note
         if: always()
         run: |
-          Write-Host "Default withcore installer remains CPU-only."
-          Write-Host "Install path: scripts/install_cuda_native_libs.ps1 + docs/command-cube/CUDA_NATIVE_INSTALL.md"
+          Write-Host "withcore already bundles CUDA R2T2; this artifact is optional."
+          Write-Host "Primary use: CUDA transcribe VARIANT swap / standalone libs."
           Write-Host "CUDA runtime (cudart/cublas) is on-demand per PLAN section 5 — not in this artifact."
           Write-Host "Models still download separately."

@@ -1,8 +1,9 @@
 # SPDX-FileCopyrightText: 2026 SenkjM
 # SPDX-License-Identifier: AGPL-3.0-only
 #
-# Merge a downloaded command-cube-cuda-native artifact into a withcore
-# resources / installed-app resources tree (PLAN §5: cudart still on-demand).
+# Optional merge of command-cube-cuda-native into resources (PLAN §5: cudart on-demand).
+# Current withcore already bundles CUDA R2T2; this is redundant for that path.
+# Still useful for CUDA transcribe VARIANT swap or refreshing an older install.
 #
 # Usage:
 #   .\scripts\install_cuda_native_libs.ps1 -Src C:\path\to\extracted-cuda-artifact [-Dest C:\path\to\resources]
@@ -43,5 +44,6 @@ if (Test-Path $trSrc) {
 }
 
 Write-Host "Installed CUDA R2T2 libs into $destCuda"
+Write-Host "Note: current withcore already bundles CUDA R2T2; merge is optional/redundant for that path."
 Write-Host "Engine prefers cuda then cpu when device is not forced to cpu."
 Write-Host "CUDA runtime (cudart/cublas): Workbench one-click or system PATH (PLAN §5)."

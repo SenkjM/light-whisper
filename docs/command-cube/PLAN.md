@@ -1,7 +1,7 @@
 # Command-Cube 规划：前后端分离（Go 引擎后端 + Rust 薄壳 + 独立前端）
 
 > 分支：`Command-Cube`  
-> 状态：规划文档；实施进度见 §7 各步骤的「进度」（步骤 1 已完成；步骤 2 FireRedVAD 的 Go 移植已完成并与 Python 对齐；步骤 3 R2T2 会话与分段已移植，在 Linux CPU 上与 Python 逐调用、逐字一致，Windows / CUDA 与延迟基线未实测；步骤 4 Qwen3 / 调度 / job 已实现；步骤 5–6 完成；默认安装包纯 Go（`lw-engine.exe`，无 `engine.tar.xz` / PyInstaller）；`LW_ENGINE_BACKEND` 默认 `go`；§11 产品壳已闭环（含 without CI、座机图标、设备偏好 UI）；withcore CI 打 CPU native；CUDA 原生库独立制品 + 明确安装脚本；模型 Go 模式原生下载；步骤 7 / Agent·dah / 真人长测仍待用户验收）  
+> 状态：规划文档；实施进度见 §7 各步骤的「进度」（步骤 1 已完成；步骤 2 FireRedVAD 的 Go 移植已完成并与 Python 对齐；步骤 3 R2T2 会话与分段已移植，在 Linux CPU 上与 Python 逐调用、逐字一致，Windows / CUDA 与延迟基线未实测；步骤 4 Qwen3 / 调度 / job 已实现；步骤 5–6 完成；默认安装包纯 Go（`lw-engine.exe`，无 `engine.tar.xz` / PyInstaller）；`LW_ENGINE_BACKEND` 默认 `go`；§11 产品壳已闭环（含 without CI、座机图标、设备偏好 UI）；withcore CI 打 CPU+CUDA R2T2 native（cudart 仍按需）；独立 cuda-native 制品改为可选/冗余；模型 Go 模式原生下载；步骤 7 / Agent·dah / 真人长测仍待用户验收）  
 > 基于：对 `main` @ `151a61c` 的只读调研  
 > **本文主线**：用独立 Go 后端服务取代 Python 编排层；Rust（Tauri）只做系统集成与应用层；前端独立。
 
@@ -350,7 +350,7 @@ POST  /v1/engine/reload          执行待生效的 reload 项；有实时会话
 - **安装包默认只含 CPU 版**，不捆绑任何 NVIDIA CUDA 运行时文件。
 - 减小安装包体积；避免再分发 NVIDIA 专有运行时带来的授权问题（见 §10.6 中 CUDA 运行库一行）。
 - **CPU 用户无需下载**：只有检测到 NVIDIA 显卡、且用户主动启用时才下载。
-- R2T2 CUDA 版 DLL 本身（本项目构建产物）是随包分发，还是与运行时一起按需下载：**待定**。Qwen3（transcribe.cpp）若提供 CUDA 变体，沿用同一机制。
+- R2T2 CUDA 版 DLL（本项目构建产物）**已定随 withcore 分发**（`r2t2-native/cuda/`，cudart/cublas 仍按需，见下文）。Qwen3 默认仍为 withcore 的 cpu-vulkan；CUDA transcribe VARIANT 可通过可选 `command-cube-cuda-native` 制品覆盖。
 
 ### 5.2 构建期与运行期区分
 
@@ -749,7 +749,7 @@ formal/
 | **withcore** | 捆绑 `lw-engine`（当前默认路径） |
 | **without** | 不捆绑引擎，只连已有管理后端 URL |
 
-先用 feature / `tauri.conf` resources / 脚本开关打通。**已补**：`command-cube-without.yml` 打薄壳 NSIS；withcore / smoke / CUDA 仍为独立 workflow。
+先用 feature / `tauri.conf` resources / 脚本开关打通。**已补**：`command-cube-without.yml` 打薄壳 NSIS；withcore（含 CUDA R2T2）/ smoke / 可选 CUDA 仍为独立 workflow。
 
 ### 11.6 进度（垂直切片）
 
@@ -765,12 +765,12 @@ formal/
 - [x] 连接：状态 + auth/me + stats + autofill + URL/path + 壳侧云端点（polish/assistant/decision）
 - [x] 关于：命令方块、许可说明、图标 ISC 致谢
 - [x] 壳侧云 API 路由：`cloud_*_endpoint` 覆盖 polish / assistant / decision(Jev) / cloud ASR；密钥走既有 keyring；**Go 后端永不实现云能力**
-- [x] withcore：`fetch_native_deps_windows.py` + `build_r2t2_runtime.py --backend cpu` + `LW_ENGINE_NATIVE=1`；壳自动选 `native`（缺库则 mock）；模型不随包
+- [x] withcore：`fetch_native_deps_windows.py` + `build_r2t2_runtime.py --backend cpu` **与** `--backend cuda`（strip 后打进包）+ `LW_ENGINE_NATIVE=1`；壳自动选 `native`（缺库则 mock）；模型不随包
 - [x] CUDA runtime on-demand（PLAN §5）：`GET/POST/DELETE /v1/runtimes/cuda*` + Workbench 一键启用/下载/版本不符提醒
-- [x] CUDA CI：`command-cube-cuda.yml` 在 windows-2022 用 CUDA Toolkit 12.9 构建 audiocpp CUDA + transcribe CUDA；**运行时 DLL 不随包**（strip → on_demand，见 §5）；默认安装包仍为 CPU withcore
+- [x] CUDA CI：`command-cube-cuda.yml` 仍产出可选 `command-cube-cuda-native`（CUDA transcribe 替换 / 旧包补库）；**运行时 DLL 不随包**（strip → on_demand，见 §5）
 - [x] 座机电话应用图标（ISC）；ASR/job 统计计数；`package_flavor.sh` → stage withcore/without
 - [x] without CI：`command-cube-without.yml` → `command-cube-without-windows-app`
-- [x] CUDA 原生库明确安装路径：`install_cuda_native_libs.(sh|ps1)` + `docs/command-cube/CUDA_NATIVE_INSTALL.md` + 制品内 `INSTALL.txt`（默认 withcore 仍为 CPU）
+- [x] withcore 捆绑 CUDA R2T2：`command-cube-withcore.yml` 构建 cpu+cuda audiocpp 并 strip；`install_cuda_native_libs` / `CUDA_NATIVE_INSTALL.md` 标明独立合并可选/冗余
 - [x] 工作台设备偏好 UI：`auto|cpu|cuda|vulkan` → Go `/v1/config` device（Vulkan=Qwen3/cpu-vulkan；R2T2 无 Vulkan）
 - [x] 验收清单：`docs/command-cube/TEST_CHECKLIST.md`；Windows 布局校验 `scripts/verify_windows_native_layout.py`
 - [x] 外层分段决策已文档化（§2.1：暂保留 8s+静音）
@@ -779,9 +779,9 @@ formal/
 
 ### CUDA vs withcore packaging (decision)
 
-- **CPU withcore** installer (`command-cube-withcore.yml`) remains the default downloadable Windows app: ORT + CPU audiocpp + CPU transcribe + lw-engine (lwnative). Models stay out of the installer.
-- **CUDA native libs** (`command-cube-cuda.yml`) stay a **separate** artifact (`command-cube-cuda-native`): CUDA-built `audiocpp.dll` under `r2t2-native/cuda/` plus optional CUDA `transcribe.dll`, with cudart/cublas **stripped** (`cuda_runtime: on_demand`, PLAN §5). Do not merge full CUDA runtime into the NSIS.
-- Users who want GPU: install withcore, then unpack the CUDA artifact into the app `resources/` (see `scripts/install_cuda_native_libs.sh`). The Go R2T2 backend already prefers `cuda` then `cpu` when the device is not forced to `cpu`. Shell Connection shows whether `cuda/audiocpp.dll` (and CUDA transcribe VARIANT) are present.
+- **withcore** installer (`command-cube-withcore.yml`) is the default downloadable Windows app: ORT + CPU audiocpp + **CUDA audiocpp** (`r2t2-native/cuda/`, cudart/cublas **stripped** → `cuda_runtime: on_demand`, PLAN §5) + cpu-vulkan transcribe + lw-engine (lwnative). Models stay out of the installer.
+- **Separate** `command-cube-cuda-native` (`command-cube-cuda.yml`) is **optional/redundant for R2T2 GPU** (already in withcore). Still useful to swap in the CUDA transcribe VARIANT (overwrites cpu-vulkan) or refresh libs on an older install without reinstalling the NSIS. Do not merge full CUDA runtime into any artifact.
+- Users who want GPU: install withcore → Connection should show CUDA R2T2 = yes → Workbench one-click CUDA **runtime** (cudart/cublas). The Go R2T2 backend already prefers `cuda` then `cpu` when the device is not forced to `cpu`.
 
 ### Vulkan（可行性结论）
 
