@@ -118,18 +118,38 @@ pub fn start(app: &tauri::AppHandle) {
 
     let data_dir = paths::get_data_dir().clone();
     let mut spawn = SpawnOptions::new(&binary);
-    let resource_root = resource_dir
-        .clone()
-        .unwrap_or_else(|| binary.parent().unwrap_or(std::path::Path::new(".")).to_path_buf());
+    // Native DLLs / VAD assets are packaged *next to* lw-engine
+    // (`<resource_dir>/resources/…`), not at Tauri's resource_dir itself.
+    // Prefer the binary directory so withcore installs resolve to native.
+    let resource_root = pick_resource_root(&binary, resource_dir.as_deref());
     spawn.backend = resolve_go_backend(&resource_root);
     spawn.env = native_env_for_resources(&resource_root);
     spawn.stderr_log = Some(data_dir.join("go_engine_stderr.log"));
     spawn.data_dir = Some(data_dir);
-    log::info!(
-        "Go 引擎后端已启用: {} (--backend {})",
-        binary.display(),
-        spawn.backend
-    );
+    if spawn.backend == "mock" {
+        let missing = missing_native_libs(&resource_root);
+        if missing.is_empty() {
+            log::info!(
+                "Go 引擎后端已启用: {} (--backend mock; resource_root={})",
+                binary.display(),
+                resource_root.display()
+            );
+        } else {
+            log::warn!(
+                "Go 引擎后端已启用: {} (--backend mock; resource_root={}; missing native: {})",
+                binary.display(),
+                resource_root.display(),
+                missing.join(", ")
+            );
+        }
+    } else {
+        log::info!(
+            "Go 引擎后端已启用: {} (--backend {}; resource_root={})",
+            binary.display(),
+            spawn.backend,
+            resource_root.display()
+        );
+    }
 
     let handle = app.clone();
     let callback = move |event: SupervisorEvent| match event {
@@ -435,40 +455,111 @@ pub fn cuda_transcribe_present() -> bool {
     false
 }
 
+/// Candidates for the withcore layout: next to lw-engine, then
+/// `<tauri resource_dir>/resources`, then `resource_dir` itself.
+fn candidate_resource_roots(
+    binary_dir: Option<&std::path::Path>,
+    resource_dir: Option<&std::path::Path>,
+) -> Vec<PathBuf> {
+    let mut roots = Vec::new();
+    let mut push = |p: PathBuf| {
+        if !roots.iter().any(|r| r == &p) {
+            roots.push(p);
+        }
+    };
+    if let Some(d) = binary_dir {
+        push(d.to_path_buf());
+    }
+    if let Some(d) = resource_dir {
+        push(d.join("resources"));
+        push(d.to_path_buf());
+    }
+    roots
+}
+
+/// Pick the directory that holds lw-engine + native DLLs.
+///
+/// Packaged withcore layout (Tauri destination `resources/…`):
+/// `<resource_dir>/resources/{lw-engine.exe, onnxruntime.dll, r2t2-native/, …}`.
+/// Using bare `resource_dir` made `native_libs_present` fail and forced `--backend mock`.
+fn pick_resource_root(binary: &std::path::Path, resource_dir: Option<&std::path::Path>) -> PathBuf {
+    let candidates = candidate_resource_roots(binary.parent(), resource_dir);
+    for c in &candidates {
+        if native_libs_present(c) {
+            return c.clone();
+        }
+    }
+    binary
+        .parent()
+        .map(|p| p.to_path_buf())
+        .or_else(|| resource_dir.map(|d| d.join("resources")))
+        .or_else(|| resource_dir.map(|d| d.to_path_buf()))
+        .unwrap_or_else(|| PathBuf::from("."))
+}
+
 fn resource_roots() -> Vec<std::path::PathBuf> {
     let mut roots = Vec::new();
+    let mut push = |p: PathBuf| {
+        if !roots.iter().any(|r| r == &p) {
+            roots.push(p);
+        }
+    };
     if let Ok(p) = std::env::var("LW_RESOURCES_DIR") {
-        roots.push(std::path::PathBuf::from(p));
+        push(PathBuf::from(p));
     }
     if let Ok(exe) = std::env::current_exe() {
         if let Some(parent) = exe.parent() {
-            roots.push(parent.to_path_buf());
-            roots.push(parent.join("resources"));
+            // App exe dir and nested resources/ (NSIS withcore layout).
+            push(parent.join("resources"));
+            push(parent.to_path_buf());
         }
     }
-    // Dev tree
-    let dev = PathBuf::from("src-tauri/resources");
-    if dev.is_dir() {
-        roots.push(dev);
+    // Dev tree / staged resources next to the crate.
+    let manifest_res = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("resources");
+    if manifest_res.is_dir() {
+        push(manifest_res);
+    }
+    let cwd_res = PathBuf::from("src-tauri/resources");
+    if cwd_res.is_dir() {
+        push(cwd_res);
     }
     roots
 }
 
 fn native_libs_present(root: &std::path::Path) -> bool {
+    missing_native_libs(root).is_empty()
+}
+
+/// Relative paths required for CPU withcore native inference (Windows names).
+fn missing_native_libs(root: &std::path::Path) -> Vec<&'static str> {
+    let mut missing = Vec::new();
     let onnx = root.join("onnxruntime.dll").is_file()
         || root.join("onnxruntime").join("onnxruntime.dll").is_file();
-    let vad = root.join("fireredvad_vad.onnx").is_file()
-        && root.join("fireredvad_cmvn.json").is_file();
-    let r2t2 = root
+    if !onnx {
+        missing.push("onnxruntime.dll");
+    }
+    if !root.join("fireredvad_vad.onnx").is_file() {
+        missing.push("fireredvad_vad.onnx");
+    }
+    if !root.join("fireredvad_cmvn.json").is_file() {
+        missing.push("fireredvad_cmvn.json");
+    }
+    if !root
         .join("r2t2-native")
         .join("cpu")
         .join("audiocpp.dll")
-        .is_file();
-    let qwen = root
+        .is_file()
+    {
+        missing.push("r2t2-native/cpu/audiocpp.dll");
+    }
+    if !root
         .join("transcribe-native")
         .join("transcribe.dll")
-        .is_file();
-    onnx && vad && r2t2 && qwen
+        .is_file()
+    {
+        missing.push("transcribe-native/transcribe.dll");
+    }
+    missing
 }
 
 fn native_env_for_resources(root: &std::path::Path) -> std::collections::HashMap<String, String> {
@@ -510,6 +601,7 @@ fn native_env_for_resources(root: &std::path::Path) -> std::collections::HashMap
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::fs;
 
     #[test]
     fn backend_defaults_to_go() {
@@ -519,5 +611,79 @@ mod tests {
         assert_eq!(parse_backend(Some("rust")), EngineBackend::Go);
         assert_eq!(parse_backend(Some(" Go ")), EngineBackend::Go);
         assert_eq!(parse_backend(Some("python")), EngineBackend::Python);
+    }
+
+    fn write_withcore_layout(root: &std::path::Path) {
+        fs::create_dir_all(root.join("r2t2-native/cpu")).unwrap();
+        fs::create_dir_all(root.join("transcribe-native")).unwrap();
+        fs::create_dir_all(root.join("onnxruntime")).unwrap();
+        for (rel, body) in [
+            ("onnxruntime.dll", b"x" as &[u8]),
+            ("fireredvad_vad.onnx", b"x"),
+            ("fireredvad_cmvn.json", b"{}"),
+            ("r2t2-native/cpu/audiocpp.dll", b"x"),
+            ("transcribe-native/transcribe.dll", b"x"),
+        ] {
+            fs::write(root.join(rel), body).unwrap();
+        }
+    }
+
+    #[test]
+    fn pick_resource_root_prefers_nested_resources_next_to_engine() {
+        let base = std::env::temp_dir().join(format!(
+            "lw-go-engine-layout-{}-{}",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        ));
+        let _ = fs::remove_dir_all(&base);
+        let nested = base.join("resources");
+        write_withcore_layout(&nested);
+        let binary = nested.join("lw-engine.exe");
+        fs::write(&binary, b"x").unwrap();
+
+        // Tauri resource_dir is the *parent* of the nested resources/ folder.
+        let picked = pick_resource_root(&binary, Some(&base));
+        assert_eq!(picked, nested);
+        assert!(native_libs_present(&picked));
+        // Bare resource_dir (bug before this fix) must not look complete.
+        assert!(!native_libs_present(&base));
+        assert_eq!(
+            candidate_resource_roots(binary.parent(), Some(&base)),
+            vec![nested.clone(), base.clone()]
+        );
+
+        let env = native_env_for_resources(&picked);
+        assert_eq!(env.get("LW_RESOURCES_DIR").map(String::as_str), Some(nested.to_str().unwrap()));
+        assert!(env.get("LW_ONNXRUNTIME_LIB").unwrap().ends_with("onnxruntime.dll"));
+        assert!(env.get("LW_R2T2_RUNTIME_DIR").unwrap().ends_with("r2t2-native"));
+        assert!(env
+            .get("LW_TRANSCRIBE_LIBRARY")
+            .unwrap()
+            .ends_with("transcribe.dll"));
+
+        let _ = fs::remove_dir_all(&base);
+    }
+
+    #[test]
+    fn missing_native_libs_lists_gaps() {
+        let base = std::env::temp_dir().join(format!(
+            "lw-go-engine-missing-{}-{}",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        ));
+        let _ = fs::remove_dir_all(&base);
+        fs::create_dir_all(&base).unwrap();
+        let missing = missing_native_libs(&base);
+        assert!(missing.contains(&"onnxruntime.dll"));
+        assert!(missing.contains(&"r2t2-native/cpu/audiocpp.dll"));
+        write_withcore_layout(&base);
+        assert!(missing_native_libs(&base).is_empty());
+        let _ = fs::remove_dir_all(&base);
     }
 }

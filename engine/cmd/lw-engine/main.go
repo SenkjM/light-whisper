@@ -158,12 +158,12 @@ func run(ctx context.Context, args []string, stdin io.Reader, stdout, stderr io.
 	case "mock":
 		backend = asr.NewMock()
 	case "native":
+		// Do not silently fall back to mock: withcore packages expect native,
+		// and a DLL/path failure must surface clearly to the shell/UI.
 		var nerr error
 		backend, nerr = native.New(native.OptionsFromEnv(executableDir()))
 		if nerr != nil {
-			logger.Warn("native backend unavailable; falling back to mock", "err", nerr)
-			backend = asr.NewMock()
-			*backendName = "mock"
+			return fmt.Errorf("native inference backend failed to initialize (check DLLs next to lw-engine / LW_RESOURCES_DIR): %w", nerr)
 		}
 	default:
 		return fmt.Errorf("unknown --backend %q", *backendName)

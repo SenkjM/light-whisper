@@ -32,7 +32,7 @@ jobs:
     env:
       CI: "true"
       CARGO_TERM_COLOR: always
-      # Prefer native; engine falls back to mock if libs fail to load.
+      # Prefer native at spawn time; lw-engine errors (does not silent-mock) if load fails.
       LW_ENGINE_GO_BACKEND: native
       LW_ENGINE_NATIVE: "1"
       VERIFY_WITHCORE: "1"
