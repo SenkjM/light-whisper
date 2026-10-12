@@ -40,6 +40,9 @@ type LoadSpec struct {
 	Kind      Kind
 	ModelsDir string // "" = default HF cache
 	Device    string // auto | cpu | cuda | vulkan
+	// CudaRuntimeDir, when set, is prepended to native DLL/so search paths
+	// for CUDA backends (PLAN §5 on-demand runtime).
+	CudaRuntimeDir string
 }
 
 // Info describes the loaded state.

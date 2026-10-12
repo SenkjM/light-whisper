@@ -831,3 +831,60 @@ export function patchAppPreferences(
 ): Promise<AppPreferences> {
   return invokeCommand<AppPreferences>("patch_app_preferences", { patch });
 }
+
+
+/** PLAN §5 CUDA runtime status from Go engine. */
+export type CudaRuntimeStatus = {
+  projectCudaVersion?: string;
+  nvidiaDetected?: boolean;
+  driverVersion?: string;
+  driverOk?: boolean;
+  driverMessage?: string;
+  systemAvailable?: boolean;
+  systemVersion?: string;
+  systemMatchesProject?: boolean;
+  versionMismatch?: boolean;
+  versionWarning?: string;
+  downloadedAvailable?: boolean;
+  downloadedVersion?: string;
+  activeSource?: string;
+  activePath?: string;
+  usingCudaBackend?: boolean;
+  cudaR2t2DllPresent?: boolean;
+  download?: {
+    active?: boolean;
+    progress?: number;
+    message?: string;
+    error?: string;
+    bytesDone?: number;
+    bytesTotal?: number;
+  };
+};
+
+export function getCudaRuntimeStatus(): Promise<CudaRuntimeStatus> {
+  return invokeCommand<CudaRuntimeStatus>("get_cuda_runtime_status");
+}
+
+export function startCudaRuntimeDownload(): Promise<CudaRuntimeStatus> {
+  return invokeCommand<CudaRuntimeStatus>("start_cuda_runtime_download");
+}
+
+export function cancelCudaRuntimeDownload(): Promise<void> {
+  return invokeCommand<void>("cancel_cuda_runtime_download");
+}
+
+export function enableCudaRuntime(opts: {
+  preferSystem?: boolean;
+  acknowledgeVersionMismatch?: boolean;
+  reload?: boolean;
+} = {}): Promise<unknown> {
+  return invokeCommand("enable_cuda_runtime", {
+    preferSystem: opts.preferSystem ?? true,
+    acknowledgeVersionMismatch: opts.acknowledgeVersionMismatch ?? false,
+    reload: opts.reload ?? true,
+  });
+}
+
+export function disableCudaRuntime(): Promise<CudaRuntimeStatus> {
+  return invokeCommand<CudaRuntimeStatus>("disable_cuda_runtime");
+}

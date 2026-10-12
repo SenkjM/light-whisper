@@ -45,6 +45,8 @@ type Options struct {
 	// TranscribeDLLDirs are extra Windows dependency directories for
 	// transcribe.cpp (e.g. the CUDA runtime).
 	TranscribeDLLDirs []string
+	// CudaRuntimeDir is prepended to native DLL search paths (PLAN §5).
+	CudaRuntimeDir string
 	// Qwen3Model, when set, is used as the Qwen3-ASR GGUF instead of the
 	// Hugging Face cache lookup (development only).
 	Qwen3Model string
@@ -104,16 +106,30 @@ func New(o Options) (asr.Backend, error) {
 	if _, err := os.Stat(filepath.Join(o.ResourcesDir, vad.ModelFileName)); err != nil {
 		return nil, fmt.Errorf("native: FireRedVAD model: %w", err)
 	}
+	dllDirs := []string{filepath.Dir(o.RuntimeDir)}
+	if cudaDir := os.Getenv("LW_CUDA_RUNTIME_DIR"); cudaDir != "" {
+		dllDirs = append([]string{cudaDir}, dllDirs...)
+	}
+	if o.CudaRuntimeDir != "" {
+		dllDirs = append([]string{o.CudaRuntimeDir}, dllDirs...)
+	}
+	transcribeDLL := append([]string{}, o.TranscribeDLLDirs...)
+	if cudaDir := os.Getenv("LW_CUDA_RUNTIME_DIR"); cudaDir != "" {
+		transcribeDLL = append([]string{cudaDir}, transcribeDLL...)
+	}
+	if o.CudaRuntimeDir != "" {
+		transcribeDLL = append([]string{o.CudaRuntimeDir}, transcribeDLL...)
+	}
 	r := r2t2.NewBackend(r2t2.BackendOptions{
 		RuntimeDir:  o.RuntimeDir,
-		DLLDirs:     []string{filepath.Dir(o.RuntimeDir)},
+		DLLDirs:     dllDirs,
 		Threads:     o.Threads,
 		ModelPath:   o.R2T2Model,
 		NewDetector: func() (r2t2.Detector, error) { return NewDetector(o) },
 	})
 	q := qwen3.NewBackend(qwen3.BackendOptions{
 		LibraryPath: o.TranscribeLibrary,
-		DLLDirs:     o.TranscribeDLLDirs,
+		DLLDirs:     transcribeDLL,
 		ModelPath:   o.Qwen3Model,
 		NewDetector: func() (qwen3.Detector, error) { return NewDetector(o) },
 	})

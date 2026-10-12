@@ -179,3 +179,44 @@ pub async fn delete_management_token(id: String) -> Result<(), AppError> {
         .await
         .map_err(map_client)
 }
+
+
+#[tauri::command]
+pub async fn get_cuda_runtime_status() -> Result<Value, AppError> {
+    let c = require_client().await?;
+    c.cuda_runtime_status().await.map_err(map_client)
+}
+
+#[tauri::command]
+pub async fn start_cuda_runtime_download() -> Result<Value, AppError> {
+    let c = require_client().await?;
+    c.cuda_runtime_download().await.map_err(map_client)
+}
+
+#[tauri::command]
+pub async fn cancel_cuda_runtime_download() -> Result<(), AppError> {
+    let c = require_client().await?;
+    c.cuda_runtime_cancel_download().await.map_err(map_client)
+}
+
+#[tauri::command]
+pub async fn enable_cuda_runtime(
+    prefer_system: bool,
+    acknowledge_version_mismatch: bool,
+    reload: Option<bool>,
+) -> Result<Value, AppError> {
+    let c = require_client().await?;
+    c.cuda_runtime_enable(
+        prefer_system,
+        acknowledge_version_mismatch,
+        reload.unwrap_or(true),
+    )
+    .await
+    .map_err(map_client)
+}
+
+#[tauri::command]
+pub async fn disable_cuda_runtime() -> Result<Value, AppError> {
+    let c = require_client().await?;
+    c.cuda_runtime_disable().await.map_err(map_client)
+}

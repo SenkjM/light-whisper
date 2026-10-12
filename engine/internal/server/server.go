@@ -23,6 +23,7 @@ import (
 
 	"github.com/SenkjM/light-whisper/engine/internal/auth"
 	"github.com/SenkjM/light-whisper/engine/internal/config"
+	"github.com/SenkjM/light-whisper/engine/internal/cudartime"
 	"github.com/SenkjM/light-whisper/engine/internal/events"
 	"github.com/SenkjM/light-whisper/engine/internal/manager"
 	"github.com/SenkjM/light-whisper/engine/internal/version"
@@ -37,6 +38,7 @@ type Options struct {
 	Hub            *events.Hub
 	Logger         *slog.Logger
 	AllowedOrigins []string
+	CudaRuntime    *cudartime.Manager
 	// MaxAudioBytes bounds POST /v1/asr/transcribe bodies (default 64 MiB).
 	MaxAudioBytes int64
 	// MaxJobBytes bounds POST /v1/jobs audio (default 512 MiB, about 4.6 h
@@ -89,6 +91,11 @@ func (s *Server) routes() {
 	s.mux.HandleFunc("POST /v1/auth/tokens", s.handleCreateToken)
 	s.mux.HandleFunc("DELETE /v1/auth/tokens/{id}", s.handleDeleteToken)
 	s.mux.HandleFunc("GET /v1/stats", s.handleStats)
+	s.mux.HandleFunc("GET /v1/runtimes/cuda", s.handleCudaRuntimeStatus)
+	s.mux.HandleFunc("POST /v1/runtimes/cuda/download", s.handleCudaRuntimeDownload)
+	s.mux.HandleFunc("DELETE /v1/runtimes/cuda/download", s.handleCudaRuntimeCancelDownload)
+	s.mux.HandleFunc("POST /v1/runtimes/cuda/enable", s.handleCudaRuntimeEnable)
+	s.mux.HandleFunc("POST /v1/runtimes/cuda/disable", s.handleCudaRuntimeDisable)
 }
 
 // ServeHTTP applies the security checks, then routes.

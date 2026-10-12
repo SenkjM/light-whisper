@@ -16,6 +16,7 @@ import (
 
 	"github.com/SenkjM/light-whisper/engine/internal/asr"
 	"github.com/SenkjM/light-whisper/engine/internal/config"
+	"github.com/SenkjM/light-whisper/engine/internal/cudartime"
 	"github.com/SenkjM/light-whisper/engine/internal/events"
 	"github.com/SenkjM/light-whisper/engine/internal/scheduler"
 )
@@ -36,6 +37,8 @@ var (
 
 // Options configure a Manager.
 type Options struct {
+	// CudaRuntime supplies PLAN §5 on-demand CUDA runtime directory (optional).
+	CudaRuntime *cudartime.Manager
 	Store   *config.Store
 	Backend asr.Backend
 	Hub     *events.Hub
@@ -153,12 +156,16 @@ func (m *Manager) applyLogLevel(v config.Values) {
 	m.opts.LogLevel.Set(lvl)
 }
 
-func specFor(v config.Values) (asr.LoadSpec, bool) {
+func (m *Manager) specFor(v config.Values) (asr.LoadSpec, bool) {
 	kind, ok := asr.KindForEngine(v.Engine)
 	if !ok {
 		return asr.LoadSpec{}, false
 	}
-	return asr.LoadSpec{Engine: v.Engine, Kind: kind, ModelsDir: v.ModelsDir, Device: v.Device}, true
+	spec := asr.LoadSpec{Engine: v.Engine, Kind: kind, ModelsDir: v.ModelsDir, Device: v.Device}
+	if m != nil && m.opts.CudaRuntime != nil {
+		spec.CudaRuntimeDir = m.opts.CudaRuntime.ActiveDir()
+	}
+	return spec, true
 }
 
 // --- inference-thread helpers (only call inside sched.Do) -------------------
@@ -180,7 +187,7 @@ func (m *Manager) ensureLoaded() error {
 		return nil
 	}
 	eff := m.opts.Store.Effective()
-	spec, ok := specFor(eff)
+	spec, ok := m.specFor(eff)
 	if !ok {
 		return ErrNoLocalEngine
 	}
@@ -257,7 +264,7 @@ func (m *Manager) Reload(ctx context.Context) (applied []string, err error) {
 		}
 		m.opts.Store.Activate(desired)
 		m.refreshInfoLocked()
-		spec, ok := specFor(desired)
+		spec, ok := m.specFor(desired)
 		if !ok || (!wasLoaded && len(applied) == 0) {
 			m.publishStatus()
 			return nil

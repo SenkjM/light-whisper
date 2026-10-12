@@ -253,6 +253,93 @@ impl EngineClient {
         Self::send(self.req(reqwest::Method::GET, "/v1/stats")).await
     }
 
+    /// `GET /v1/runtimes/cuda` (PLAN §5).
+    pub async fn cuda_runtime_status(&self) -> Result<Value, ClientError> {
+        Self::send(self.req(reqwest::Method::GET, "/v1/runtimes/cuda")).await
+    }
+
+    /// `POST /v1/runtimes/cuda/download`.
+    pub async fn cuda_runtime_download(&self) -> Result<Value, ClientError> {
+        Self::send(self.req(reqwest::Method::POST, "/v1/runtimes/cuda/download")).await
+    }
+
+    /// `DELETE /v1/runtimes/cuda/download`.
+    pub async fn cuda_runtime_cancel_download(&self) -> Result<(), ClientError> {
+        let resp = self
+            .req(reqwest::Method::DELETE, "/v1/runtimes/cuda/download")
+            .send()
+            .await
+            .map_err(|e| ClientError::Transport(e.to_string()))?;
+        let status = resp.status().as_u16();
+        if status == 204 || (200..300).contains(&status) {
+            return Ok(());
+        }
+        let bytes = resp
+            .bytes()
+            .await
+            .map_err(|e| ClientError::Transport(e.to_string()))?;
+        Err(ClientError::Api {
+            status,
+            code: String::new(),
+            message: String::from_utf8_lossy(&bytes).into_owned(),
+        })
+    }
+
+    /// `POST /v1/runtimes/cuda/enable`.
+    ///
+    /// A `409` with `error.code = version_mismatch` is returned as
+    /// [`ClientError::Api`] so the shell can show the PLAN §5 reminder.
+    pub async fn cuda_runtime_enable(
+        &self,
+        prefer_system: bool,
+        acknowledge_version_mismatch: bool,
+        reload: bool,
+    ) -> Result<Value, ClientError> {
+        let body = serde_json::json!({
+            "prefer_system": prefer_system,
+            "acknowledge_version_mismatch": acknowledge_version_mismatch,
+            "reload": reload,
+        });
+        let resp = self
+            .req(reqwest::Method::POST, "/v1/runtimes/cuda/enable")
+            .json(&body)
+            .send()
+            .await
+            .map_err(|e| ClientError::Transport(e.to_string()))?;
+        let status = resp.status().as_u16();
+        let bytes = resp
+            .bytes()
+            .await
+            .map_err(|e| ClientError::Transport(e.to_string()))?;
+        if (200..300).contains(&status) {
+            return serde_json::from_slice(&bytes).map_err(|e| ClientError::Decode(e.to_string()));
+        }
+        let v: Value = serde_json::from_slice(&bytes).unwrap_or(Value::Null);
+        let code = v
+            .pointer("/error/code")
+            .and_then(|x| x.as_str())
+            .unwrap_or("")
+            .to_string();
+        let message = v
+            .pointer("/error/message")
+            .and_then(|x| x.as_str())
+            .unwrap_or_else(|| std::str::from_utf8(&bytes).unwrap_or(""))
+            .to_string();
+        Err(match status {
+            401 => ClientError::Unauthorized,
+            _ => ClientError::Api {
+                status,
+                code,
+                message,
+            },
+        })
+    }
+
+    /// `POST /v1/runtimes/cuda/disable`.
+    pub async fn cuda_runtime_disable(&self) -> Result<Value, ClientError> {
+        Self::send(self.req(reqwest::Method::POST, "/v1/runtimes/cuda/disable")).await
+    }
+
     pub async fn get_config(&self) -> Result<ConfigSnapshot, ClientError> {
         Self::send(self.req(reqwest::Method::GET, "/v1/config")).await
     }

@@ -35,6 +35,7 @@ import (
 	"github.com/SenkjM/light-whisper/engine/internal/asr"
 	"github.com/SenkjM/light-whisper/engine/internal/auth"
 	"github.com/SenkjM/light-whisper/engine/internal/config"
+	"github.com/SenkjM/light-whisper/engine/internal/cudartime"
 	"github.com/SenkjM/light-whisper/engine/internal/events"
 	"github.com/SenkjM/light-whisper/engine/internal/manager"
 	"github.com/SenkjM/light-whisper/engine/internal/native"
@@ -176,8 +177,13 @@ func run(ctx context.Context, args []string, stdin io.Reader, stdout, stderr io.
 	defer func() { _ = authStore.Close() }()
 	hub := events.NewHub()
 	defer hub.Close()
+	cudaMgr := cudartime.NewManager(cudartime.Options{DataDir: *dataDir, Hub: hub})
+	if dir := cudaMgr.ActiveDir(); dir != "" {
+		_ = os.Setenv("LW_CUDA_RUNTIME_DIR", dir)
+	}
 	mgr := manager.New(manager.Options{
 		Store: store, Backend: backend, Hub: hub, Logger: logger, LogLevel: level,
+		CudaRuntime: cudaMgr,
 		OnJobTerminal: func(completed bool) {
 			if completed {
 				authStore.AddStat("jobs_completed", 1)
@@ -199,6 +205,7 @@ func run(ctx context.Context, args []string, stdin io.Reader, stdout, stderr io.
 	srv := &http.Server{
 		Handler: server.New(server.Options{
 			Token: token, Auth: authStore, Store: store, Manager: mgr, Hub: hub, Logger: logger, AllowedOrigins: origins,
+			CudaRuntime: cudaMgr,
 		}),
 		ReadHeaderTimeout: 10 * time.Second,
 	}

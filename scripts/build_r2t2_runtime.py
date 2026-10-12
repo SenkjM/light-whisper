@@ -93,7 +93,7 @@ def _assemble_runtime(source, build, output, backend, cuda_root, env, architectu
         # Prefer bundling toolkit redistributables when present; CI / PLAN §5
         # on-demand packs skip them (strip_cuda_runtime_from_r2t2.py also strips).
         missing = []
-        for pattern in ("cublas64_*.dll", "cublasLt64_*.dll", "cudart64_*.dll"):
+        for pattern in ("cublas64_*.dll", "cublasLt64_*.dll", "cudart64_*.dll", "cufft64_*.dll"):
             matches = list((cuda_root / "bin").glob(pattern))
             if len(matches) > 1:
                 raise RuntimeError(f"Expected at most one CUDA library matching {pattern}, got {len(matches)}")

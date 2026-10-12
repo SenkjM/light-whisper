@@ -4,7 +4,16 @@
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
-import { getEngine, setEngine } from "@/api/tauri";
+import {
+  getEngine,
+  setEngine,
+  getCudaRuntimeStatus,
+  startCudaRuntimeDownload,
+  cancelCudaRuntimeDownload,
+  enableCudaRuntime,
+  disableCudaRuntime,
+  type CudaRuntimeStatus,
+} from "@/api/tauri";
 import { useRecordingContext } from "@/contexts/RecordingContext";
 import MainPage from "@/pages/MainPage";
 import HistoryPage from "@/pages/HistoryPage";
@@ -40,6 +49,25 @@ export default function WorkbenchPage({
 
   const [engine, setEngineState] = useState("qwen3-asr-0.6b");
   const [engineBusy, setEngineBusy] = useState(false);
+  const [cudaStatus, setCudaStatus] = useState<CudaRuntimeStatus | null>(null);
+  const [cudaBusy, setCudaBusy] = useState(false);
+  const [cudaMismatchOpen, setCudaMismatchOpen] = useState(false);
+
+  const refreshCuda = useCallback(async () => {
+    try {
+      setCudaStatus(await getCudaRuntimeStatus());
+    } catch {
+      setCudaStatus(null);
+    }
+  }, []);
+
+  useEffect(() => {
+    void refreshCuda();
+    const id = window.setInterval(() => {
+      void refreshCuda();
+    }, 2000);
+    return () => window.clearInterval(id);
+  }, [refreshCuda]);
 
   useEffect(() => {
     let cancelled = false;
@@ -84,6 +112,36 @@ export default function WorkbenchPage({
     stage === "error" ||
     Boolean(modelError) ||
     (!isReady && !isDownloading && stage !== "ready" && stage !== "loading" && stage !== "checking");
+
+  const enableGpu = useCallback(
+    async (acknowledgeMismatch: boolean, preferSystem: boolean) => {
+      setCudaBusy(true);
+      try {
+        await enableCudaRuntime({
+          preferSystem,
+          acknowledgeVersionMismatch: acknowledgeMismatch,
+          reload: true,
+        });
+        setCudaMismatchOpen(false);
+        toast.success(t("cube.cudaEnable"));
+        await refreshCuda();
+        retryModel();
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        const code = typeof err === "object" && err && "code" in err ? String((err as { code?: string }).code) : "";
+        if (code === "version_mismatch" || msg.includes("version_mismatch") || msg.includes("version mismatch")) {
+          setCudaMismatchOpen(true);
+          await refreshCuda();
+        } else {
+          toast.error(msg || t("toast.switchEngineFailed"));
+          await refreshCuda();
+        }
+      } finally {
+        setCudaBusy(false);
+      }
+    },
+    [refreshCuda, retryModel, t],
+  );
 
   const installLabel = isDownloading
     ? t("cube.installingModels")
@@ -161,6 +219,137 @@ export default function WorkbenchPage({
         )}
         <p className="cube-muted cube-install-status">{t("cube.engineInstallHint")}</p>
       </section>
+
+
+      {cudaStatus?.nvidiaDetected ? (
+        <section className="cube-workbench-controls" aria-label={t("cube.cudaSection")}>
+          <div className="cube-engine-group">
+            <span>{t("cube.cudaSection")}</span>
+            <span className="cube-muted">
+              {cudaStatus.usingCudaBackend || (cudaStatus.activeSource && cudaStatus.activeSource !== "none")
+                ? t("cube.cudaStatusActive", { source: cudaStatus.activeSource || "—" })
+                : t("cube.cudaStatusIdle")}
+            </span>
+          </div>
+          {!cudaStatus.driverOk && cudaStatus.driverMessage ? (
+            <p className="cube-error">{cudaStatus.driverMessage || t("cube.cudaDriverOld")}</p>
+          ) : null}
+          {cudaStatus.download?.active ? (
+            <p className="cube-install-status" role="status">
+              {t("cube.cudaDownloading")}{" "}
+              {cudaStatus.download.progress != null
+                ? `(${Math.round(cudaStatus.download.progress * 100)}%)`
+                : ""}
+              {cudaStatus.download.message ? ` — ${cudaStatus.download.message}` : ""}
+            </p>
+          ) : null}
+          <div className="cube-engine-group">
+            <button
+              type="button"
+              className="cube-install-btn"
+              disabled={cudaBusy || !!cudaStatus.download?.active || !cudaStatus.driverOk}
+              onClick={() => void enableGpu(false, true)}
+            >
+              {t("cube.cudaEnable")}
+            </button>
+            {!cudaStatus.downloadedAvailable && (
+              <button
+                type="button"
+                className="cube-engine-btn"
+                disabled={cudaBusy || !!cudaStatus.download?.active}
+                onClick={() => {
+                  void (async () => {
+                    setCudaBusy(true);
+                    try {
+                      await startCudaRuntimeDownload();
+                      await refreshCuda();
+                    } catch (e) {
+                      toast.error(e instanceof Error ? e.message : String(e));
+                    } finally {
+                      setCudaBusy(false);
+                    }
+                  })();
+                }}
+              >
+                {t("cube.cudaDownload")}
+              </button>
+            )}
+            {cudaStatus.download?.active && (
+              <button
+                type="button"
+                className="cube-engine-btn"
+                onClick={() => {
+                  void cancelCudaRuntimeDownload().then(() => refreshCuda());
+                }}
+              >
+                {t("cube.cudaCancelDownload")}
+              </button>
+            )}
+            {(cudaStatus.usingCudaBackend || (cudaStatus.activeSource && cudaStatus.activeSource !== "none")) && (
+              <button
+                type="button"
+                className="cube-engine-btn"
+                disabled={cudaBusy}
+                onClick={() => {
+                  void (async () => {
+                    setCudaBusy(true);
+                    try {
+                      await disableCudaRuntime();
+                      await refreshCuda();
+                      retryModel();
+                    } catch (e) {
+                      toast.error(e instanceof Error ? e.message : String(e));
+                    } finally {
+                      setCudaBusy(false);
+                    }
+                  })();
+                }}
+              >
+                {t("cube.cudaDisable")}
+              </button>
+            )}
+          </div>
+          {cudaMismatchOpen && cudaStatus.versionWarning && (
+            <div className="cube-card" role="alertdialog" aria-label={t("cube.cudaMismatchTitle")}>
+              <h2>{t("cube.cudaMismatchTitle")}</h2>
+              <p className="cube-muted">{cudaStatus.versionWarning}</p>
+              <div className="cube-engine-group">
+                <button
+                  type="button"
+                  className="cube-install-btn"
+                  onClick={() => void enableGpu(true, true)}
+                >
+                  {t("cube.cudaMismatchConfirm")}
+                </button>
+                <button
+                  type="button"
+                  className="cube-engine-btn"
+                  onClick={() => {
+                    setCudaMismatchOpen(false);
+                    void (async () => {
+                      setCudaBusy(true);
+                      try {
+                        if (!cudaStatus.downloadedAvailable) {
+                          await startCudaRuntimeDownload();
+                        } else {
+                          await enableGpu(false, false);
+                        }
+                      } finally {
+                        setCudaBusy(false);
+                        await refreshCuda();
+                      }
+                    })();
+                  }}
+                >
+                  {t("cube.cudaMismatchDownload")}
+                </button>
+              </div>
+            </div>
+          )}
+        </section>
+      ) : cudaStatus && !cudaStatus.nvidiaDetected ? (
+        <p className="cube-muted">{t("cube.cudaNoGpu")}</p>
+      ) : null}
 
       <div className="cube-workbench-body">
         {sub === "dictation" ? (

@@ -17,7 +17,7 @@ ROOT = Path(__file__).resolve().parents[1]
 CUDA_DIR = ROOT / "src-tauri" / "resources" / "r2t2-native" / "cuda"
 
 # Patterns written by build_r2t2_runtime._assemble_runtime for cuda backend
-RUNTIME_PREFIXES = ("cudart64_", "cublas64_", "cublasLt64_")
+RUNTIME_PREFIXES = ("cudart64_", "cublas64_", "cublasLt64_", "cufft64_")
 RUNTIME_NAMES = {"CUDA-LICENSE.txt"}
 
 

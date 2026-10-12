@@ -247,6 +247,9 @@ func warmupAudio() []float32 {
 // both up (initialize). Warmup failures are logged by Python and ignored;
 // here they are ignored too.
 func (b *Backend) Load(spec asr.LoadSpec) error {
+	if spec.CudaRuntimeDir != "" {
+		b.opts.DLLDirs = append([]string{spec.CudaRuntimeDir}, filterDLLDir(b.opts.DLLDirs, spec.CudaRuntimeDir)...)
+	}
 	if spec.Kind != asr.KindQwen3 {
 		return asr.ErrWrongKind
 	}
@@ -444,4 +447,14 @@ func (b *Backend) NewStream(opts asr.StreamOptions) (asr.Stream, error) {
 	return NewSentenceStream(b.detector, func(audio []float32) (string, string, error) {
 		return b.recognize(audio, nil)
 	}, DefaultSentenceOptions()), nil
+}
+
+func filterDLLDir(dirs []string, skip string) []string {
+	out := make([]string, 0, len(dirs))
+	for _, d := range dirs {
+		if d != "" && d != skip {
+			out = append(out, d)
+		}
+	}
+	return out
 }

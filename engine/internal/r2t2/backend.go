@@ -250,6 +250,9 @@ func (b *Backend) Load(spec asr.LoadSpec) error {
 	if b.opts.NewDetector == nil {
 		return errors.New("r2t2: no VAD configured")
 	}
+	if spec.CudaRuntimeDir != "" {
+		b.opts.DLLDirs = append([]string{spec.CudaRuntimeDir}, trimDllDir(b.opts.DLLDirs, spec.CudaRuntimeDir)...)
+	}
 	native, err := b.loadRuntime(modelPath, spec.Device)
 	if err != nil {
 		return err
@@ -437,4 +440,14 @@ func (s *liveStream) Close() {
 	if s.sess.ActiveID() == s.id {
 		_, _ = s.sess.Cancel(s.id)
 	}
+}
+
+func trimDllDir(dirs []string, skip string) []string {
+	out := make([]string, 0, len(dirs))
+	for _, d := range dirs {
+		if d != "" && d != skip {
+			out = append(out, d)
+		}
+	}
+	return out
 }
