@@ -1,7 +1,7 @@
-import { confirmAction } from "@/lib/confirm";
 // SPDX-FileCopyrightText: 2026 SenkjM
 // SPDX-License-Identifier: AGPL-3.0-only
 
+import { confirmAction } from "@/lib/confirm";
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
