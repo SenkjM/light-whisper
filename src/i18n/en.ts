@@ -21,6 +21,8 @@ const en: TranslationSchema = {
     clear: "Clear",
     settings: "Settings",
     back: "Back",
+    maximize: "Maximize",
+    restoreWindow: "Restore window",
     minimize: "Minimize",
     change: "Change",
     loading: "Loading...",

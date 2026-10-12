@@ -19,6 +19,8 @@ const zh = {
     clear: "清除",
     settings: "设置",
     back: "返回",
+    maximize: "最大化",
+    restoreWindow: "还原窗口",
     minimize: "最小化",
     change: "更改",
     loading: "加载中...",

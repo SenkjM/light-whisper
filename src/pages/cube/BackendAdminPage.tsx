@@ -154,7 +154,7 @@ export default function BackendAdminPage() {
             <h3 className="cube-h3">{t("cube.createToken")}</h3>
             <label className="cube-field">
               {t("cube.role")}
-              <select value={role} onChange={(e) => setRole(e.target.value as "admin" | "user")}>
+              <select className="cube-select" value={role} onChange={(e) => setRole(e.target.value as "admin" | "user")}>
                 <option value="user">user</option>
                 <option value="admin">admin</option>
               </select>

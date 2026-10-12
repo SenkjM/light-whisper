@@ -2463,10 +2463,20 @@
 /* 命令方块 shell (PLAN §11) */
 .cube-shell {
   display: flex;
+  flex-direction: column;
   height: 100%;
   width: 100%;
+  min-height: 0;
+  overflow: hidden;
   background: var(--color-bg-primary, #0f1115);
   color: var(--color-text-primary, #e8eaed);
+}
+.cube-chrome-icon { flex-shrink: 0; }
+.cube-body {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
 }
 .cube-nav {
   width: 200px;
@@ -2476,6 +2486,9 @@
   flex-direction: column;
   padding: 16px 12px;
   gap: 16px;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 .cube-brand {
   display: flex;
@@ -2502,7 +2515,16 @@
 }
 .cube-nav-item:hover { background: color-mix(in srgb, currentColor 8%, transparent); }
 .cube-nav-item.is-active { background: color-mix(in srgb, #e11d48 18%, transparent); color: #fb7185; }
-.cube-main { flex: 1; overflow: auto; padding: 20px 24px; }
+.cube-main {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 20px 24px;
+  -webkit-overflow-scrolling: touch;
+}
 .cube-page-header h1 { font-size: 20px; margin: 0 0 6px; }
 .cube-muted { color: var(--color-text-secondary, #9aa3b2); font-size: 13px; }
 .cube-card {
@@ -2518,12 +2540,60 @@
 .cube-dl dt { opacity: 0.65; }
 .cube-dl .mono, .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; word-break: break-all; }
 .cube-field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; font-size: 13px; }
-.cube-field input {
+.cube-field input,
+.cube-field select,
+.cube-card select,
+.cube-select {
   padding: 8px 10px;
   border-radius: 8px;
   border: 1px solid var(--color-border, #2a2f3a);
   background: var(--color-bg-primary, #0f1115);
-  color: inherit;
+  color: var(--color-text-primary, #e8eaed);
+  color-scheme: light dark;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+.cube-field select,
+.cube-card select,
+.cube-select {
+  appearance: auto;
+  cursor: pointer;
+}
+.cube-field option,
+.cube-card option,
+.cube-select option {
+  background: var(--color-bg-secondary, #161a22);
+  color: var(--color-text-primary, #e8eaed);
+}
+/* Dark theme: force readable native select/option (avoid white-on-white). */
+[data-theme="dark"] .cube-field input,
+[data-theme="dark"] .cube-field select,
+[data-theme="dark"] .cube-card select,
+[data-theme="dark"] .cube-select,
+.dark .cube-field input,
+.dark .cube-field select,
+.dark .cube-card select,
+.dark .cube-select {
+  background: var(--color-bg-primary);
+  color: var(--color-text-primary);
+  border-color: var(--color-border);
+  color-scheme: dark;
+}
+[data-theme="dark"] .cube-field option,
+[data-theme="dark"] .cube-card option,
+[data-theme="dark"] .cube-select option,
+.dark .cube-field option,
+.dark .cube-card option,
+.dark .cube-select option {
+  background: var(--color-bg-elevated, #1c212b);
+  color: var(--color-text-primary);
+}
+[data-theme="light"] .cube-field input,
+[data-theme="light"] .cube-field select,
+[data-theme="light"] .cube-card select,
+[data-theme="light"] .cube-select {
+  color-scheme: light;
 }
 .cube-check { display: flex; gap: 8px; align-items: center; margin-bottom: 12px; font-size: 13px; }
 .cube-error { color: #f87171; font-size: 13px; }
@@ -2543,9 +2613,31 @@
   font-size: 13px;
 }
 .cube-subtabs button.is-active { background: color-mix(in srgb, #e11d48 22%, transparent); border-color: #e11d48; color: #fb7185; }
-.cube-workbench-body { flex: 1; min-height: 0; overflow: auto; margin-top: 8px; border-radius: 12px; border: 1px solid var(--color-border, #2a2f3a); }
-.cube-workbench-body .page-root { height: 100%; }
-.cube-workbench-body .page-root.is-embedded { background: transparent; }
+.cube-workbench-body {
+  flex: 1;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  margin-top: 8px;
+  border-radius: 12px;
+  border: 1px solid var(--color-border, #2a2f3a);
+}
+.cube-workbench-body .page-root {
+  height: auto;
+  min-height: 100%;
+  width: 100%;
+  overflow: visible;
+}
+.cube-workbench-body .page-root.is-embedded {
+  background: transparent;
+  height: auto;
+  min-height: 100%;
+  overflow: visible;
+}
+.cube-workbench-body .page-root.is-embedded .page-content {
+  overflow: visible;
+}
 .cube-h3 { font-size: 13px; margin: 16px 0 8px; opacity: 0.85; }
 .cube-table { width: 100%; border-collapse: collapse; font-size: 12px; margin-bottom: 12px; }
 .cube-table th, .cube-table td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--color-border, #2a2f3a); vertical-align: top; }

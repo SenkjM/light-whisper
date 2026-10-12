@@ -79,7 +79,7 @@ export default function ShellSettingsPage() {
         </div>
         <label className="cube-field">
           {t("settings.language")}
-          <select
+          <select className="cube-select"
             value={i18n.language.startsWith("zh") ? "zh" : "en"}
             onChange={(e) => {
               void i18n.changeLanguage(e.target.value);
@@ -112,7 +112,7 @@ export default function ShellSettingsPage() {
         <h2>{t("settings.microphone")}</h2>
         <label className="cube-field">
           {t("cube.inputDevice")}
-          <select
+          <select className="cube-select"
             value={inputDevice}
             onChange={async (e) => {
               const v = e.target.value;

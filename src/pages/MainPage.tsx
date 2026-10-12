@@ -167,7 +167,16 @@ export default function MainPage({ onNavigate, animClass = "", embedded = false 
       )}
 
 
-      <div className={pageContentClass} style={{ display: "flex", flexDirection: "column", flex: 1, minHeight: 0, overflow: "hidden" }}>
+      <div
+        className={pageContentClass}
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          flex: 1,
+          minHeight: 0,
+          overflow: embedded ? "visible" : "hidden",
+        }}
+      >
         {/* Recording zone */}
         <div className="recording-zone" style={{ padding: `24px ${PADDING}px 18px` }}>
           <StatusIndicator
