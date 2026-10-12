@@ -144,11 +144,19 @@ pub(crate) fn set_subtitle_window_interactive(
 
 #[tauri::command]
 pub async fn hide_main_window(app_handle: tauri::AppHandle) -> Result<String, AppError> {
-    let window = require_window(&app_handle, "main", "主窗口不存在")?;
-    window
-        .hide()
-        .map_err(|e| tauri_error("隐藏主窗口失败", e))?;
-    Ok("主窗口已隐藏".to_string())
+    // Close-to-tray: destroy WebView so WebView2 memory is released. Tray reopen
+    // recreates the window via main_window::show_main_window_async.
+    match crate::main_window::destroy_main_window_to_tray(&app_handle) {
+        Ok(()) => Ok("主窗口已销毁并保留托盘".to_string()),
+        Err(err) => {
+            log::warn!("销毁主窗口失败，回退为隐藏: {err}");
+            let window = require_window(&app_handle, "main", "主窗口不存在")?;
+            window
+                .hide()
+                .map_err(|e| tauri_error("隐藏主窗口失败", e))?;
+            Ok("主窗口已隐藏".to_string())
+        }
+    }
 }
 
 fn create_subtitle_window_unlocked(app_handle: &tauri::AppHandle) -> Result<String, AppError> {

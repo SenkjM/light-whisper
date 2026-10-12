@@ -1,4 +1,5 @@
 mod commands;
+mod main_window;
 mod services;
 mod state;
 mod tray_icon;
@@ -94,6 +95,8 @@ pub fn run() {
                 let loaded = services::profile_service::load_profile();
                 // The main window starts hidden to avoid a flash during autostart.
                 // A normal launch still opens it, regardless of this preference.
+                // Minimized/tray start keeps it hidden here; WebView is destroyed
+                // after tray/selection windows exist (see end of setup).
                 if !should_start_hidden(loaded.autostart_minimized, std::env::args()) {
                     focus_main_window(&app_handle);
                 }
@@ -252,13 +255,28 @@ pub fn run() {
             }
             setup_system_tray(&app_handle)?;
 
+            // Destroy main WebView only after other windows/tray exist so
+            // ExitRequested cannot tear down the process during early setup.
+            let start_hidden = app_handle.state::<AppState>().with_profile(|profile| {
+                should_start_hidden(profile.autostart_minimized, std::env::args())
+            });
+            if start_hidden {
+                if let Err(err) = main_window::destroy_main_window_to_tray(&app_handle) {
+                    log::warn!("开机最小化时销毁主窗口 WebView 失败: {err}");
+                }
+            }
+
             Ok(())
         })
         .on_window_event(|window, event| {
             if let tauri::WindowEvent::CloseRequested { api, .. } = event {
                 if window.label() == "main" {
                     api.prevent_close();
-                    let _ = window.hide();
+                    if let Err(err) = main_window::destroy_main_window_to_tray(window.app_handle())
+                    {
+                        log::warn!("关闭到托盘时销毁主窗口失败，回退为隐藏: {err}");
+                        let _ = window.hide();
+                    }
                 }
             }
         })
@@ -418,8 +436,18 @@ pub fn run() {
             commands::history::export_transcription_history,
             commands::history::reprocess_transcription_history,
         ])
-        .run(tauri::generate_context!())
-        .expect("启动轻语 Whisper 时发生错误");
+        .build(tauri::generate_context!())
+        .expect("启动轻语 Whisper 时发生错误")
+        .run(|_app_handle, event| {
+            if let tauri::RunEvent::ExitRequested { api, code, .. } = &event {
+                // Destroying the last window emits ExitRequested { code: None }.
+                // Keep the process alive while close-to-tray is active.
+                if code.is_none() && main_window::should_keep_alive_after_main_window_destroyed()
+                {
+                    api.prevent_exit();
+                }
+            }
+        });
 }
 
 fn mark_setup_once() -> bool {
@@ -624,16 +652,20 @@ fn should_start_hidden(autostart_minimized: bool, mut args: impl Iterator<Item =
 }
 
 fn focus_main_window(app: &tauri::AppHandle) {
-    if let Some(window) = app.get_webview_window("main") {
-        let _ = window.show();
-        let _ = window.unminimize();
-        let _ = window.set_focus();
-    }
+    let app = app.clone();
+    tauri::async_runtime::spawn(async move {
+        if let Err(err) = main_window::show_main_window_async(app).await {
+            log::warn!("显示主窗口失败: {err}");
+        }
+    });
 }
 
 fn hide_main_window(app: &tauri::AppHandle) {
-    if let Some(window) = app.get_webview_window("main") {
-        let _ = window.hide();
+    if let Err(err) = main_window::destroy_main_window_to_tray(app) {
+        log::warn!("隐藏到托盘时销毁主窗口失败，回退为隐藏: {err}");
+        if let Some(window) = app.get_webview_window("main") {
+            let _ = window.hide();
+        }
     }
 }
 
@@ -711,6 +743,7 @@ fn setup_system_tray(app_handle: &tauri::AppHandle) -> Result<(), Box<dyn std::e
             "hide" => hide_main_window(app),
             "quit" => {
                 log::info!("用户请求退出应用");
+                main_window::request_app_exit();
                 stop_funasr_on_exit(app);
                 app.exit(0);
             }
