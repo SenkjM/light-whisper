@@ -2464,18 +2464,29 @@
 .cube-shell {
   display: flex;
   flex-direction: column;
-  height: 100%;
+  box-sizing: border-box;
   width: 100%;
+  height: 100%;
+  max-height: 100%;
+  /* Viewport lock so flex children get a definite scrollport */
+  height: 100vh;
+  height: 100dvh;
+  max-height: 100vh;
+  max-height: 100dvh;
   min-height: 0;
   overflow: hidden;
   background: var(--color-bg-primary, #0f1115);
   color: var(--color-text-primary, #e8eaed);
 }
+.cube-shell > .title-bar {
+  flex-shrink: 0;
+}
 .cube-chrome-icon { flex-shrink: 0; }
 .cube-body {
   display: flex;
-  flex: 1;
+  flex: 1 1 0;
   min-height: 0;
+  min-width: 0;
   overflow: hidden;
 }
 .cube-nav {
@@ -2516,14 +2527,22 @@
 .cube-nav-item:hover { background: color-mix(in srgb, currentColor 8%, transparent); }
 .cube-nav-item.is-active { background: color-mix(in srgb, #e11d48 18%, transparent); color: #fb7185; }
 .cube-main {
-  flex: 1;
+  flex: 1 1 0%;
   min-width: 0;
   min-height: 0;
   overflow-x: hidden;
-  overflow-y: auto;
+  overflow-y: auto !important;
   overscroll-behavior: contain;
-  padding: 20px 24px;
+  padding: 20px 24px 40px;
   -webkit-overflow-scrolling: touch;
+  position: relative;
+}
+.cube-page {
+  /* Grow with content so .cube-main can scroll; do NOT lock to 100% */
+  min-height: 0;
+  width: 100%;
+  padding-bottom: 32px;
+  box-sizing: border-box;
 }
 .cube-page-header h1 { font-size: 20px; margin: 0 0 6px; }
 .cube-muted { color: var(--color-text-secondary, #9aa3b2); font-size: 13px; }
@@ -2603,12 +2622,75 @@
 .cube-workbench {
   display: flex;
   flex-direction: column;
-  height: 100%;
-  min-height: 0;
+  /* Fill the scrollport when short; allow grow so parent can scroll if needed */
+  min-height: calc(100% - 0px);
+  height: auto;
   width: 100%;
   max-width: 880px;
   margin-inline: auto;
   box-sizing: border-box;
+}
+.cube-workbench-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  width: 100%;
+  margin-top: 12px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid var(--color-border, #2a2f3a);
+  background: var(--color-bg-secondary, #161a22);
+  box-sizing: border-box;
+}
+.cube-workbench-controls .cube-engine-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+.cube-workbench-controls .cube-engine-group > span {
+  font-size: 12px;
+  opacity: 0.7;
+  margin-right: 4px;
+}
+.cube-engine-btn {
+  border: 1px solid var(--color-border, #2a2f3a);
+  background: transparent;
+  color: inherit;
+  padding: 6px 12px;
+  border-radius: 999px;
+  cursor: pointer;
+  font-size: 12px;
+}
+.cube-engine-btn.is-active {
+  background: color-mix(in srgb, #e11d48 22%, transparent);
+  border-color: #e11d48;
+  color: #fb7185;
+}
+.cube-engine-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.cube-install-btn {
+  margin-left: auto;
+  border: 1px solid #e11d48;
+  background: color-mix(in srgb, #e11d48 18%, transparent);
+  color: #fb7185;
+  padding: 6px 14px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+}
+.cube-install-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+.cube-install-status {
+  width: 100%;
+  font-size: 12px;
+  opacity: 0.75;
 }
 .cube-workbench-header {
   display: flex;
@@ -2631,8 +2713,8 @@
 }
 .cube-subtabs button.is-active { background: color-mix(in srgb, #e11d48 22%, transparent); border-color: #e11d48; color: #fb7185; }
 .cube-workbench-body {
-  flex: 1;
-  min-height: 0;
+  flex: 1 1 auto;
+  min-height: 280px;
   overflow-x: hidden;
   overflow-y: auto;
   overscroll-behavior: contain;
