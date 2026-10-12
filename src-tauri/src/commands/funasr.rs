@@ -111,6 +111,11 @@ pub async fn check_model_files() -> Result<funasr_service::ModelCheckResult, App
 }
 
 #[tauri::command]
+pub async fn list_local_model_status() -> Result<funasr_service::LocalModelsInventory, AppError> {
+    funasr_service::list_local_model_status().await
+}
+
+#[tauri::command]
 pub async fn download_models(
     app_handle: tauri::AppHandle,
     state: tauri::State<'_, AppState>,

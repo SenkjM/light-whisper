@@ -43,6 +43,19 @@ export interface ModelCheckResult {
   missing_models: string[];
 }
 
+/** Inventory of local ASR engines (Qwen3 / R2T2) and whether files exist. */
+export interface LocalEngineModelRow {
+  engine: string;
+  present: boolean;
+  missing_models: string[];
+}
+
+export interface LocalModelsInventory {
+  cache_path: string;
+  current_engine: string;
+  engines: LocalEngineModelRow[];
+}
+
 // 转录历史记录
 export interface HistoryItem {
   id: string;

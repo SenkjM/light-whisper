@@ -15,8 +15,10 @@ import {
   cancelCudaRuntimeDownload,
   enableCudaRuntime,
   disableCudaRuntime,
+  listLocalModelStatus,
   type CudaRuntimeStatus,
 } from "@/api/tauri";
+import type { LocalModelsInventory } from "@/types";
 import { useRecordingContext } from "@/contexts/RecordingContext";
 import MainPage from "@/pages/MainPage";
 import HistoryPage from "@/pages/HistoryPage";
@@ -27,6 +29,52 @@ const LOCAL_ENGINES = [
   { key: "qwen3-asr-0.6b", labelKey: "cube.engineQwen" },
   { key: "confucius4-r2t2", labelKey: "cube.engineR2t2" },
 ] as const;
+
+/** Visible progress track (0–100). Indeterminate when percent is null. */
+function CubeProgressBar({
+  percent,
+  label,
+  complete,
+}: {
+  percent: number | null;
+  label: string;
+  complete?: boolean;
+}) {
+  const determinate = percent != null && percent > 1;
+  const width = determinate ? Math.max(0, Math.min(100, percent)) : 0;
+  return (
+    <div className="cube-progress" role="status">
+      <div className="cube-progress-meta">
+        <span>{label}</span>
+        {determinate ? <span>{Math.round(width)}%</span> : null}
+      </div>
+      <div
+        role="progressbar"
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-valuenow={determinate ? Math.round(width) : undefined}
+        aria-label={label}
+        className={`cube-progress-track${complete ? " progress-complete" : ""}`}
+      >
+        {determinate ? (
+          <div
+            className="cube-progress-fill"
+            style={{
+              width: `${width}%`,
+              background: complete ? "var(--color-success, #2e8b57)" : "var(--color-accent, #e11d48)",
+            }}
+          />
+        ) : (
+          <div className="download-pulse-bar" />
+        )}
+      </div>
+    </div>
+  );
+}
+
+function engineLabelKey(engine: string): string {
+  return LOCAL_ENGINES.find((e) => e.key === engine)?.labelKey ?? "cube.engineQwen";
+}
 
 export default function WorkbenchPage({
   sub,
@@ -58,6 +106,9 @@ export default function WorkbenchPage({
   const [device, setDeviceState] = useState("auto");
   const [deviceBusy, setDeviceBusy] = useState(false);
   const [cudaLibsPresent, setCudaLibsPresent] = useState<boolean | null>(null);
+  const [inferenceBackend, setInferenceBackend] = useState<string | null>(null);
+  const [nativeLibsPresent, setNativeLibsPresent] = useState<boolean | null>(null);
+  const [modelInventory, setModelInventory] = useState<LocalModelsInventory | null>(null);
 
   const refreshCuda = useCallback(async () => {
     try {
@@ -67,13 +118,40 @@ export default function WorkbenchPage({
     }
   }, []);
 
+  const refreshModels = useCallback(async () => {
+    try {
+      setModelInventory(await listLocalModelStatus());
+    } catch {
+      setModelInventory(null);
+    }
+  }, []);
+
+  const refreshConnectionMeta = useCallback(async () => {
+    try {
+      const c = await getManagementConnection();
+      setCudaLibsPresent(!!c.cudaR2t2Present);
+      setInferenceBackend(c.inferenceBackend ?? null);
+      setNativeLibsPresent(
+        typeof c.nativeLibsPresent === "boolean" ? c.nativeLibsPresent : null,
+      );
+    } catch {
+      setCudaLibsPresent(null);
+      setInferenceBackend(null);
+      setNativeLibsPresent(null);
+    }
+  }, []);
+
   useEffect(() => {
     void refreshCuda();
+    void refreshModels();
+    void refreshConnectionMeta();
     const id = window.setInterval(() => {
       void refreshCuda();
+      void refreshModels();
+      void refreshConnectionMeta();
     }, 2000);
     return () => window.clearInterval(id);
-  }, [refreshCuda]);
+  }, [refreshCuda, refreshModels, refreshConnectionMeta]);
 
   useEffect(() => {
     let cancelled = false;
@@ -87,17 +165,17 @@ export default function WorkbenchPage({
         if (!cancelled) setDeviceState(value);
       })
       .catch(() => {});
-    void getManagementConnection()
-      .then((c) => {
-        if (!cancelled) setCudaLibsPresent(!!c.cudaR2t2Present);
-      })
-      .catch(() => {
-        if (!cancelled) setCudaLibsPresent(null);
-      });
     return () => {
       cancelled = true;
     };
   }, []);
+
+  // Refresh model inventory when download finishes / engine becomes ready.
+  useEffect(() => {
+    if (!isDownloading) {
+      void refreshModels();
+    }
+  }, [isDownloading, isReady, stage, refreshModels]);
 
   const handleNavigate = (v: "main" | "settings" | "history" | "dev-engine") => {
     if (v === "history") onSubChange("history");
@@ -116,13 +194,14 @@ export default function WorkbenchPage({
           LOCAL_ENGINES.find((e) => e.key === key)?.labelKey ?? "cube.engineQwen",
         ) }));
         retryModel();
+        await refreshModels();
       } catch {
         toast.error(t("toast.switchEngineFailed"));
       } finally {
         setEngineBusy(false);
       }
     },
-    [engine, engineBusy, retryModel, t],
+    [engine, engineBusy, retryModel, refreshModels, t],
   );
 
   const switchDevice = useCallback(
@@ -211,6 +290,20 @@ export default function WorkbenchPage({
     cudaStatus?.versionWarning ??
     (cudaStatus as { version_warning?: string } | null)?.version_warning;
 
+  const cudaDownloadActive = !!cudaStatus?.download?.active;
+  const cudaProgressRaw = cudaStatus?.download?.progress;
+  // Engine reports 0–1; tolerate accidental 0–100.
+  const cudaProgressPercent =
+    cudaProgressRaw == null
+      ? null
+      : cudaProgressRaw <= 1
+        ? cudaProgressRaw * 100
+        : cudaProgressRaw;
+  const modelProgressPercent =
+    isDownloading && downloadProgress > 1 ? downloadProgress : isDownloading ? null : null;
+
+  const isMockBackend = (inferenceBackend ?? "").toLowerCase() === "mock";
+
   return (
     <div className="cube-page cube-workbench">
       <header className="cube-page-header cube-workbench-header">
@@ -240,6 +333,12 @@ export default function WorkbenchPage({
         </div>
       </header>
 
+      {isMockBackend ? (
+        <p className="cube-error cube-banner" role="alert">
+          {t("cube.inferenceMockWarning")}
+        </p>
+      ) : null}
+
       <section className="cube-workbench-controls" aria-label={t("cube.engineSection")}>
         <div className="cube-engine-group">
           <span>{t("cube.engineSection")}</span>
@@ -266,6 +365,7 @@ export default function WorkbenchPage({
               return;
             }
             void downloadModels();
+            void refreshModels();
           }}
         >
           {isDownloading ? t("cube.cancelInstall") : installLabel}
@@ -279,10 +379,74 @@ export default function WorkbenchPage({
               : modelError || downloadMessage}
           </p>
         )}
+        {isDownloading ? (
+          <CubeProgressBar
+            percent={modelProgressPercent}
+            label={downloadMessage || t("cube.installingModels")}
+            complete={downloadProgress >= 100}
+          />
+        ) : null}
         <p className="cube-muted cube-install-status">{t("cube.engineInstallHint")}</p>
         {(isDownloading === false && modelError) && (
           <p className="cube-error" role="alert">{modelError}</p>
         )}
+      </section>
+
+      <section className="cube-workbench-controls" aria-label={t("cube.modelInventoryTitle")}>
+        <div className="cube-engine-group">
+          <span>{t("cube.modelInventoryTitle")}</span>
+        </div>
+        <p className="cube-muted cube-install-status">{t("cube.modelInventoryHint")}</p>
+        <ul className="cube-model-list">
+          {(modelInventory?.engines?.length
+            ? modelInventory.engines
+            : LOCAL_ENGINES.map(({ key }) => ({
+                engine: key,
+                present: false,
+                missing_models: [] as string[],
+              }))
+          ).map((row) => {
+            const isCurrent =
+              (modelInventory?.current_engine || engine) === row.engine ||
+              engine === row.engine;
+            const known = !!modelInventory;
+            return (
+              <li key={row.engine} className="cube-model-row">
+                <span className="cube-model-name">
+                  {t(engineLabelKey(row.engine))}
+                  {isCurrent ? (
+                    <span className="cube-model-badge">{t("cube.modelCurrent")}</span>
+                  ) : null}
+                </span>
+                <span
+                  className={
+                    known
+                      ? row.present
+                        ? "cube-model-ok"
+                        : "cube-model-missing"
+                      : "cube-muted"
+                  }
+                >
+                  {known
+                    ? row.present
+                      ? t("cube.modelPresent")
+                      : t("cube.modelMissing")
+                    : "…"}
+                </span>
+                {!row.present && row.missing_models?.length ? (
+                  <span className="cube-muted cube-model-detail">
+                    {row.missing_models.join(", ")}
+                  </span>
+                ) : null}
+              </li>
+            );
+          })}
+        </ul>
+        {modelInventory?.cache_path ? (
+          <p className="cube-muted cube-install-status mono">
+            {t("cube.modelCachePath")}: {modelInventory.cache_path}
+          </p>
+        ) : null}
       </section>
 
       <section className="cube-workbench-controls" aria-label={t("cube.deviceSection")}>
@@ -302,6 +466,17 @@ export default function WorkbenchPage({
           ))}
         </div>
         <p className="cube-muted cube-install-status">{t("cube.deviceHint")}</p>
+        <p className="cube-muted cube-install-status">
+          {t("cube.inferenceBackend")}:{" "}
+          <strong className="mono">{inferenceBackend ?? "—"}</strong>
+          {" · "}
+          {t("cube.nativeLibs")}:{" "}
+          {nativeLibsPresent == null
+            ? "—"
+            : nativeLibsPresent
+              ? t("cube.inferenceNativeOk")
+              : t("cube.inferenceNativeMissing")}
+        </p>
       </section>
 
       {nvidiaDetected &&
@@ -323,22 +498,26 @@ export default function WorkbenchPage({
           {!driverOk && driverMessage ? (
             <p className="cube-error">{driverMessage || t("cube.cudaDriverOld")}</p>
           ) : null}
-          {cudaStatus?.download?.active ? (
-            <p className="cube-install-status" role="status">
-              {t("cube.cudaDownloading")}{" "}
-              {cudaStatus?.download?.progress != null
-                ? `(${Math.round((cudaStatus?.download?.progress ?? 0) * 100)}%)`
-                : ""}
-              {cudaStatus?.download?.message
-                ? ` — ${cudaStatus?.download?.message}`
-                : ""}
-            </p>
+          {cudaDownloadActive ? (
+            <>
+              <p className="cube-install-status" role="status">
+                {t("cube.cudaDownloading")}
+                {cudaStatus?.download?.message
+                  ? ` — ${cudaStatus?.download?.message}`
+                  : ""}
+              </p>
+              <CubeProgressBar
+                percent={cudaProgressPercent}
+                label={t("cube.cudaDownloading")}
+                complete={(cudaProgressPercent ?? 0) >= 100}
+              />
+            </>
           ) : null}
           <div className="cube-engine-group">
             <button
               type="button"
               className="cube-install-btn"
-              disabled={cudaBusy || !!cudaStatus?.download?.active || !driverOk}
+              disabled={cudaBusy || cudaDownloadActive || !driverOk}
               onClick={() => void enableGpu(false, true)}
             >
               {t("cube.cudaEnable")}
@@ -347,7 +526,7 @@ export default function WorkbenchPage({
               <button
                 type="button"
                 className="cube-engine-btn"
-                disabled={cudaBusy || !!cudaStatus?.download?.active}
+                disabled={cudaBusy || cudaDownloadActive}
                 onClick={() => {
                   void (async () => {
                     setCudaBusy(true);
@@ -365,7 +544,7 @@ export default function WorkbenchPage({
                 {t("cube.cudaDownload")}
               </button>
             )}
-            {cudaStatus?.download?.active && (
+            {cudaDownloadActive && (
               <button
                 type="button"
                 className="cube-engine-btn"

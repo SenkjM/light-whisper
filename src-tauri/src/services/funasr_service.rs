@@ -1461,6 +1461,46 @@ pub async fn check_model_files() -> Result<ModelCheckResult, AppError> {
     Ok(inspect_model_files_for_engine(&paths::read_engine_config()))
 }
 
+/// Per-engine presence row for the Workbench model inventory.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct LocalEngineModelRow {
+    pub engine: String,
+    pub present: bool,
+    pub missing_models: Vec<String>,
+}
+
+/// Inventory of local ASR engines and whether their model files exist.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct LocalModelsInventory {
+    pub cache_path: String,
+    pub current_engine: String,
+    pub engines: Vec<LocalEngineModelRow>,
+}
+
+/// Check both local engines (Qwen3 + R2T2) so the GUI can show present/missing.
+pub async fn list_local_model_status() -> Result<LocalModelsInventory, AppError> {
+    let current = paths::read_engine_config();
+    let ids = ["qwen3-asr-0.6b", "confucius4-r2t2"];
+    let mut engines = Vec::with_capacity(ids.len());
+    let mut cache_path = String::new();
+    for id in ids {
+        let check = inspect_model_files_for_engine(id);
+        if cache_path.is_empty() {
+            cache_path = check.cache_path.clone();
+        }
+        engines.push(LocalEngineModelRow {
+            engine: check.engine,
+            present: check.all_present,
+            missing_models: check.missing_models,
+        });
+    }
+    Ok(LocalModelsInventory {
+        cache_path,
+        current_engine: current,
+        engines,
+    })
+}
+
 // 需要引入 Emitter trait 才能使用 emit 方法
 use tauri::Emitter;
 

@@ -19,6 +19,7 @@ import type {
   LlmReasoningMode,
   LlmReasoningSupport,
   ModelCheckResult,
+  LocalModelsInventory,
   GrokBuildOauthDeviceCodeChallenge,
   GrokBuildOauthStatus,
   OpenaiAuthMode,
@@ -113,6 +114,8 @@ export function openAppReleasePage(url?: string | null): Promise<string> {
 
 export const checkFunASRStatus = createNoArgCommand<FunASRStatus>("check_funasr_status");
 export const checkModelFiles = createNoArgCommand<ModelCheckResult>("check_model_files");
+export const listLocalModelStatus = createNoArgCommand<LocalModelsInventory>("list_local_model_status");
+export type { LocalModelsInventory, LocalEngineModelRow } from "@/types";
 export const downloadModels = createNoArgCommand<string>("download_models");
 export const cancelModelDownload = createNoArgCommand<string>("cancel_model_download");
 export const restartFunASR = createNoArgCommand<string>("restart_funasr");
@@ -755,6 +758,9 @@ export type ManagementConnection = {
   ready: boolean;
   cudaR2t2Present?: boolean;
   cudaTranscribePresent?: boolean;
+  /** lw-engine `--backend`: mock (placeholder) or native. */
+  inferenceBackend?: string;
+  nativeLibsPresent?: boolean;
 };
 
 export function getManagementConnection(): Promise<ManagementConnection> {

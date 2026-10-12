@@ -368,6 +368,34 @@ pub async fn bootstrap_ready(app: &tauri::AppHandle) {
 }
 
 
+/// Handshake / `--backend` value actually used by the running lw-engine (`mock` | `native`).
+/// Falls back to the resolved preference when the supervisor is not up yet.
+pub fn inference_backend() -> String {
+    if let Some(sup) = SUPERVISOR.get() {
+        if let Some(b) = sup.status().backend {
+            if !b.is_empty() {
+                return b;
+            }
+        }
+    }
+    if let Ok(v) = std::env::var("LW_ENGINE_GO_BACKEND") {
+        let t = v.trim();
+        if !t.is_empty() {
+            return t.to_string();
+        }
+    }
+    if native_libs_available() {
+        "native".into()
+    } else {
+        "mock".into()
+    }
+}
+
+/// True when at least one resource root has the full CPU native ASR stack.
+pub fn native_libs_available() -> bool {
+    resource_roots().iter().any(|root| native_libs_present(root))
+}
+
 /// Prefer `native` when CPU R2T2 + transcribe + onnxruntime (+ VAD) are present;
 /// otherwise `mock`. `LW_ENGINE_GO_BACKEND` always wins when set.
 fn resolve_go_backend(resource_root: &std::path::Path) -> String {

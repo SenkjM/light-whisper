@@ -111,6 +111,8 @@ export default function ConnectionPage() {
         {error && <p className="cube-error">{error}</p>}
         <dl className="cube-dl">
           <div><dt>{t("cube.backend")}</dt><dd>{conn?.backend ?? "—"}</dd></div>
+          <div><dt>{t("cube.inferenceBackend")}</dt><dd className="mono">{conn?.inferenceBackend ?? "—"}</dd></div>
+          <div><dt>{t("cube.nativeLibs")}</dt><dd>{conn?.nativeLibsPresent == null ? "—" : conn.nativeLibsPresent ? t("common.yes") : t("common.no")}</dd></div>
           <div><dt>{t("cube.ready")}</dt><dd>{conn?.ready ? t("common.yes") : t("common.no")}</dd></div>
           <div><dt>{t("cube.role")}</dt><dd>{me?.role ?? "—"}</dd></div>
           <div><dt>{t("cube.baseUrl")}</dt><dd className="mono">{conn?.baseUrl ?? "—"}</dd></div>
@@ -132,6 +134,9 @@ export default function ConnectionPage() {
           </p>
         )}
         <p className="cube-muted" style={{ fontSize: 12 }}>{t("cube.cudaRuntimeNote")}</p>
+        {(conn?.inferenceBackend ?? "").toLowerCase() === "mock" ? (
+          <p className="cube-error" role="alert">{t("cube.inferenceMockWarning")}</p>
+        ) : null}
         {conn && !conn.cudaR2t2Present ? (
           <p className="cube-muted" style={{ fontSize: 12 }}>{t("cube.cudaLibsInstallHint")}</p>
         ) : null}

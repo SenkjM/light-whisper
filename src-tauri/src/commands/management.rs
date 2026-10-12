@@ -27,6 +27,10 @@ pub struct ManagementConnection {
     pub cuda_r2t2_present: bool,
     /// True when transcribe-native was staged as the CUDA variant (VARIANT.txt).
     pub cuda_transcribe_present: bool,
+    /// lw-engine `--backend` actually in use: `mock` (placeholder ASR) or `native`.
+    pub inference_backend: String,
+    /// Whether the CPU native ASR libraries are staged next to the engine.
+    pub native_libs_present: bool,
 }
 
 fn map_client(e: lw_engine_client::ClientError) -> AppError {
@@ -60,6 +64,8 @@ pub async fn get_management_connection() -> Result<ManagementConnection, AppErro
             ready: false,
             cuda_r2t2_present: go_engine::cuda_r2t2_present(),
             cuda_transcribe_present: go_engine::cuda_transcribe_present(),
+            inference_backend: go_engine::inference_backend(),
+            native_libs_present: go_engine::native_libs_available(),
         });
     }
 
@@ -85,6 +91,8 @@ pub async fn get_management_connection() -> Result<ManagementConnection, AppErro
         ready,
         cuda_r2t2_present: go_engine::cuda_r2t2_present(),
         cuda_transcribe_present: go_engine::cuda_transcribe_present(),
+        inference_backend: go_engine::inference_backend(),
+        native_libs_present: go_engine::native_libs_available(),
     })
 }
 

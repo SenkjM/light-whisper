@@ -12,6 +12,7 @@ import { useRecordingContext } from "@/contexts/RecordingContext";
 import {
   getUserProfile,
   setAssistantHotkey,
+  setRecordingMode,
   setSoundEnabled,
 } from "@/api/tauri";
 import { loadAppPreferences, updateAppPreferences } from "@/lib/appPreferences";
@@ -23,10 +24,17 @@ import Kbd from "@/components/Kbd";
 export default function ShellSettingsPage() {
   const { t, i18n } = useTranslation();
   const { theme, setTheme } = useTheme();
-  const { setHotkey, hotkeyDisplay, isRecording } = useRecordingContext();
+  const {
+    setHotkey,
+    hotkeyDisplay,
+    hotkeyError,
+    hotkeyDiagnostic,
+    isRecording,
+  } = useRecordingContext();
   const [recordingToggle, setRecordingToggle] = useState(false);
   const [soundEnabled, setSound] = useState(true);
   const [assistantHotkeyDisplay, setAssistantHotkeyDisplay] = useState("");
+  const [modeBusy, setModeBusy] = useState(false);
 
   const mic = useMicrophoneSettings({
     active: true,
@@ -66,6 +74,9 @@ export default function ShellSettingsPage() {
       }
     })();
   }, []);
+
+  const hotkeyStatusError = hotkeyError || hotkeyDiagnostic?.lastError || null;
+  const hotkeyRegistered = hotkeyDiagnostic?.registered;
 
   return (
     <div className="cube-page">
@@ -113,8 +124,32 @@ export default function ShellSettingsPage() {
         <h2>{t("settings.hotkeySection")}</h2>
         <p className="cube-muted">
           {t("settings.hotkeyLabel")}:{" "}
-          {hotkeyDisplay ? <Kbd combo={formatHotkeyForDisplay(hotkeyDisplay)} /> : <strong>—</strong>}
+          {hotkeyDisplay ? <Kbd combo={hotkeyDisplay} /> : <strong>—</strong>}
+          {hotkeyRegistered === true ? (
+            <span className="cube-model-ok" style={{ marginLeft: 8 }}>
+              {t("cube.hotkeyRegistered")}
+            </span>
+          ) : hotkeyRegistered === false ? (
+            <span className="cube-model-missing" style={{ marginLeft: 8 }}>
+              {t("cube.hotkeyNotRegistered")}
+            </span>
+          ) : null}
         </p>
+        {hotkeyDiagnostic?.backend ? (
+          <p className="cube-muted" style={{ fontSize: 12 }}>
+            {t("cube.hotkeyBackend")}: <span className="mono">{hotkeyDiagnostic.backend}</span>
+            {hotkeyDiagnostic.lastEvent ? ` · ${hotkeyDiagnostic.lastEvent}` : ""}
+          </p>
+        ) : null}
+        {hotkeyDiagnostic?.systemConflict ? (
+          <p className="cube-error" role="alert">{hotkeyDiagnostic.systemConflict}</p>
+        ) : null}
+        {hotkeyDiagnostic?.warning ? (
+          <p className="cube-muted">{hotkeyDiagnostic.warning}</p>
+        ) : null}
+        {hotkeyStatusError ? (
+          <p className="cube-error" role="alert">{hotkeyStatusError}</p>
+        ) : null}
         <div className="cube-engine-group" style={{ marginBottom: 12 }}>
           <button type="button" className="cube-engine-btn" onClick={() => capture.startCapture()} disabled={capture.saving}>
             {capture.capturing ? t("cube.pressKeys") : t("cube.changeHotkey")}
@@ -124,6 +159,28 @@ export default function ShellSettingsPage() {
               {t("common.cancel")}
             </button>
           )}
+          <button
+            type="button"
+            className="cube-engine-btn"
+            disabled={capture.saving || capture.capturing}
+            onClick={() => {
+              void (async () => {
+                try {
+                  const prefs = await loadAppPreferences();
+                  const raw =
+                    prefs.hotkey?.trim() ||
+                    hotkeyDiagnostic?.shortcut?.trim() ||
+                    "F2";
+                  await setHotkey(raw);
+                  toast.success(t("cube.hotkeyReregistered"));
+                } catch (e) {
+                  toast.error(e instanceof Error ? e.message : String(e));
+                }
+              })();
+            }}
+          >
+            {t("cube.hotkeyReregister")}
+          </button>
         </div>
 
         <p className="cube-muted">
@@ -164,6 +221,9 @@ export default function ShellSettingsPage() {
             </button>
           )}
         </div>
+        <p className="cube-muted" style={{ fontSize: 12, marginTop: 10 }}>
+          {t("cube.hotkeyHoldHint")}
+        </p>
       </section>
 
       <section className="cube-card">
@@ -217,9 +277,23 @@ export default function ShellSettingsPage() {
           <input
             type="checkbox"
             checked={recordingToggle}
-            onChange={async (e) => {
-              setRecordingToggle(e.target.checked);
-              await updateAppPreferences({ recordingToggle: e.target.checked });
+            disabled={modeBusy}
+            onChange={(e) => {
+              const next = e.target.checked;
+              setRecordingToggle(next);
+              setModeBusy(true);
+              void (async () => {
+                try {
+                  // Must update Rust AtomicBool + re-register backends (not prefs alone).
+                  await setRecordingMode(next);
+                  await updateAppPreferences({ recordingToggle: next });
+                } catch (err) {
+                  setRecordingToggle(!next);
+                  toast.error(err instanceof Error ? err.message : String(err));
+                } finally {
+                  setModeBusy(false);
+                }
+              })();
             }}
           />
           {t("cube.recordingToggle")}

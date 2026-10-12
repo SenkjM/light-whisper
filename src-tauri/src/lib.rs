@@ -267,6 +267,7 @@ pub fn run() {
             commands::funasr::transcribe_audio,
             commands::funasr::check_funasr_status,
             commands::funasr::check_model_files,
+            commands::funasr::list_local_model_status,
             commands::funasr::download_models,
             commands::funasr::cancel_model_download,
             commands::funasr::restart_funasr,
