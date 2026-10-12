@@ -128,6 +128,11 @@ export function setGpuIdleSeconds(seconds: number): Promise<number> {
   return invokeCommand<number>("set_gpu_idle_seconds", { seconds });
 }
 
+export const getDevice = createNoArgCommand<string>("get_device");
+export function setDevice(device: string): Promise<string> {
+  return invokeCommand<string>("set_device", { device });
+}
+
 export function copyToClipboard(text: string): Promise<string> {
   return invokeCommand<string>("copy_to_clipboard", { text });
 }

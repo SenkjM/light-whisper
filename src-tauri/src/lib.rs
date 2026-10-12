@@ -295,6 +295,8 @@ pub fn run() {
             commands::funasr::set_engine,
             commands::funasr::get_gpu_idle_seconds,
             commands::funasr::set_gpu_idle_seconds,
+            commands::funasr::get_device,
+            commands::funasr::set_device,
             commands::funasr::set_online_asr_api_key,
             commands::funasr::get_online_asr_api_key,
             commands::funasr::has_online_asr_api_key,

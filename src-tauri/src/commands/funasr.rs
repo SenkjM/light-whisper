@@ -355,6 +355,42 @@ pub async fn set_gpu_idle_seconds(
 }
 
 #[tauri::command]
+pub async fn get_device() -> Result<String, AppError> {
+    if go_engine::is_go() {
+        if let Some(value) = go_engine::read_value("device").await {
+            if let Some(s) = value.as_str() {
+                return Ok(s.to_string());
+            }
+        }
+    }
+    Ok("auto".to_string())
+}
+
+/// Set inference device preference: auto | cpu | cuda | vulkan (PLAN config schema).
+/// Reloads via Go `/v1/config` + reload when the engine is running.
+#[tauri::command]
+pub async fn set_device(device: String) -> Result<String, AppError> {
+    let d = device.trim().to_ascii_lowercase();
+    match d.as_str() {
+        "auto" | "cpu" | "cuda" | "vulkan" => {}
+        _ => {
+            return Err(AppError::Other(format!(
+                "无效设备偏好: {device}（允许 auto/cpu/cuda/vulkan）"
+            )));
+        }
+    }
+    if go_engine::is_go() {
+        if go_engine::write_values(go_engine_patch("device", serde_json::json!(d)))
+            .await?
+            .is_none()
+        {
+            log::warn!("Go 引擎未运行，device={d} 仅在下次启动生效");
+        }
+    }
+    Ok(d)
+}
+
+#[tauri::command]
 pub async fn set_online_asr_api_key(
     app_handle: tauri::AppHandle,
     state: tauri::State<'_, AppState>,

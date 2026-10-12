@@ -1,7 +1,7 @@
 # Command-Cube 规划：前后端分离（Go 引擎后端 + Rust 薄壳 + 独立前端）
 
 > 分支：`Command-Cube`  
-> 状态：规划文档；实施进度见 §7 各步骤的「进度」（步骤 1 已完成；步骤 2 FireRedVAD 的 Go 移植已完成并与 Python 对齐；步骤 3 R2T2 会话与分段已移植，在 Linux CPU 上与 Python 逐调用、逐字一致，Windows / CUDA 与延迟基线未实测；步骤 4 Qwen3 / 调度 / job 已实现；步骤 5–6 完成；默认安装包纯 Go（`lw-engine.exe`，无 `engine.tar.xz` / PyInstaller）；`LW_ENGINE_BACKEND` 默认 `go`；§11 产品壳进行中；withcore CI 打 CPU native（audiocpp+transcribe+ORT）；CUDA 随包仍可选；模型仍单独下载；步骤 7 工具 / 真人 E2E 仍待）  
+> 状态：规划文档；实施进度见 §7 各步骤的「进度」（步骤 1 已完成；步骤 2 FireRedVAD 的 Go 移植已完成并与 Python 对齐；步骤 3 R2T2 会话与分段已移植，在 Linux CPU 上与 Python 逐调用、逐字一致，Windows / CUDA 与延迟基线未实测；步骤 4 Qwen3 / 调度 / job 已实现；步骤 5–6 完成；默认安装包纯 Go（`lw-engine.exe`，无 `engine.tar.xz` / PyInstaller）；`LW_ENGINE_BACKEND` 默认 `go`；§11 产品壳已闭环（含 without CI、座机图标、设备偏好 UI）；withcore CI 打 CPU native；CUDA 原生库独立制品 + 明确安装脚本；模型 Go 模式原生下载；步骤 7 / Agent·dah / 真人长测仍待用户验收）  
 > 基于：对 `main` @ `151a61c` 的只读调研  
 > **本文主线**：用独立 Go 后端服务取代 Python 编排层；Rust（Tauri）只做系统集成与应用层；前端独立。
 
@@ -58,7 +58,7 @@
 | Rust | `audio_service/interim.rs` | Qwen 伪实时：每约 140–460ms 重识别最近 12 秒音频、取最长公共前缀 → **将删除** |
 | Rust / 前端 | `native_recording.rs`、`SubtitleOverlay.tsx` | 只转发 / 渲染 stable 与 tentative，不切句 |
 
-**待定**：保留外层「8 秒 + 静音」分段，还是只依赖 C++ 16 秒滚动窗口？**先原样移植**，再用现有 Python 测例（`test_r2t2_segmented.py`、`test_r2t2_stream.py`、`benchmark_r2t2_startup.py` 等）对比 committed 轨迹与最终文本后决定。
+**已定（2026-10，可延后数值对比）**：继续保留外层「最短 8 秒 + 尾部静音 ≥300 ms」分段，与 audio.cpp 16 s 滚动窗**并存**；不在本切片删除外层分段。与 Python 测例的 committed 轨迹数值对比、以及是否最终只依赖 C++ 窗，延后到真人 / GPU E2E，**不阻塞**产品壳与打包。
 
 ### 2.2 设置现状（盘点）
 
@@ -562,7 +562,7 @@ flowchart TD
 
 | 风险 / 待定 | 说明 |
 |-------------|------|
-| 外层分段取舍 | 保留 8 秒 + 静音分段，还是只用 C++ 16 秒滚动窗口？原样移植后用测例对比决定 |
+| 外层分段取舍 | **已定暂保留**外层 8s+静音，与 C++ 16s 窗并存；数值对比延后真人 E2E（见 §2.1） |
 | transcribe.cpp C 接口稳定性 | 步骤 4 已核实：0.1.3 的公开 C ABI 覆盖会话、运行、abort 回调与结构体大小校验，Go 按 0.1.x 绑定；abort 回调在 Qwen3 识别中途实测不生效（见下行） |
 | CUDA 变体与显存 | 两套原生库与模型同时驻留的显存成本；CPU、Vulkan、CUDA 回退顺序 |
 | CUDA 运行时按需下载 | 运行时主版本须与 R2T2 DLL 构建版本一致；NVIDIA redistrib 地址、清单格式、最低驱动版本待核实；项目构建使用 CUDA 12.9，其 nvcc 是否接受 `windows-latest` 的 VS 2026 待核实（此前 CUDA 12.8 不接受），CI 方案未定（见 §5） |
@@ -708,7 +708,7 @@ formal/
 | 项 | 决策 |
 |----|------|
 | 产品名 | **命令方块**（中文）/ **command-cube**（英文标识） |
-| 图标 | 先用开源库的**红色电话**占位（优先 MIT / ISC，如 Lucide `Phone` 着色）；用户后续自行重设计，不要在正式素材上花时间 |
+| 图标 | **座机电话**原创标记（ISC，`src-tauri/icons` + `command-cube-phone.svg`）；非 Lucide 听筒占位 |
 | 旧名 | 「轻语 Whisper」字符串逐步改为命令方块；技术目录名 `light-whisper` / crate 名暂不强制改 |
 
 ### 11.2 窗口与导航
@@ -749,7 +749,7 @@ formal/
 | **withcore** | 捆绑 `lw-engine`（当前默认路径） |
 | **without** | 不捆绑引擎，只连已有管理后端 URL |
 
-先用 feature / `tauri.conf` resources / 脚本开关打通；双 CI 矩阵可后置。
+先用 feature / `tauri.conf` resources / 脚本开关打通。**已补**：`command-cube-without.yml` 打薄壳 NSIS；withcore / smoke / CUDA 仍为独立 workflow。
 
 ### 11.6 进度（垂直切片）
 
@@ -757,25 +757,36 @@ formal/
 - [x] Go：SQLite + root/admin/user + capabilities + stats API（`internal/auth`，`/v1/auth/*`，`/v1/stats`）
 - [x] Rust：`get_management_connection` / `set_management_settings`；prefs 字段；子进程路径覆盖
 - [x] 前端：`CubeShell` 默认壳；旧主页 `?view=legacy`
-- [x] 文案 + Lucide 红电话占位（`src/assets/command-cube-phone.svg`）
+- [x] 文案 + 座机电话图标（ISC，`src/assets/command-cube-phone.svg`）
 - [x] `scripts/package_flavor.sh` 打桩
 - [x] 工作台：嵌入既有听写（MainPage）+ 前端历史（HistoryPage）；`embedded` 去 TitleBar；legacy 保留
 - [x] 后端管理：Token 列表/创建/删除（非 root）、`/v1/stats`、capabilities、角色；root 仅脱敏
 - [x] 壳设置：主题/语言/热键/麦克风/录音切换/提示音；云 API 端点+密钥在「连接」
 - [x] 连接：状态 + auth/me + stats + autofill + URL/path + 壳侧云端点（polish/assistant/decision）
-- [x] 关于：命令方块、许可说明、图标占位致谢
+- [x] 关于：命令方块、许可说明、图标 ISC 致谢
 - [x] 壳侧云 API 路由：`cloud_*_endpoint` 覆盖 polish / assistant / decision(Jev) / cloud ASR；密钥走既有 keyring；**Go 后端永不实现云能力**
 - [x] withcore：`fetch_native_deps_windows.py` + `build_r2t2_runtime.py --backend cpu` + `LW_ENGINE_NATIVE=1`；壳自动选 `native`（缺库则 mock）；模型不随包
 - [x] CUDA runtime on-demand（PLAN §5）：`GET/POST/DELETE /v1/runtimes/cuda*` + Workbench 一键启用/下载/版本不符提醒
 - [x] CUDA CI：`command-cube-cuda.yml` 在 windows-2022 用 CUDA Toolkit 12.9 构建 audiocpp CUDA + transcribe CUDA；**运行时 DLL 不随包**（strip → on_demand，见 §5）；默认安装包仍为 CPU withcore
-- [x] 红电话占位应用图标；ASR/job 统计计数；`package_flavor.sh` → stage withcore/without
-
-
-
+- [x] 座机电话应用图标（ISC）；ASR/job 统计计数；`package_flavor.sh` → stage withcore/without
+- [x] without CI：`command-cube-without.yml` → `command-cube-without-windows-app`
+- [x] CUDA 原生库明确安装路径：`install_cuda_native_libs.(sh|ps1)` + `docs/command-cube/CUDA_NATIVE_INSTALL.md` + 制品内 `INSTALL.txt`（默认 withcore 仍为 CPU）
+- [x] 工作台设备偏好 UI：`auto|cpu|cuda|vulkan` → Go `/v1/config` device（Vulkan=Qwen3/cpu-vulkan；R2T2 无 Vulkan）
+- [x] 验收清单：`docs/command-cube/TEST_CHECKLIST.md`；Windows 布局校验 `scripts/verify_windows_native_layout.py`
+- [x] 外层分段决策已文档化（§2.1：暂保留 8s+静音）
+- [ ] 步骤 7 工具 / Agent·dah — **明确排除本闭环**
+- [ ] 真人长时间 / 真机 GPU 延迟基线 — **交用户按 TEST_CHECKLIST 验收**
 
 ### CUDA vs withcore packaging (decision)
 
 - **CPU withcore** installer (`command-cube-withcore.yml`) remains the default downloadable Windows app: ORT + CPU audiocpp + CPU transcribe + lw-engine (lwnative). Models stay out of the installer.
 - **CUDA native libs** (`command-cube-cuda.yml`) stay a **separate** artifact (`command-cube-cuda-native`): CUDA-built `audiocpp.dll` under `r2t2-native/cuda/` plus optional CUDA `transcribe.dll`, with cudart/cublas **stripped** (`cuda_runtime: on_demand`, PLAN §5). Do not merge full CUDA runtime into the NSIS.
 - Users who want GPU: install withcore, then unpack the CUDA artifact into the app `resources/` (see `scripts/install_cuda_native_libs.sh`). The Go R2T2 backend already prefers `cuda` then `cpu` when the device is not forced to `cpu`. Shell Connection shows whether `cuda/audiocpp.dll` (and CUDA transcribe VARIANT) are present.
+
+### Vulkan（可行性结论）
+
+- withcore 已拉取 **transcribe `cpu-vulkan`** 变体；设备偏好 `vulkan` 对 Qwen3 有效。
+- R2T2（audiocpp）**无** Vulkan 后端（仅 cpu/cuda）。
+- **不做**单独 Vulkan CI / 安装包；不阻塞闭环。
+
 

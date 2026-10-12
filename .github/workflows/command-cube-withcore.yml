@@ -120,6 +120,9 @@ jobs:
       - name: Verify withcore bundle
         run: node scripts/verify_lw_engine_bundle.mjs
 
+      - name: Verify Windows native layout
+        run: python scripts/verify_windows_native_layout.py
+
       - name: Upload native runtime bits
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
@@ -180,4 +183,6 @@ jobs:
         if: always()
         run: |
           Write-Host "CUDA R2T2 not built in this job (CPU-only withcore)."
-          Write-Host "Models (Qwen3 / R2T2 GGUF) are downloaded separately via in-app or download_models.py."
+          Write-Host "Merge CUDA DLLs: scripts/install_cuda_native_libs.ps1 + artifact command-cube-cuda-native"
+          Write-Host "Docs: docs/command-cube/CUDA_NATIVE_INSTALL.md and TEST_CHECKLIST.md"
+          Write-Host "Models (Qwen3 / R2T2 GGUF): in-app one-click (native HF) — no Python required in Go mode."

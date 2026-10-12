@@ -102,6 +102,22 @@ jobs:
           if ($bad) { throw "cudart still present after strip: $($bad.Name)" }
           Write-Host "CUDA native libs verified (runtime on-demand)."
 
+      - name: Write INSTALL.txt
+        run: |
+          @"
+          command-cube-cuda-native
+          ========================
+          Merge into withcore app resources:
+
+            .\scripts\install_cuda_native_libs.ps1 -Src <extracted> -Dest <app>\resources
+
+          Or: ./scripts/install_cuda_native_libs.sh <extracted> [resources]
+
+          Connection page → CUDA R2T2 should become Yes.
+          Workbench → enable CUDA runtime (cudart/cublas on-demand).
+          Docs: docs/command-cube/CUDA_NATIVE_INSTALL.md
+          "@ | Set-Content -Path "src-tauri/resources/r2t2-native/cuda/INSTALL.txt" -Encoding utf8
+
       - name: Upload CUDA native libs
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
@@ -120,5 +136,6 @@ jobs:
         if: always()
         run: |
           Write-Host "Default withcore installer remains CPU-only."
+          Write-Host "Install path: scripts/install_cuda_native_libs.ps1 + docs/command-cube/CUDA_NATIVE_INSTALL.md"
           Write-Host "CUDA runtime (cudart/cublas) is on-demand per PLAN section 5 — not in this artifact."
           Write-Host "Models still download separately."

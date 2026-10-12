@@ -90,3 +90,24 @@ func TestDirHasRequired(t *testing.T) {
 		t.Fatal("expected required dlls")
 	}
 }
+
+// TestStatusWireFields locks Status fields the Workbench / CUDA E2E path poll.
+func TestStatusWireFields(t *testing.T) {
+	m := NewManager(Options{DataDir: t.TempDir(), GOOS: "windows"})
+	st := m.Status("auto", false, true)
+	if st.ProjectCUDAVersion == "" {
+		t.Fatalf("ProjectCUDAVersion empty")
+	}
+	if st.RequiredMajor != 12 {
+		t.Fatalf("RequiredMajor=%d", st.RequiredMajor)
+	}
+	_ = st.NVIDIADetected
+	_ = st.DriverOK
+	_ = st.DownloadedAvailable
+	_ = st.UsingCUDABackend
+	_ = st.ActiveSource
+	_ = st.VersionWarning
+	_ = st.CUDALibsPresent
+	_ = st.DevicePreference
+}
+

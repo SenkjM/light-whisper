@@ -7,6 +7,9 @@ import { toast } from "sonner";
 import {
   getEngine,
   setEngine,
+  getDevice,
+  setDevice,
+  getManagementConnection,
   getCudaRuntimeStatus,
   startCudaRuntimeDownload,
   cancelCudaRuntimeDownload,
@@ -52,6 +55,9 @@ export default function WorkbenchPage({
   const [cudaStatus, setCudaStatus] = useState<CudaRuntimeStatus | null>(null);
   const [cudaBusy, setCudaBusy] = useState(false);
   const [cudaMismatchOpen, setCudaMismatchOpen] = useState(false);
+  const [device, setDeviceState] = useState("auto");
+  const [deviceBusy, setDeviceBusy] = useState(false);
+  const [cudaLibsPresent, setCudaLibsPresent] = useState<boolean | null>(null);
 
   const refreshCuda = useCallback(async () => {
     try {
@@ -76,6 +82,18 @@ export default function WorkbenchPage({
         if (!cancelled) setEngineState(value);
       })
       .catch(() => {});
+    void getDevice()
+      .then((value) => {
+        if (!cancelled) setDeviceState(value);
+      })
+      .catch(() => {});
+    void getManagementConnection()
+      .then((c) => {
+        if (!cancelled) setCudaLibsPresent(!!c.cudaR2t2Present);
+      })
+      .catch(() => {
+        if (!cancelled) setCudaLibsPresent(null);
+      });
     return () => {
       cancelled = true;
     };
@@ -105,6 +123,24 @@ export default function WorkbenchPage({
       }
     },
     [engine, engineBusy, retryModel, t],
+  );
+
+  const switchDevice = useCallback(
+    async (next: string) => {
+      if (deviceBusy || next === device) return;
+      setDeviceBusy(true);
+      try {
+        const v = await setDevice(next);
+        setDeviceState(v);
+        toast.success(t("cube.deviceSet", { device: v }));
+        retryModel();
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : t("toast.switchEngineFailed"));
+      } finally {
+        setDeviceBusy(false);
+      }
+    },
+    [device, deviceBusy, retryModel, t],
   );
 
   const needsInstall =
@@ -218,8 +254,35 @@ export default function WorkbenchPage({
           </p>
         )}
         <p className="cube-muted cube-install-status">{t("cube.engineInstallHint")}</p>
+        {(isDownloading === false && modelError) && (
+          <p className="cube-error" role="alert">{modelError}</p>
+        )}
       </section>
 
+      <section className="cube-workbench-controls" aria-label={t("cube.deviceSection")}>
+        <div className="cube-engine-group">
+          <span>{t("cube.deviceSection")}</span>
+          {(["auto", "cpu", "cuda", "vulkan"] as const).map((d) => (
+            <button
+              key={d}
+              type="button"
+              className={`cube-engine-btn${device === d ? " is-active" : ""}`}
+              disabled={deviceBusy || isDownloading}
+              aria-pressed={device === d}
+              onClick={() => void switchDevice(d)}
+            >
+              {t(`cube.device_${d}`)}
+            </button>
+          ))}
+        </div>
+        <p className="cube-muted cube-install-status">{t("cube.deviceHint")}</p>
+      </section>
+
+      {cudaStatus?.nvidiaDetected &&
+      (cudaStatus.cudaR2t2DllPresent === false ||
+        (cudaStatus.cudaR2t2DllPresent == null && cudaLibsPresent === false)) ? (
+        <p className="cube-error" role="status">{t("cube.cudaLibsMissing")}</p>
+      ) : null}
 
       {cudaStatus?.nvidiaDetected ? (
         <section className="cube-workbench-controls" aria-label={t("cube.cudaSection")}>

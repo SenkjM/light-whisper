@@ -9,6 +9,7 @@
 # Usage:
 #   ./scripts/install_cuda_native_libs.sh /path/to/extracted-cuda-artifact [/path/to/resources]
 # Default resources dir: src-tauri/resources
+# Windows: prefer scripts/install_cuda_native_libs.ps1
 
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -16,14 +17,9 @@ SRC="${1:?usage: $0 <cuda-artifact-dir> [resources-dir]}"
 DEST="${2:-$ROOT/src-tauri/resources}"
 
 if [[ ! -f "$SRC/r2t2-native/cuda/audiocpp.dll" && ! -f "$SRC/audiocpp.dll" ]]; then
-  # artifact may flatten or nest
-  if [[ -f "$SRC/r2t2-native/cuda/audiocpp.dll" ]]; then
-    :
-  else
-    echo "expected r2t2-native/cuda/audiocpp.dll under $SRC" >&2
-    ls -la "$SRC" >&2 || true
-    exit 1
-  fi
+  echo "expected r2t2-native/cuda/audiocpp.dll (or audiocpp.dll) under $SRC" >&2
+  ls -la "$SRC" >&2 || true
+  exit 1
 fi
 
 mkdir -p "$DEST/r2t2-native"
@@ -35,12 +31,12 @@ elif [[ -f "$SRC/audiocpp.dll" ]]; then
   cp -a "$SRC"/. "$DEST/r2t2-native/cuda/"
 fi
 
-# Optional: replace transcribe with CUDA variant from the same artifact
 if [[ -f "$SRC/transcribe-native/transcribe.dll" ]]; then
   rm -rf "$DEST/transcribe-native"
   cp -a "$SRC/transcribe-native" "$DEST/transcribe-native"
+  echo "Installed CUDA transcribe into $DEST/transcribe-native"
 fi
 
 echo "Installed CUDA R2T2 libs into $DEST/r2t2-native/cuda"
 echo "Engine prefers cuda then cpu when device is not forced to cpu."
-echo "CUDA runtime (cudart/cublas) must come from the system or future on-demand download (PLAN §5)."
+echo "CUDA runtime (cudart/cublas) must come from the system or Workbench on-demand download (PLAN §5)."

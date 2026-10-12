@@ -127,11 +127,20 @@ async fn download_one(
     }
     let partial = dest.with_extension("gguf.partial");
 
-    let mut last_err = None;
+    let mut errors: Vec<String> = Vec::new();
     for endpoint in hf_endpoints() {
         let url = format!(
             "{}/{}/resolve/{}/{}",
             endpoint, pin.repo_id, pin.revision, pin.filename
+        );
+        emit(
+            app,
+            "downloading",
+            pin.id,
+            0.0,
+            model_index as f64 / model_total as f64 * 100.0,
+            Some(&format!("GET {endpoint}")),
+            None,
         );
         match download_file(client, app, pin, &url, &partial, &dest, model_index, model_total, cancel).await {
             Ok(()) => {
@@ -141,11 +150,19 @@ async fn download_one(
                 return Ok(());
             }
             Err(e) => {
-                last_err = Some(e);
+                let msg = e.to_string();
+                if msg.contains("cancelled") {
+                    return Err(e);
+                }
+                errors.push(format!("{endpoint}: {msg}"));
             }
         }
     }
-    Err(last_err.unwrap_or_else(|| AppError::Download("download failed".into())))
+    Err(AppError::Download(format!(
+        "{} failed on all HF endpoints: {}",
+        pin.id,
+        errors.join(" | ")
+    )))
 }
 
 async fn download_file(

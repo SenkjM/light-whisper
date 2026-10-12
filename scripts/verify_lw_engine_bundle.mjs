@@ -46,17 +46,35 @@ export async function verifyLwEngineBundle() {
       "tauri.conf.json still lists resources/engine.tar.xz — remove it for the pure-Go package",
     );
   }
-  if (!resources["resources/lw-engine.exe"]) {
-    throw new Error(
-      "tauri.conf.json must list resources/lw-engine.exe for the NSIS package",
-    );
-  }
+  const without = process.env.VERIFY_WITHOUT === "1";
+
   for (const key of Object.keys(resources)) {
     if (key.includes("engine.tar") || key.endsWith(".py")) {
       throw new Error(
         `tauri.conf.json must not bundle Python/PyInstaller artifact: ${key}`,
       );
     }
+  }
+
+  if (without) {
+    if (resources["resources/lw-engine.exe"]) {
+      throw new Error(
+        "without flavor must not list resources/lw-engine.exe — run stage_withcore_tauri_resources.py without",
+      );
+    }
+    for (const key of Object.keys(resources)) {
+      if (key.includes("r2t2-native") || key.includes("transcribe-native") || key.includes("onnxruntime")) {
+        throw new Error(`without flavor must not bundle native runtime: ${key}`);
+      }
+    }
+    console.log("without flavor: thin shell resources OK (no lw-engine / native DLLs)");
+    return 0;
+  }
+
+  if (!resources["resources/lw-engine.exe"]) {
+    throw new Error(
+      "tauri.conf.json must list resources/lw-engine.exe for the NSIS package",
+    );
   }
 
   await mustExist("src-tauri/resources/lw-engine.exe", { executable: true });
@@ -68,6 +86,13 @@ export async function verifyLwEngineBundle() {
     await mustExist("src-tauri/resources/transcribe-native/transcribe.dll");
     await mustExist("src-tauri/resources/r2t2-native/cpu/audiocpp.dll");
     console.log("withcore native DLLs present (CPU R2T2 + transcribe + onnxruntime)");
+    // Optional: CUDA audiocpp staged beside CPU (clear install / merge path)
+    try {
+      await mustExist("src-tauri/resources/r2t2-native/cuda/audiocpp.dll");
+      console.log("withcore also includes CUDA R2T2 (r2t2-native/cuda/audiocpp.dll)");
+    } catch {
+      console.log("CUDA R2T2 not in tree — install via scripts/install_cuda_native_libs.(sh|ps1) or CUDA artifact");
+    }
   }
 
   const size = (await stat(join(RESOURCES, "lw-engine.exe"))).size;

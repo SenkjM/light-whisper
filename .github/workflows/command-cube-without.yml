@@ -1,0 +1,127 @@
+# SPDX-FileCopyrightText: 2026 SenkjM
+# SPDX-License-Identifier: AGPL-3.0-only
+#
+# Thin-shell (without) Windows package: no lw-engine / native DLLs in the
+# bundle. Connect to an already-running management backend via URL (PLAN §11.5).
+
+name: Command-Cube without
+
+on:
+  push:
+    branches:
+      - Command-Cube
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  windows-without:
+    name: Windows without (thin shell)
+    runs-on: windows-2022
+    timeout-minutes: 90
+    defaults:
+      run:
+        shell: pwsh
+    env:
+      CI: "true"
+      CARGO_TERM_COLOR: always
+      VERIFY_WITHOUT: "1"
+      # Shell may still prefer go when user points at an external engine;
+      # bundled resources intentionally omit the binary.
+      LW_ENGINE_GO_BACKEND: mock
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22.14.0
+          package-manager-cache: false
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6.0.9
+        with:
+          version: 10.28.2
+          run_install: false
+
+      - name: Set up Rust
+        run: |
+          $PSNativeCommandUseErrorActionPreference = $true
+          rustup toolchain install 1.93.0 --profile minimal
+          rustup default 1.93.0
+          rustc --version
+          cargo --version
+
+      - name: Cache Rust dependencies and build outputs
+        uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            src-tauri/target
+            !src-tauri/target/**/incremental/**
+          key: command-cube-without-${{ runner.os }}-1.93.0-${{ hashFiles('src-tauri/Cargo.lock') }}
+          restore-keys: |
+            command-cube-without-${{ runner.os }}-1.93.0-
+
+      - name: Stage without tauri resources
+        run: python scripts/stage_withcore_tauri_resources.py without
+
+      - name: Verify without bundle
+        run: node scripts/verify_lw_engine_bundle.mjs
+
+      - name: Install frontend dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build frontend (skip withcore verify)
+        run: pnpm build
+        env:
+          VERIFY_WITHOUT: "1"
+
+      - name: Build Tauri Windows app (NSIS without)
+        run: |
+          $PSNativeCommandUseErrorActionPreference = $true
+          pnpm tauri build
+
+      - name: Collect Tauri bundle outputs
+        run: |
+          $out = "without-upload"
+          New-Item -ItemType Directory -Force -Path $out | Out-Null
+          $nsis = Get-ChildItem -Path "src-tauri/target/release/bundle/nsis" -Filter "*.exe" -ErrorAction SilentlyContinue
+          $msi = Get-ChildItem -Path "src-tauri/target/release/bundle/msi" -Filter "*.msi" -ErrorAction SilentlyContinue
+          if ($nsis) { Copy-Item $nsis.FullName -Destination $out; Write-Host "NSIS: $($nsis.Name)" }
+          if ($msi) { Copy-Item $msi.FullName -Destination $out; Write-Host "MSI: $($msi.Name)" }
+          $main = Get-ChildItem -Path "src-tauri/target/release" -Filter "命令方块.exe" -File -ErrorAction SilentlyContinue
+          if (-not $main) {
+            $main = Get-ChildItem -Path "src-tauri/target/release" -Filter "*.exe" -File -ErrorAction SilentlyContinue |
+              Where-Object { $_.Name -notmatch 'uninstall' } | Select-Object -First 1
+          }
+          if ($main) {
+            Copy-Item $main.FullName -Destination (Join-Path $out "app.exe")
+            Write-Host "app: $($main.Name)"
+          }
+          @"
+          package_flavor=without
+          note=Thin shell — set management URL on Connection page to an external lw-engine.
+          "@ | Set-Content -Path (Join-Path $out "WITHOUT.txt") -Encoding utf8
+          Get-ChildItem $out | Format-Table Name, Length
+          if (-not (Get-ChildItem $out -ErrorAction SilentlyContinue)) {
+            throw "No Tauri bundle outputs"
+          }
+
+      - name: Upload without Windows installer
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: command-cube-without-windows-app
+          path: without-upload/
+          if-no-files-found: error
+          retention-days: 14

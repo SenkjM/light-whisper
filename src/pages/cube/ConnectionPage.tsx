@@ -132,6 +132,9 @@ export default function ConnectionPage() {
           </p>
         )}
         <p className="cube-muted" style={{ fontSize: 12 }}>{t("cube.cudaRuntimeNote")}</p>
+        {conn && !conn.cudaR2t2Present ? (
+          <p className="cube-muted" style={{ fontSize: 12 }}>{t("cube.cudaLibsInstallHint")}</p>
+        ) : null}
         <button type="button" onClick={() => void refresh()} disabled={busy}>
           {t("common.refresh")}
         </button>
