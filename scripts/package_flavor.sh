@@ -4,7 +4,7 @@
 #
 # PLAN §11.5 — package flavor switch (withcore | without).
 #
-# withcore: stage native resources into tauri.conf (expects CPU+CUDA R2T2 DLLs already built).
+# withcore: stage native resources into tauri.conf (expects CPU+CUDA R2T2 + CUDA transcribe already built).
 # without: thin shell — no lw-engine / native libs in the bundle.
 #
 # Usage:

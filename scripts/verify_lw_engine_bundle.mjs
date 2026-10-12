@@ -89,6 +89,17 @@ export async function verifyLwEngineBundle() {
     // CUDA R2T2 is required in withcore CI (VERIFY_WITHCORE=1); bundled stripped.
     await mustExist("src-tauri/resources/r2t2-native/cuda/audiocpp.dll");
     console.log("withcore includes CUDA R2T2 (r2t2-native/cuda/audiocpp.dll; cudart on-demand)");
+    // CUDA Qwen3 transcribe VARIANT (ggml-cuda); cudart/cublas still on-demand.
+    await mustExist("src-tauri/resources/transcribe-native/ggml-cuda.dll");
+    const variant = (
+      await readFile(join(ROOT, "src-tauri/resources/transcribe-native/VARIANT.txt"), "utf8")
+    ).trim();
+    if (variant.toLowerCase() !== "cuda") {
+      throw new Error(
+        `withcore requires transcribe VARIANT=cuda (got ${JSON.stringify(variant)})`,
+      );
+    }
+    console.log("withcore includes CUDA transcribe (VARIANT=cuda / ggml-cuda.dll; cudart on-demand)");
   }
 
   const size = (await stat(join(RESOURCES, "lw-engine.exe"))).size;

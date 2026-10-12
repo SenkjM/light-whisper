@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: AGPL-3.0-only
 """Patch tauri.conf.json bundle.resources for withcore (native DLLs) or without.
 
-withcore: include lw-engine + VAD + r2t2-native/cpu + r2t2-native/cuda + transcribe-native + onnxruntime
+withcore: include lw-engine + VAD + r2t2-native/cpu + r2t2-native/cuda + CUDA transcribe-native + onnxruntime
 without: shell-only (no lw-engine / native libs) — connect via management URL
 
 Usage:

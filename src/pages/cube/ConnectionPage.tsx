@@ -120,11 +120,7 @@ export default function ConnectionPage() {
           <div><dt>{t("cube.cudaR2t2")}</dt><dd>{conn?.cudaR2t2Present ? t("common.yes") : t("common.no")}</dd></div>
           <div>
             <dt>{t("cube.cudaTranscribe")}</dt>
-            <dd>
-              {conn?.cudaTranscribePresent
-                ? t("common.yes")
-                : t("cube.cudaTranscribeExpectedNo")}
-            </dd>
+            <dd>{conn?.cudaTranscribePresent ? t("common.yes") : t("common.no")}</dd>
           </div>
           <div>
             <dt>{t("cube.rootToken")}</dt>
@@ -141,7 +137,7 @@ export default function ConnectionPage() {
           </p>
         )}
         <p className="cube-muted" style={{ fontSize: 12 }}>{t("cube.cudaRuntimeNote")}</p>
-        {!conn?.cudaTranscribePresent ? (
+        {conn && !conn.cudaTranscribePresent ? (
           <p className="cube-muted" style={{ fontSize: 12 }}>{t("cube.cudaTranscribeHint")}</p>
         ) : null}
         {(conn?.inferenceBackend ?? "").toLowerCase() === "mock" ? (

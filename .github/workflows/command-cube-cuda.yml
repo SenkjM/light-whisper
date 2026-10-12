@@ -2,11 +2,11 @@
 # SPDX-License-Identifier: AGPL-3.0-only
 #
 # Optional standalone CUDA native libs artifact.
-# withcore already bundles CUDA R2T2 (stripped); this job remains for:
-#   - CUDA transcribe VARIANT swap (overwrites withcore cpu-vulkan)
+# Current withcore already bundles CUDA R2T2 (stripped) + CUDA transcribe
+# (ggml-cuda). This job remains for:
 #   - rebuilding / redistributing libs without a full NSIS
-# Merge into an older withcore install is optional/redundant when using a
-# current withcore app that already includes r2t2-native/cuda/.
+#   - refreshing an older withcore that lacked CUDA transcribe / R2T2
+# Merge into a current withcore install is optional/redundant.
 
 name: Command-Cube CUDA
 
@@ -112,12 +112,12 @@ jobs:
           command-cube-cuda-native (optional)
           ==================================
           Current withcore installers already bundle CUDA R2T2
-          (r2t2-native/cuda/audiocpp.dll). Merging this artifact is
-          optional/redundant for R2T2 GPU.
+          (r2t2-native/cuda/audiocpp.dll) and CUDA Qwen3 transcribe
+          (transcribe-native VARIANT=cuda / ggml-cuda.dll).
+          Merging this artifact is optional/redundant for current withcore.
 
-          Still useful to:
-            - swap withcore cpu-vulkan transcribe for the CUDA VARIANT
-            - refresh libs on an older withcore install without reinstall
+          Still useful to refresh libs on an older withcore install
+          without reinstalling the NSIS.
 
           Merge:
 
@@ -146,7 +146,7 @@ jobs:
       - name: CUDA note
         if: always()
         run: |
-          Write-Host "withcore already bundles CUDA R2T2; this artifact is optional."
-          Write-Host "Primary use: CUDA transcribe VARIANT swap / standalone libs."
+          Write-Host "withcore already bundles CUDA R2T2 + CUDA transcribe; this artifact is optional."
+          Write-Host "Primary use: standalone / older-install lib refresh without full NSIS."
           Write-Host "CUDA runtime (cudart/cublas) is on-demand per PLAN section 5 — not in this artifact."
           Write-Host "Models still download separately."

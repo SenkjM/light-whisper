@@ -3,9 +3,9 @@
 # SPDX-License-Identifier: AGPL-3.0-only
 #
 # Optional merge of command-cube-cuda-native into a resources tree.
-# Current withcore already bundles CUDA R2T2 (r2t2-native/cuda/); this script
-# is redundant for that path. Still useful to swap CUDA transcribe VARIANT or
-# refresh libs on an older install (PLAN §5: cudart/cublas stay on-demand).
+# Current withcore already bundles CUDA R2T2 + CUDA transcribe; this script
+# is redundant for that path. Still useful to refresh libs on an older install
+# (PLAN §5: cudart/cublas stay on-demand).
 #
 # Usage:
 #   ./scripts/install_cuda_native_libs.sh /path/to/extracted-cuda-artifact [/path/to/resources]
@@ -39,6 +39,6 @@ if [[ -f "$SRC/transcribe-native/transcribe.dll" ]]; then
 fi
 
 echo "Installed CUDA R2T2 libs into $DEST/r2t2-native/cuda"
-echo "Note: current withcore already bundles CUDA R2T2; merge is optional/redundant for that path."
+echo "Note: current withcore already bundles CUDA R2T2 + CUDA transcribe; merge is optional/redundant."
 echo "Engine prefers cuda then cpu when device is not forced to cpu."
 echo "CUDA runtime (cudart/cublas) must come from the system or Workbench on-demand download (PLAN §5)."

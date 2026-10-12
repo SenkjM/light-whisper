@@ -7,15 +7,15 @@
 
 ## 制品
 
-1. Actions → `Command-Cube withcore` → `command-cube-withcore-windows-app`（含 CUDA R2T2）
-2. （可选）`Command-Cube CUDA` → `command-cube-cuda-native`（冗余于 R2T2；用于 CUDA transcribe 替换 / 旧包补库）
+1. Actions → `Command-Cube withcore` → `command-cube-withcore-windows-app`（含 CUDA R2T2 + CUDA transcribe）
+2. （可选）`Command-Cube CUDA` → `command-cube-cuda-native`（对当前 withcore 冗余；用于旧包补库 / 无 NSIS 刷新）
 3. （可选薄壳）`Command-Cube without` → `command-cube-without-windows-app`
 4. Smoke：`command-cube-smoke`（纯 Go mock，快速冒烟）
 
 ## Windows withcore（必测）
 
 - [ ] 安装 NSIS；启动后 Connection：backend=go，ready=是，打包口味 withcore
-- [ ] Connection：「CUDA R2T2 库」=是（无需再合并 cuda-native）
+- [ ] Connection：「CUDA R2T2 库」=是、「CUDA transcribe 库」=是（无需再合并 cuda-native）
 - [ ] Token 自动填入；Backend Admin 可建/删非 root Token；stats 有计数
 - [ ] 工作台：一键安装模型（Qwen3 + R2T2），进度/取消/失败可恢复；无需 Python
 - [ ] 切换 Qwen3 / R2T2；听写有字幕；历史页仅前端
@@ -25,8 +25,7 @@
 
 ## CUDA 路径（有 NVIDIA 时）
 
-- [ ] withcore 安装后 Connection 已显示「CUDA R2T2 库=是」（无需按 [CUDA_NATIVE_INSTALL.md](./CUDA_NATIVE_INSTALL.md) 合并，除非换 CUDA transcribe）
-- [ ] withcore 安装后「CUDA transcribe 库」可为「否（预期：…cpu-vulkan…）」——不是故障；勿当成破损
+- [ ] withcore 安装后 Connection 已显示「CUDA R2T2 库=是」与「CUDA transcribe 库=是」（无需按 [CUDA_NATIVE_INSTALL.md](./CUDA_NATIVE_INSTALL.md) 合并，除非旧包补库）
 - [ ] 工作台：检测到 GPU → 下载/启用 CUDA 运行时（cudart/cublas）；版本不符有确认
 - [ ] 启用后听写走 GPU（状态显示 cuda）；禁用回 CPU
 - [ ] 设备偏好：auto / cpu / cuda / vulkan（vulkan 仅对 Qwen3 有意义）

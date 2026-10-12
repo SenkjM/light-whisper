@@ -4,7 +4,8 @@
 """Verify Windows withcore native layout under src-tauri/resources (or DEST).
 
 Closes the 'Windows native path' gap for packaging: expected DLL names and
-CUDA R2T2 (required with --require-cuda / withcore CI). Does not load DLLs.
+CUDA R2T2 + CUDA transcribe (required with --require-cuda / withcore CI).
+Does not load DLLs.
 """
 from __future__ import annotations
 
@@ -39,13 +40,25 @@ def main() -> int:
         print("MISSING:", *missing, sep="\n  ", file=sys.stderr)
         return 1
     cuda = res / "r2t2-native" / "cuda" / "audiocpp.dll"
+    ggml_cuda = res / "transcribe-native" / "ggml-cuda.dll"
+    variant_path = res / "transcribe-native" / "VARIANT.txt"
     if args.require_cuda and not cuda.is_file():
-        print("MISSING CUDA:", cuda, file=sys.stderr)
+        print("MISSING CUDA R2T2:", cuda, file=sys.stderr)
         return 1
+    if args.require_cuda:
+        if not ggml_cuda.is_file():
+            print("MISSING CUDA transcribe:", ggml_cuda, file=sys.stderr)
+            return 1
+        variant = variant_path.read_text(encoding="utf-8").strip() if variant_path.is_file() else ""
+        if variant.lower() != "cuda":
+            print(f"MISSING CUDA transcribe VARIANT (want cuda, got {variant!r}): {variant_path}", file=sys.stderr)
+            return 1
     print("OK Windows native layout at", res)
     print("  CPU R2T2:", res / "r2t2-native" / "cpu" / "audiocpp.dll")
     print("  CUDA R2T2:", "present" if cuda.is_file() else "absent (withcore CI requires it; optional merge via install_cuda_native_libs)")
-    print("  transcribe:", res / "transcribe-native" / "transcribe.dll")
+    tr_variant = variant_path.read_text(encoding="utf-8").strip() if variant_path.is_file() else "(no VARIANT.txt)"
+    print("  transcribe:", res / "transcribe-native" / "transcribe.dll", f"(VARIANT={tr_variant})")
+    print("  CUDA transcribe (ggml-cuda):", "present" if ggml_cuda.is_file() else "absent (withcore CI requires it)")
     return 0
 
 

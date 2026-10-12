@@ -25,7 +25,7 @@ pub struct ManagementConnection {
     /// True when resources/r2t2-native/cuda/audiocpp.dll is next to the engine
     /// (CUDA runtime still on-demand per PLAN §5).
     pub cuda_r2t2_present: bool,
-    /// True when transcribe-native was staged as the CUDA variant (VARIANT.txt).
+    /// True when CUDA Qwen3 transcribe is staged (VARIANT=cuda and/or ggml-cuda.dll).
     pub cuda_transcribe_present: bool,
     /// lw-engine `--backend` actually in use: `mock` (placeholder ASR) or `native`.
     pub inference_backend: String,

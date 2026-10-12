@@ -2,9 +2,10 @@
 # SPDX-License-Identifier: AGPL-3.0-only
 #
 # withcore Windows package: lwnative lw-engine + CPU audiocpp + CUDA audiocpp
-# (stripped, PLAN §5 on-demand cudart/cublas) + transcribe (cpu-vulkan) +
-# onnxruntime + FireRedVAD assets. Models are NOT bundled.
-# Separate command-cube-cuda-native merge is optional/redundant for R2T2 GPU.
+# (stripped, PLAN §5 on-demand cudart/cublas) + CUDA transcribe (ggml-cuda;
+# still includes vulkan/cpu backends) + onnxruntime + FireRedVAD assets.
+# Models are NOT bundled. cudart/cublas stay on-demand.
+# Separate command-cube-cuda-native merge is optional/redundant for current withcore.
 
 name: Command-Cube withcore
 
@@ -23,7 +24,7 @@ concurrency:
 
 jobs:
   windows-withcore:
-    name: Windows withcore (CPU + CUDA R2T2 native)
+    name: Windows withcore (CPU + CUDA R2T2 + CUDA transcribe)
     runs-on: windows-2022
     timeout-minutes: 180
     defaults:
@@ -121,8 +122,8 @@ jobs:
             throw "nvcc missing after toolkit install"
           }
 
-      - name: Fetch onnxruntime + transcribe cpu-vulkan (no models)
-        run: python scripts/fetch_native_deps_windows.py
+      - name: Fetch onnxruntime + transcribe CUDA (no models)
+        run: python scripts/fetch_native_deps_windows.py --transcribe cuda
 
       - name: Build R2T2 CPU runtime (audiocpp.dll)
         run: python scripts/build_r2t2_runtime.py --backend cpu
@@ -149,7 +150,7 @@ jobs:
       - name: Verify withcore bundle
         run: node scripts/verify_lw_engine_bundle.mjs
 
-      - name: Verify Windows native layout (require CUDA R2T2)
+      - name: Verify Windows native layout (require CUDA R2T2 + CUDA transcribe)
         run: python scripts/verify_windows_native_layout.py --require-cuda
 
       - name: Report native size impact
@@ -164,6 +165,15 @@ jobs:
           if ($bad) { throw "cudart still present after strip: $($bad.Name)" }
           $manifest = Get-Content "src-tauri/resources/r2t2-native/cuda/runtime-manifest.json" -Raw | ConvertFrom-Json
           if ($manifest.cuda_runtime -ne "on_demand") { throw "expected cuda_runtime=on_demand" }
+          $variant = (Get-Content "src-tauri/resources/transcribe-native/VARIANT.txt" -Raw).Trim()
+          if ($variant -ne "cuda") { throw "expected transcribe VARIANT=cuda, got: $variant" }
+          $ggmlCuda = Get-Item "src-tauri/resources/transcribe-native/ggml-cuda.dll"
+          $trDir = Get-ChildItem "src-tauri/resources/transcribe-native" -File -Recurse | Measure-Object -Property Length -Sum
+          Write-Host ("transcribe VARIANT: {0}" -f $variant)
+          Write-Host ("ggml-cuda.dll: {0:N1} MB (bundled; cudart/cublas NOT included)" -f ($ggmlCuda.Length / 1MB))
+          Write-Host ("transcribe-native/ total: {0:N1} MB (~+198 MB vs prior cpu-vulkan)" -f ($trDir.Sum / 1MB))
+          $trCudart = Get-ChildItem "src-tauri/resources/transcribe-native" -Filter "cudart64_*.dll" -Recurse -ErrorAction SilentlyContinue
+          if ($trCudart) { throw "cudart must not ship in transcribe-native: $($trCudart.Name)" }
 
       - name: Upload native runtime bits
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
@@ -225,8 +235,9 @@ jobs:
       - name: Note packaging
         if: always()
         run: |
-          Write-Host "withcore now bundles CPU + CUDA R2T2 (r2t2-native/cuda/audiocpp.dll)."
+          Write-Host "withcore bundles CPU + CUDA R2T2 and CUDA Qwen3 transcribe (ggml-cuda)."
           Write-Host "cudart/cublas remain on-demand (PLAN section 5) — not in the NSIS."
-          Write-Host "Separate command-cube-cuda-native merge is optional/redundant for R2T2 GPU."
-          Write-Host "Qwen3 stays cpu-vulkan in withcore; CUDA transcribe swap still via optional CUDA artifact."
+          Write-Host "CUDA transcribe still ships ggml-vulkan.dll (device preference vulkan OK)."
+          Write-Host "Separate command-cube-cuda-native merge is optional/redundant for current withcore."
+          Write-Host "Size tip: ggml-cuda.dll ~205 MB; transcribe-native ~279 MB (+~198 MB vs cpu-vulkan)."
           Write-Host "Models (Qwen3 / R2T2 GGUF): in-app one-click — no Python required in Go mode."

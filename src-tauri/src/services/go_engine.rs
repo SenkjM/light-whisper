@@ -499,14 +499,18 @@ pub fn cuda_r2t2_present() -> bool {
     })
 }
 
-/// Whether transcribe-native VARIANT.txt says cuda.
+/// Whether CUDA Qwen3 transcribe is staged (VARIANT=cuda and/or ggml-cuda.dll).
 pub fn cuda_transcribe_present() -> bool {
     for root in resource_roots() {
-        let marker = root.join("transcribe-native").join("VARIANT.txt");
+        let dir = root.join("transcribe-native");
+        let marker = dir.join("VARIANT.txt");
         if let Ok(text) = std::fs::read_to_string(&marker) {
             if text.trim().eq_ignore_ascii_case("cuda") {
                 return true;
             }
+        }
+        if dir.join("ggml-cuda.dll").is_file() {
+            return true;
         }
     }
     false
